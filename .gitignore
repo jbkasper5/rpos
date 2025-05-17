@@ -1,0 +1,5 @@
+*.txt
+*.img
+**/bin/*
+exe
+objdump.s
