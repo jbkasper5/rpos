@@ -21,7 +21,7 @@ CC=				aarch64-none-elf-gcc
 LINKER=			aarch64-none-elf-ld
 OPT=			-O3
 AARCHFLAGS=		-mcmodel=large
-CFLAGS=			-g -std=c11 -nostdlib -nodefaultlibs -nostartfiles $(AARCHFLAGS)
+CFLAGS=			-g -std=c11 -nostdlib -Wno-builtin-declaration-mismatch -nodefaultlibs -nostartfiles $(AARCHFLAGS)
 TARGET=			exe
 LFLAGS=			 
 IMG=			kernel.img
@@ -68,7 +68,7 @@ asm: all
 	aarch64-none-elf-objdump -d $(TARGET) > objdump.s
 
 run: all
-	qemu-system-aarch64 -M raspi3b -kernel $(IMG) -serial null -serial stdio -d in_asm
+	qemu-system-aarch64 -M raspi3b -kernel $(IMG) -serial null -serial stdio
 
 elf: all
 	aarch64-none-elf-readelf -a $(TARGET) > elf.txt
@@ -78,4 +78,4 @@ gdb: all
 	aarch64-none-elf-gdb $(TARGET) -ex "target remote localhost:1234"
 
 wait: all
-	qemu-system-aarch64 -machine raspi3b -serial null -serial stdio -d in_asm -kernel $(IMG) -S -s 
+	qemu-system-aarch64 -machine raspi3b -serial null -serial stdio -kernel $(IMG) -S -s 

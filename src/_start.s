@@ -18,6 +18,10 @@ _core_zero_boot:
     ldr     x1, =_start             // set x1 to address 0x80000000
     mov     sp, x1                  // move that address into the stack pointer
     bl      main                    // jump to main
+
+    mov     r7, #0x900004                 /* Call write() */
+    mov     r0, #1
+    svc     #0    
     b       _infinite
 
 _infinite:
