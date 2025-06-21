@@ -30,3 +30,7 @@ In this project, the `raspi3b` board is configured to have 4 CPU cores, meaning 
 ## **SUPER IMPORTANT**
 
 [Here](https://cs140e.sergio.bz/docs/BCM2837-ARM-Peripherals.pdf)
+
+## Credits and Acknowledgements
+
+I want to give credit to where credit is due, this project would not have been possible without a very thorough tutorial from [Zoltan Baldaszti](https://github.com/bztsrc), from whom much of the hardware interaction code was understood and borrowed (specifically from [this tutorial](https://github.com/bztsrc/raspi3-tutorial)).
