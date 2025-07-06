@@ -1,3 +1,5 @@
+MAKEFLAGS += --no-print-directory
+
 SRC_DIR=src
 BIN_DIR=bin
 # BOOTCSRCS=$(shell find bootloader/$(SRC_DIR)/*.c 2>/dev/null)
@@ -8,11 +10,17 @@ BIN_DIR=bin
 # TOBJS:=$(patsubst bootloader/$(SRC_DIR)/%, $(BIN_DIR)/%, $(TOBJS))
 # OBJS=$(patsubst scheduler/$(SRC_DIR)/%, $(BIN_DIR)/%, $(TOBJS))
 
-SRCS=$(shell find $(SRC_DIR)/*.s) $(shell find $(SRC_DIR)/*.c)
+SRCS=$(wildcard $(SRC_DIR)/*.S) $(wildcard $(SRC_DIR)/*.c)
 TOBJS=$(patsubst %.c, %.o, $(SRCS))
-TOBJS:=$(patsubst %.s, %_s.o, $(TOBJS))
-TOBJS:=$(patsubst %_start_s.o, %_start.o, $(TOBJS))
-OBJS=$(patsubst $(SRC_DIR)/%, $(BIN_DIR)/%, $(TOBJS))
+TOBJS:=$(patsubst %.S, %_S.o, $(TOBJS))
+TOBJS:=$(patsubst %_start_S.o, %_start.o, $(TOBJS))
+
+FONT_SRCS=$(shell find fonts/* 2>/dev/null)
+FONTOBJS=$(patsubst %.sfn, %_sfn.o, $(FONT_SRCS))
+FONTOBJS:=$(patsubst %.psf, %_psf.o, $(FONTOBJS))
+FONTOBJS:=$(patsubst fonts/%, $(BIN_DIR)/%, $(FONTOBJS))
+
+OBJS=$(FONTOBJS) $(patsubst $(SRC_DIR)/%, $(BIN_DIR)/%, $(TOBJS))
 
 INCLUDES= -I include/
 LINKERFILE=linker.ld
@@ -21,12 +29,16 @@ CC=				aarch64-none-elf-gcc
 LINKER=			aarch64-none-elf-ld
 OPT=			-O3
 AARCHFLAGS=		-mcmodel=large
-CFLAGS=			-g -std=c11 -nostdlib -nodefaultlibs -nostartfiles $(AARCHFLAGS)
+CFLAGS=			-g -std=c11 -nostdlib -Wno-builtin-declaration-mismatch -nodefaultlibs -nostartfiles $(AARCHFLAGS)
 TARGET=			exe
 LFLAGS=			 
 IMG=			kernel.img
+SD_IMG=			rpos.img
 
-all: $(BIN_DIR) $(TARGET) $(IMG)
+# remove '-serial null' when switching from UART1 to UART0
+QEMU_FLAGS=		-drive file=/dev/disk4,if=sd,format=raw -serial null -serial stdio
+
+all: $(BIN_DIR) $(TARGET) $(IMG) $(SD_IMG)
 
 re: clean all
 
@@ -38,18 +50,22 @@ $(IMG): $(TARGET)
 
 # @ is the rule, ^ is the prereqs
 $(TARGET): $(OBJS)
+	@echo $(OBJS)
 	$(LINKER) -o $@ $^ -T $(LINKERFILE) $(LFLAGS) --entry=0x80000000
 
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) -c $< -o $@ $(CFLAGS) $(INCLUDES)
 
-# append an _s to the assembly object files to allow same-name files
-$(BIN_DIR)/%_s.o: $(SRC_DIR)/%.s
+$(BIN_DIR)/%_S.o: $(SRC_DIR)/%.S
 	$(CC) $(CFLAGS) -o $@ -c $< $(INCLUDES)
 
-# unknown ELF requires a start.o object, so we need to compile this specially
-$(BIN_DIR)/_start.o: $(SRC_DIR)/_start.s
+$(BIN_DIR)/_start.o: $(SRC_DIR)/_start.S
 	$(CC) $(CFLAGS) -o $@ -c $< $(INCLUDES)
+
+$(BIN_DIR)/%_psf.o: fonts/%.psf
+	aarch64-none-elf-ld -r -b binary -o $@ $^
+$(BIN_DIR)/%_sfn.o: fonts/%.sfn
+	aarch64-none-elf-ld -r -b binary -o $@ $^
 
 $(BIN_DIR):
 	mkdir -p $@
@@ -61,14 +77,14 @@ clean:
 	$(RM) -rf $(BIN_DIR)
 	$(RM) -rf objdump.s
 	$(RM) -rf *.txt
-	$(RM) -rf $(IMG)
+	$(RM) -rf kernel.img
 
 .PHONY: asm
 asm: all
 	aarch64-none-elf-objdump -d $(TARGET) > objdump.s
 
 run: all
-	qemu-system-aarch64 -M raspi3b -kernel $(IMG) -serial null -serial stdio -d in_asm
+	qemu-system-aarch64 -M raspi3b -kernel $(IMG) $(QEMU_FLAGS)
 
 elf: all
 	aarch64-none-elf-readelf -a $(TARGET) > elf.txt
@@ -78,4 +94,27 @@ gdb: all
 	aarch64-none-elf-gdb $(TARGET) -ex "target remote localhost:1234"
 
 wait: all
-	qemu-system-aarch64 -machine raspi3b -serial null -serial stdio -d in_asm -kernel $(IMG) -S -s 
+	qemu-system-aarch64 -M raspi3b -kernel $(IMG) $(QEMU_FLAGS) -S -s 
+
+$(SD_IMG):
+	# create a 1 GiB virtual SD card image
+	dd if=/dev/zero of=$@ bs=1M count=1024
+	hdiutil attach -nomount $@
+	diskutil eraseDisk FAT32 SDCARD MBRFormat /dev/disk4
+	diskutil partitionDisk /dev/disk4 MBR FAT32 one R FAT32 two 250MB 
+	diskutil unmountDisk /dev/disk4
+
+.PHONY: mount
+mount: $(SD_IMG)
+	mount -t msdos /dev/disk4s1 sdcard/
+
+.PHONY: unmount
+unmount: 
+	umount /dev/disk4s1
+
+boot: $(BIN_DIR) $(IMG)
+	$(MAKE) mount
+	cp $(IMG) sdcard/
+	echo "" > sdcard/start.elf
+	echo "" > sdcard/config.txt
+	$(MAKE) unmount

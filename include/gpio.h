@@ -1,0 +1,22 @@
+#ifndef __GPIO_H__
+#define __GPIO_H__
+
+#include "peripherals/gpio.h"
+#include "macros.h"
+#include "utils.h"
+
+typedef enum _GpioFunc{
+    GFInput = 0,
+    GFOutput = 1,
+    GFAlt0 = 4,
+    GFAlt1 = 5,
+    GFAlt2 = 6,
+    GFAlt3 = 7,
+    GFAlt4 = 3,
+    GFAlt5 = 2,
+} GpioFunc_t;
+
+void gpio_pin_set_func(uint8_t pin, GpioFunc_t func);
+void gpio_pin_enable(uint8_t pin);
+
+#endif
