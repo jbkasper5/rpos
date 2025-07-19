@@ -5,3 +5,4 @@ exe
 objdump.s
 *.pdf
 .DS_Store
+sdcard/

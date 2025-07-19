@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # === CONFIG ===
+CURR_DIR=$(pwd)
 VOLUME_NAME="RPOS"  # Change this to match the name of your SD card
-MOUNT_POINT="/Users/jakekasper/C/RaspberryPi/rpos/sdcard"  # Change to your target directory
+MOUNT_POINT="$CURR_DIR/sdcard"  # Change to your target directory
 
 # === FIND DISK IDENTIFIER ===
 DISK_ID=$(diskutil info "$VOLUME_NAME" | grep "Device Node" | awk '{print $3}')
