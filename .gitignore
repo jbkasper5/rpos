@@ -3,3 +3,5 @@
 **/bin
 exe
 objdump.s
+*.pdf
+.DS_Store
