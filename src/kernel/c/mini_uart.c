@@ -14,7 +14,8 @@ void uart_init(){
 
     REGS_AUX->enables = 1;
     REGS_AUX->mu_control = 0;
-    REGS_AUX->mu_ier = 0;
+
+    REGS_AUX->mu_ier = 0xD;
     REGS_AUX->mu_lcr = 3;
     REGS_AUX->mu_mcr = 0;
     REGS_AUX->mu_baud_rate = 541;
@@ -22,10 +23,13 @@ void uart_init(){
 
     uart_putc('\n');
     uart_putc('\n');
-    uart_putc('\n');
 }
 
 void uart_putc(char c){
+    if (c == '\n'){
+        while(!(REGS_AUX->mu_lsr & 0x20));
+        REGS_AUX->mu_io = '\r';
+    }
     while(!(REGS_AUX->mu_lsr & 0x20));
     REGS_AUX->mu_io = c;
 }
@@ -37,7 +41,6 @@ char uart_getc(){
 
 void uart_puts(const char* str){
     while(*str){
-        if(*str == '\n') uart_putc('\r');
         uart_putc(*str++);
     }
 }

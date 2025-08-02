@@ -7,3 +7,4 @@ objdump.s
 .DS_Store
 sdcard/
 prod/*
+screenlog.0
