@@ -4,6 +4,7 @@
 #include "peripherals/aux.h"
 #include "mini_uart.h"
 #include "utils.h"
+#include "timer.h"
 
 const char entry_error_messages[16][32] = {
 	"SYNC_INVALID_EL1t",
@@ -32,7 +33,7 @@ void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t address){
 }
 
 void enable_interrupt_controller(){
-    REGS_IRQ->irq0_enable_0 = AUX_IRQ;
+    REGS_IRQ->irq0_enable_0 = AUX_IRQ | SYS_TIMER_IRQ_1 | SYS_TIMER_IRQ_3;
 }
 
 void handle_irq(){
@@ -47,5 +48,17 @@ void handle_irq(){
                 printf("\n");
             }
         }
+
+		if (irq & SYS_TIMER_IRQ_1){
+			irq &= ~SYS_TIMER_IRQ_1;
+
+			handle_timer_1();
+		}
+
+		if (irq & SYS_TIMER_IRQ_3){
+			irq &= ~SYS_TIMER_IRQ_3;
+
+			handle_timer_3();
+		}
     }
 }
