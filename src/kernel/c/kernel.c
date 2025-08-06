@@ -23,9 +23,9 @@ int kernel_main(){
 
     printf("Sleeping 2 s...\n");
     timer_sleep(2000);
-
+ 
     printf("DONE!\n");
     while(1){
-        // printf("%c", uart_getc());
+        printf("%c", uart_getc());
     }
 }
