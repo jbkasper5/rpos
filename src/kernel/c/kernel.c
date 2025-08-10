@@ -5,6 +5,7 @@
 #include "timer.h"
 #include "i2c.h"
 #include "spi.h"
+#include "mailbox.h"
 
 void hardware_init(){
     printf("Initializing IRQ vector table...\n");
@@ -53,7 +54,26 @@ int kernel_main(){
     
     */
 
+    printf("CORE CLOCK: %d\n", mailbox_clock_rate(CT_CORE));
+    printf("EMMC CLOCK: %d\n", mailbox_clock_rate(CT_EMMC));
+    printf("UART CLOCK: %d\n", mailbox_clock_rate(CT_UART));
+    printf("ARM CLOCK: %d\n", mailbox_clock_rate(CT_ARM));
+
+    printf("I2C POWER STATE: \n");
+
+    for(int i = 0; i < 3; i++){
+        printf("POWER DOMAIN STATUS FOR %d=%d\n", i, mailbox_power_check(i));
+    }
+
+    uint32_t max_temp = 0;
+    mailbox_generic_command(RPI_FIRMWARE_GET_MAX_TEMPERATURE, 0, &max_temp);
+
     while(1){
-        printf("%c", uart_getc());
+        uint32_t current_temp = 0;
+        mailbox_generic_command(RPI_FIRMWARE_GET_TEMPERATURE, 0, &current_temp);
+        printf("CURRENT CPU TEMP: %dC, MAX TEMP: %dC\n", current_temp / 1000, max_temp / 1000);
+
+        // sleep 1 second
+        timer_sleep(1000);
     }
 }
