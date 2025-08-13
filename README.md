@@ -30,3 +30,14 @@ In this project, the `raspi3b` board is configured to have 4 CPU cores, meaning 
 ## **SUPER IMPORTANT**
 
 [Here](https://cs140e.sergio.bz/docs/BCM2837-ARM-Peripherals.pdf)
+
+
+## Interfacing with the PI
+
+In order to view the output from UART, run
+
+```
+alias piscreen="screen -L /dev/tty.usbserial-0001 115200"
+```
+
+In order to exit out of the screen, type `ctrl+a+\`.

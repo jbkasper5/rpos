@@ -3,3 +3,8 @@
 **/bin
 exe
 objdump.s
+*.pdf
+.DS_Store
+sdcard/
+prod/*
+screenlog.0
