@@ -10,6 +10,19 @@ _start:
    b _infinite
 
 master:
+
+   // Enable GIC Distributor
+   ldr x0, =0xFF840000           // GICD base
+   mov w1, #1
+   str w1, [x0, #0x000]          // GICD_CTLR = 1
+
+   // Enable CPU Interface
+   ldr x0, =0xFF842000           // GICC base
+   mov w1, #1
+   str w1, [x0, #0x000]          // GICC_CTLR = 1
+   mov w1, #0xFF
+   str w1, [x0, #0x004]          // GICC_PMR = 0xFF (priority mask)
+
    ldr x0, =SCTLR_VALUE_MMU_DISABLED
    msr sctlr_el1, x0
 

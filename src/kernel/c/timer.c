@@ -2,6 +2,8 @@
 #include "peripherals/timer.h"
 #include "peripherals/irq.h"
 #include "peripherals/aux.h"
+#include "scheduler.h"
+#include "timer.h"
 
 const uint32_t interval_1 = CLOCKHZ;
 uint32_t curr_val_1 = 0;
@@ -33,6 +35,11 @@ void handle_timer_3(){
     REGS_TIMER->control_status |= SYS_TIMER_IRQ_3;
 
     printf("Timer 3 received.\n");
+}
+
+void handle_physical_timer(){
+    prime_physical_timer();
+    printf("Physical timer received.\n");
 }
 
 uint64_t timer_get_ticks(){

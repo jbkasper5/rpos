@@ -11,4 +11,6 @@ typedef uint8_t bool;
 #define TRUE        1
 
 
+#define WFI()       __asm__("wfi");
+
 #endif

@@ -5,6 +5,9 @@
 #include "mini_uart.h"
 #include "utils.h"
 #include "timer.h"
+#include "scheduler.h"
+#include "peripherals/gic.h"
+
 
 const char entry_error_messages[16][32] = {
 	"SYNC_INVALID_EL1t",
@@ -32,12 +35,38 @@ void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t address){
     printf("ERROR CAUGHT: %s - %d, ESR: %x, ADDRESS: %x\n", entry_error_messages[type], type, esr, address);
 }
 
-void enable_interrupt_controller(){
-    REGS_IRQ->irq0_enable_0 = AUX_IRQ | SYS_TIMER_IRQ_1 | SYS_TIMER_IRQ_3;
+void enable_gic_interrupt(uint32_t interrupt_id, uint8_t priority){
+	uint32_t indexer = interrupt_id / 32;
+	uint32_t offset = interrupt_id % 32;
+	REGS_GICD->gicd_isenabler[indexer] |= (1 << offset);
 }
 
+void assign_interrupt_core(uint32_t INTID, uint32_t core)
+{
+    uint32_t n = INTID / 4;
+    uint32_t byte_offset = INTID % 4;
+    uint32_t shift = byte_offset * 8 + core;
+    REGS_GICD->gicd_itargetsr[n] |= (1 << shift);
+}
+
+
+#define GENERIC_TIMER_INTERRUPT_ID 	30
+
+void enable_interrupt_controller() {
+	// enable_gic_interrupt(GENERIC_TIMER_INTERRUPT_ID, 0xA0);
+	// assign_interrupt_core(GENERIC_TIMER_INTERRUPT_ID, 0);
+
+	// enable CPU interface for GIC
+	REGS_GICC->gicc_ctlr = 0x1;
+}
+
+
 void handle_irq(){
-    uint32_t irq = REGS_IRQ->irq0_pending_0;
+	printf("Handling IRQ...\n");
+    uint32_t irq = REGS_BCMIRQ->irq0_pending_0;
+	uint32_t gic_irq = REGS_GICC->gicc_iar;
+
+	printf("BCM IRQ: %d, GIC IRQ: %d\n", irq, gic_irq);
     while(irq){
         if(irq & AUX_IRQ){
             irq &= ~AUX_IRQ;
@@ -60,5 +89,17 @@ void handle_irq(){
 
 			handle_timer_3();
 		}
+    }
+
+	printf("GIC IRQ: %d\n", gic_irq);
+
+    if (gic_irq < 1020) {  // 1020 = spurious interrupt ID threshold
+        if (gic_irq == 30) {
+			printf("Handling interrupt 30...\n");
+            // Handle ARM physical timer interrupt
+			handle_physical_timer();
+        }
+        // Acknowledge end of interrupt
+        REGS_GICC->gicc_eoir = gic_irq;
     }
 }
