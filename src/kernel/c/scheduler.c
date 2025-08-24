@@ -1,5 +1,7 @@
 #include "scheduler.h"
 #include "process.h"
+#include "timer.h"
+#include "printf.h"
 
 void scheduler_init(){
     // for now, we say there is 1 task, the IDLE task, which is a placeholder for when the CPU is idle
@@ -7,5 +9,6 @@ void scheduler_init(){
 }
 
 void scheduler(){
-
+    printf("Doing scheduler stuffs\n");
+    prime_physical_timer();
 }

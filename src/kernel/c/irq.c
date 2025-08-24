@@ -35,28 +35,9 @@ void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t address){
     printf("ERROR CAUGHT: %s - %d, ESR: %x, ADDRESS: %x\n", entry_error_messages[type], type, esr, address);
 }
 
-void enable_gic_interrupt(uint32_t interrupt_id, uint8_t priority){
-	uint32_t indexer = interrupt_id / 32;
-	uint32_t offset = interrupt_id % 32;
-	REGS_GICD->gicd_isenabler[indexer] |= (1 << offset);
-}
-
-void assign_interrupt_core(uint32_t INTID, uint32_t core)
-{
-    uint32_t n = INTID / 4;
-    uint32_t byte_offset = INTID % 4;
-    uint32_t shift = byte_offset * 8 + core;
-    REGS_GICD->gicd_itargetsr[n] |= (1 << shift);
-}
-
-
-#define GENERIC_TIMER_INTERRUPT_ID 	30
-
 void enable_interrupt_controller() {
-	// enable_gic_interrupt(GENERIC_TIMER_INTERRUPT_ID, 0xA0);
-	// assign_interrupt_core(GENERIC_TIMER_INTERRUPT_ID, 0);
-
 	// enable CPU interface for GIC
+	// interrupts have already been enabled in EL3 before dropping into kernel init
 	REGS_GICC->gicc_ctlr = 0x1;
 }
 
@@ -97,7 +78,7 @@ void handle_irq(){
         if (gic_irq == 30) {
 			printf("Handling interrupt 30...\n");
             // Handle ARM physical timer interrupt
-			handle_physical_timer();
+			scheduler();
         }
         // Acknowledge end of interrupt
         REGS_GICC->gicc_eoir = gic_irq;

@@ -69,7 +69,8 @@ vectors:
     ventry fiq_invalid_el1h
     ventry error_invalid_el1h
 
-    ventry sync_invalid_el0_64
+    # system calls from user processes
+    ventry handle_el0_svc
     ventry irq_invalid_el0_64
     ventry fiq_invalid_el0_64
     ventry error_invalid_el0_64
@@ -106,8 +107,10 @@ fiq_invalid_el1h:
 error_invalid_el1h:
     handle_invalid_entry ERROR_INVALID_EL1H
 
-sync_invalid_el0_64:
-    handle_invalid_entry SYNC_INVALID_EL0_64
+handle_el0_svc:
+    kernel_entry
+    bl handle_syscall
+    kernel_exit
 
 irq_invalid_el0_64:
     handle_invalid_entry IRQ_INVALID_EL0_64
