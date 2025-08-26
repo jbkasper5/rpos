@@ -15,7 +15,7 @@ typedef struct reglist_s{
     uint64_t regs[31];
     uint64_t sp;
     uint64_t pc;
-    uint64_t cpsr;
+    uint64_t spsr;
 }reglist_t;
 
 typedef struct PCB_S{

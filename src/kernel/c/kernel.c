@@ -77,7 +77,7 @@ int kernel_main(){
 
     printf("GICD Enanbles[0]: %x\n", REGS_GICD->gicd_isenabler[0]);
 
-    int num_received = 0;
+    // int num_received = 0;
     while(1){
         WFI();
         printf("Wake up number: %d!\n", ++num_received);

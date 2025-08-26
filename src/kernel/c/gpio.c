@@ -11,6 +11,18 @@ void gpio_pin_set_func(uint8_t pinNumber, GpioFunc_t func){
     REGS_GPIO->func_select[reg] = selector;
 }
 
+void gpio_set_pin_high(uint8_t pinNumber){
+    uint32_t idx = pinNumber / 32;
+    uint32_t offset = pinNumber % 32;
+    REGS_GPIO->output_set.data[idx] = (1 << offset);
+}
+
+void gpio_set_pin_low(uint8_t pinNumber){
+    uint32_t idx = pinNumber / 32;
+    uint32_t offset = pinNumber % 32;
+    REGS_GPIO->output_clear.data[idx] = (1 << offset);
+}
+
 void gpio_pin_enable(uint8_t pinNumber){
     REGS_GPIO->pupd_enable = 0;
     delay(150);

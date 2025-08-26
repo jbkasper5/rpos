@@ -42,7 +42,7 @@ void enable_interrupt_controller() {
 }
 
 
-void handle_irq(){
+void handle_irq(uint64_t reg_addr){
 	printf("Handling IRQ...\n");
     uint32_t irq = REGS_BCMIRQ->irq0_pending_0;
 	uint32_t gic_irq = REGS_GICC->gicc_iar;

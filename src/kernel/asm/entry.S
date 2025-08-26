@@ -32,7 +32,11 @@
     stp x24, x25, [sp, #16 * 12]
     stp x26, x27, [sp, #16 * 13]
     stp x28, x29, [sp, #16 * 14]
-    str x30, [sp, #16 * 15]
+    mrs x0, SP_EL0
+    stp x30, x0, [sp, #16 * 15]
+    mrs x0, ELR_EL1
+    mrs x1, SPSR_EL1
+    stp x0, x1, [sp, #16 * 16]
 .endm
 
 .macro kernel_exit
@@ -51,9 +55,12 @@
     ldp x24, x25, [sp, #16 * 12]
     ldp x26, x27, [sp, #16 * 13]
     ldp x28, x29, [sp, #16 * 14]
-    ldr x30, [sp, #16 * 15]
+    ldp x30, x0, [sp, #16 * 15]
+    msr SP_EL0, x0
+    ldp x0, x1, [sp, #16 * 16]
+    msr ELR_EL1, x0
+    msr SPSR_EL1, x1
     add sp, sp, #S_FRAME_SIZE
-    eret
 .endm
 
 .align 11
@@ -100,6 +107,7 @@ handle_el1_irq:
     kernel_entry
     bl handle_irq
     kernel_exit
+    eret
 
 fiq_invalid_el1h:
     handle_invalid_entry FIQ_INVALUD_EL1H
@@ -108,9 +116,15 @@ error_invalid_el1h:
     handle_invalid_entry ERROR_INVALID_EL1H
 
 handle_el0_svc:
+    # disable interrupts while we're handling the system call
+    msr daifset, #0xf
     kernel_entry
     bl handle_syscall
     kernel_exit
+
+    # re-enable interrupts after system call is completed
+    msr daifclr, #0xf
+    eret
 
 irq_invalid_el0_64:
     handle_invalid_entry IRQ_INVALID_EL0_64

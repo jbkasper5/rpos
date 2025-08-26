@@ -184,3 +184,9 @@ In order to exit out of the screen, type `ctrl+a+\`.
 ### Notes
 + `wN` refers to the lower 32 bits of the 64-bit register `xN`
 + You can also store and load pairs of registers with `stp` and `ldp`, which can be efficient for mass pushing/popping
+
+
+# Pi Hardware
+
+### GPIO Configuration
+![Alt text](assets/pipins.jpeg)
