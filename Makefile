@@ -55,3 +55,6 @@ clean:
 	rm -rf $(BIN_DIR)
 	rm -rf $(TARGET)
 	rm -rf $(KERNEL_IMG)
+
+asm:
+	aarch64-none-elf-objdump -d $(TARGET) > objdump.S

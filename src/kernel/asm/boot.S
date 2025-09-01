@@ -23,6 +23,9 @@ master:
    mov w1, #0xFF
    str w1, [x0, #0x004]          // GICC_PMR = 0xFF (priority mask)
 
+   mov x0, #(1 << 0) | (1 << 10) | (1 << 11)   // NS | RW | ST
+   msr SCR_EL3, x0
+
    ldr x0, =SCTLR_VALUE_MMU_DISABLED
    msr sctlr_el1, x0
 

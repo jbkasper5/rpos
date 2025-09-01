@@ -32,7 +32,7 @@ const char entry_error_messages[16][32] = {
 };
 
 void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t address){
-    printf("ERROR CAUGHT: %s - %d, ESR: %x, ADDRESS: %x\n", entry_error_messages[type], type, esr, address);
+    printf("ERROR CAUGHT: %s - %d, ESR_EL1: %x, ELR_EL1: %x\n", entry_error_messages[type], type, esr, address);
 }
 
 void enable_interrupt_controller() {
@@ -43,7 +43,8 @@ void enable_interrupt_controller() {
 
 
 void handle_irq(uint64_t reg_addr){
-	printf("Handling IRQ...\n");
+	printf("Handling IRQ (context: 0x%x)...\n", reg_addr);
+
     uint32_t irq = REGS_BCMIRQ->irq0_pending_0;
 	uint32_t gic_irq = REGS_GICC->gicc_iar;
 
@@ -78,7 +79,7 @@ void handle_irq(uint64_t reg_addr){
         if (gic_irq == 30) {
 			printf("Handling interrupt 30...\n");
             // Handle ARM physical timer interrupt
-			scheduler();
+			scheduler((reglist_t*) reg_addr);
         }
         // Acknowledge end of interrupt
         REGS_GICC->gicc_eoir = gic_irq;

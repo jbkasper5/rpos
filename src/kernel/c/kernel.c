@@ -5,6 +5,10 @@
 #include "timer.h"
 #include "gpio.h"
 #include "peripherals/gic.h"
+#include "scheduler.h"
+
+#define PIN17 17
+#define PIN26 26
 
 
 void debug_init(){
@@ -62,6 +66,9 @@ void hardware_init(){
     printf("Enabling IRQ interrupts...\n");
     irq_enable();
 
+    printf("Enabling system scheduler...\n");
+    scheduler_init();
+
     printf("Hardware initialization complete.\n\n");
 }
 
@@ -76,10 +83,14 @@ int kernel_main(){
     hardware_init();
 
     printf("GICD Enanbles[0]: %x\n", REGS_GICD->gicd_isenabler[0]);
-
-    // int num_received = 0;
+    // turn 17 on
+    pulse(PIN17, FALSE);
+    int intnum = 0;
     while(1){
+
+        // will never do anything ever again - scheduler will drop us into user land
         WFI();
-        printf("Wake up number: %d!\n", ++num_received);
+        printf("Intnum: %d\n", intnum++);
+
     }
 }
