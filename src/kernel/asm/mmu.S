@@ -4,3 +4,4 @@ page_table:
 
 .globl mmu_init
 mmu_init:
+    ret

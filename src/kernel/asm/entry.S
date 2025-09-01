@@ -70,12 +70,6 @@ my_string_2:
     msr ELR_EL1, x0
     msr SPSR_EL1, x1
 
-
-    mov x1, x0
-    ldr x0, =my_string
-    bl printf
-
-
     ldp x0, x1, [sp, #16 * 0]
     add sp, sp, #S_FRAME_SIZE
 .endm

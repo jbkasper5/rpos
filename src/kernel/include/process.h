@@ -35,7 +35,7 @@ typedef struct PCB_LIST_S{
     uint32_t processes;
 } pcb_list_t;
 
-static pcb_list_t proclist;
-static uint64_t active_process;
+extern pcb_list_t proclist;
+extern uint64_t active_process;
 
 #endif

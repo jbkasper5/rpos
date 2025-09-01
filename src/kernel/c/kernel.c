@@ -6,6 +6,8 @@
 #include "gpio.h"
 #include "peripherals/gic.h"
 #include "scheduler.h"
+#include "mmu.h"
+
 
 #define PIN17 17
 #define PIN26 26
@@ -66,6 +68,9 @@ void hardware_init(){
     printf("Enabling IRQ interrupts...\n");
     irq_enable();
 
+    printf("Initializing MMU...\n");
+    mmu_init();
+
     printf("Enabling system scheduler...\n");
     scheduler_init();
 
@@ -87,10 +92,7 @@ int kernel_main(){
     pulse(PIN17, FALSE);
     int intnum = 0;
     while(1){
-
-        // will never do anything ever again - scheduler will drop us into user land
         WFI();
         printf("Intnum: %d\n", intnum++);
-
     }
 }

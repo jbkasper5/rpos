@@ -3,14 +3,6 @@
 #define BUFSIZE         128
 char conversion_buffer[BUFSIZE];
 
-
-
-uint64_t get_sp(void) {
-    uint64_t sp;
-    __asm__("mov %0, sp" : "=r"(sp));
-    return sp;
-}
-
 char _nibble_to_char(char nibble){
     switch(nibble){
         case 0 ... 9:

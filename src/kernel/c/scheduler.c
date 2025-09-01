@@ -10,6 +10,9 @@
 #define PIN17           17
 #define USER_STACK_TOP  0x300000
 
+pcb_list_t proclist;
+uint64_t active_process;
+
 void scheduler_init(){
     // debug pins
     gpio_pin_enable(PIN17);
@@ -27,16 +30,6 @@ void scheduler_init(){
     active_process = -1;
 }
 
-void pulse(uint32_t pin, bool on){
-    if(on){
-        printf("Turning %d off...\n", pin);
-        gpio_set_pin_low(pin);
-    }else{
-        printf("Turning %d on...\n", pin);
-        gpio_set_pin_high(pin);
-    }
-}
-
 void print_reg_file(reglist_t* regfile){
     printf("Register file at: 0x%x\n", regfile);
     for(int i = 0; i < 31; i++){
@@ -49,7 +42,6 @@ void print_reg_file(reglist_t* regfile){
 
 void scheduler(reglist_t* reg_addr){
 
-    printf("SP: 0x%x\n", get_sp());
     pulse(DEBUG_PIN, FALSE);
     // static int trigger = 0;
     printf("Doing scheduler stuffs\n");
@@ -74,5 +66,4 @@ void scheduler(reglist_t* reg_addr){
         // print_reg_file(reg_addr);
     }
     pulse(DEBUG_PIN, TRUE);
-    printf("SP: 0x%x\n", get_sp());
 }
