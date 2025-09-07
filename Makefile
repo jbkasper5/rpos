@@ -54,7 +54,8 @@ $(BIN_DIR)/armstub/armstub_s.o: src/armstub/armstub.S
 clean:
 	rm -rf $(BIN_DIR)
 	rm -rf $(TARGET)
+	rm -rf objdump.S
 	rm -rf $(KERNEL_IMG)
 
-asm:
+asm: local
 	aarch64-none-elf-objdump -d $(TARGET) > objdump.S

@@ -14,6 +14,16 @@ get32:
     ldr w0, [x0]
     ret 
 
+.globl put64
+put64:
+    str x1, [x0]
+    ret
+
+.globl get64
+get64:
+    ldr x0, [x0]
+    ret
+
 .globl get_el
 get_el:
     mrs x0, CurrentEL
