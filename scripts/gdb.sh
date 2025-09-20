@@ -1,0 +1,1 @@
+aarch64-none-elf-gdb exe -ex "target remote localhost:3333"

@@ -2,7 +2,56 @@
 
 # Using GDB
 
-## Setup
+## Baremetal Debugging with GDB, OpenOCD, and J-Link
+
+This method is capable of debugging the kernel on the pi4b as it executes. In order to use this method of debugging, there are a few important steps:
+
+### J-Link to GPIO Pin Mapping
+
+| Pi4B Pin Number | J-Link Pin Number | 
+| --------------- | ----------------- |
+| 13              | 7                 |
+| 15              | 3                 |
+| 17              | 1                 |
+| 18              | 13                |
+| 22              | 9                 |
+| 37              | 5                 |
+| 39              | 4                 |
+
+### Software Configuration
+
+By default, these GPIO pins on the pi are not configured for the JTAG interface. With that in mind, the software needs to set the function for all these pins to `Alt4` before JTAG can be used. That involves setting up the pins, then waiting in a loop for some kind of input from GDB before being able to continue. This takes the form of:
+
+```c
+// JTAG init above
+printf("Waiting for debug gate to be released...\n");
+int gate = 0;
+while(!gate);
+```
+
+Then, once gdb is active, 
+
+```
+set variable gate = 1
+```
+
+This will change the gate variable and unlock the while loop, allowing execution to continue.
+
+In order to set these functions up in an easier manner, 2 terminal windows are required. In the first window, set up the openocd connection by executing
+
+```
+./scripts/openocd.sh
+```
+
+Once openocd is active, in the second terminal window, and **after the pi has reached the gate condition**, execute the gdb script, which will target the remote debugging host:
+
+```
+./scripts/gdb.sh
+```
+
+Now GDB can be used in the standard way, setting breakpoints, variables, and inspecting registers.
+
+## Setup - QEMU
 In order to use GDB to debug this project, we need to run QEMU silently without executing the code. To do so, use the `make gdb` rule in the makefile to build the target and configure it for debugging. In a **separate terminal**, we can use gdb via the `aarch64-none-elf-gdb` binary, setting the context to our executable, `exe`:
 
 ```
