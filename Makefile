@@ -16,6 +16,12 @@ LINKERFILE := $(SRC_DIR)/linker.ld
 LINKER := aarch64-none-elf-ld
 ARMSTUB_BIN := $(PROD_DIR)/armstub.bin
 
+DEBUG ?= 0
+
+ifeq ($(DEBUG), 1)
+	CFLAGS += -DDEBUG -g
+endif
+
 
 all: $(BIN_DIR) $(KERNEL_IMG) $(ARMSTUB_BIN)
 	./scripts/mount.sh
@@ -23,6 +29,10 @@ all: $(BIN_DIR) $(KERNEL_IMG) $(ARMSTUB_BIN)
 	./scripts/eject.sh
 
 local: $(BIN_DIR) $(KERNEL_IMG)
+
+debug: clean
+	$(MAKE) DEBUG=1
+
 
 $(KERNEL_IMG): $(TARGET)
 	aarch64-none-elf-objcopy -O binary $^ $@

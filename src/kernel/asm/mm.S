@@ -1,3 +1,5 @@
+.section .text
+
 .globl memzero
 memzero:
     str xzr, [x0], #8

@@ -6,6 +6,7 @@ my_string:
 my_string_2:
     .asciz "EL: %d\n"
 
+.section .text
 .macro ventry label
 .align 7
     b   \label
@@ -112,7 +113,23 @@ error_invalid_el1t:
     handle_invalid_entry ERROR_INVALID_EL1T
 
 sync_invalid_el1h:
-    handle_invalid_entry SYNC_INVALID_EL1H
+    ldr x0, =0x0
+    at s1e1r, x0
+    isb
+    mrs x1, par_el1
+    mov x2, x1
+
+    ldr x0, =0x1000
+    at s1e1r, x0
+    isb
+    mrs x1, par_el1
+
+    b .
+    mrs x10, esr_el1
+    mrs x11, far_el1
+    mrs x12, elr_el1
+    b .   // halt here for GDB to inspect
+    # handle_invalid_entry SYNC_INVALID_EL1H
 
 handle_el1_irq:
     kernel_entry

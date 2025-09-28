@@ -1,5 +1,6 @@
 #include "scheduler_constants.h"
 
+.section .text
 .globl read_timer
 read_timer:
     mrs x0, CNTP_TVAL_EL0

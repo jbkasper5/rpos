@@ -8,3 +8,9 @@ void* memcpy(void* dest, const void* src, uint32_t bytes) {
     }
     return dest;
 }
+
+void* memset(void* ptr, uint64_t bytes, int8_t value){
+    unsigned char* addr = (unsigned char*) ptr;
+    for(uint64_t i = 0; i < bytes; i++) addr[i] = value;
+    return ptr;
+}

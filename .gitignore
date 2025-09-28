@@ -8,3 +8,4 @@ objdump.s
 sdcard/
 prod/*
 screenlog.0
+debugging/*

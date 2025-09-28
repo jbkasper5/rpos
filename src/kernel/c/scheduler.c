@@ -6,8 +6,6 @@
 #include "user.h"
 #include "mem.h"
 
-#define DEBUG_PIN       26
-#define PIN17           17
 #define USER_STACK_TOP  0x300000
 
 pcb_list_t proclist;
@@ -15,10 +13,10 @@ uint64_t active_process;
 
 void scheduler_init(){
     // debug pins
-    gpio_pin_enable(PIN17);
-    gpio_pin_set_func(PIN17, GFOutput);
-    gpio_pin_enable(DEBUG_PIN);
-    gpio_pin_set_func(DEBUG_PIN, GFOutput);
+    // gpio_pin_enable(USER_PIN);
+    // gpio_pin_set_func(USER_PIN, GFOutput);
+    // gpio_pin_enable(DEBUG_PIN);
+    // gpio_pin_set_func(DEBUG_PIN, GFOutput);
 
     // for now, we say there is 1 task, the IDLE task, which is a placeholder for when the CPU is idle
     proclist.processes = 1;
@@ -42,7 +40,7 @@ void print_reg_file(reglist_t* regfile){
 
 void scheduler(reglist_t* reg_addr){
 
-    pulse(DEBUG_PIN, FALSE);
+    // pulse(DEBUG_PIN, FALSE);
     // static int trigger = 0;
     printf("Doing scheduler stuffs\n");
     prime_physical_timer();
@@ -65,5 +63,5 @@ void scheduler(reglist_t* reg_addr){
         // printf("Post-context switch: \n");
         // print_reg_file(reg_addr);
     }
-    pulse(DEBUG_PIN, TRUE);
+    // pulse(DEBUG_PIN, TRUE);
 }

@@ -1,3 +1,5 @@
+.section .text
+
 .globl delay
 delay:
     subs x0, x0, #1
@@ -14,6 +16,7 @@ get32:
     ldr w0, [x0]
     ret 
 
+// put64(address, value)
 .globl put64
 put64:
     str x1, [x0]

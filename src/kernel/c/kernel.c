@@ -8,45 +8,33 @@
 #include "scheduler.h"
 #include "mmu.h"
 
-
-#define PIN17 17
 #define PIN26 26
 
 
 void debug_init(){
 
     // JTAG
-    // #define TCK 22
-    // #define TMS 27
-    // #define TDI 4
-    // #define TDO 5
-    // #define TRST 25
+    #define TCK 22
+    #define TMS 27
+    #define TDI 4
+    #define TDO 5
+    #define TRST 25
 
-    // gpio_pin_set_func(TCK, GFAlt4);
-    // gpio_pin_set_func(TMS, GFAlt4);
-    // gpio_pin_set_func(TDI, GFAlt4);
-    // gpio_pin_set_func(TDO, GFAlt4);
-    // gpio_pin_set_func(TRST, GFAlt4);
+    gpio_pin_set_func(TCK, GFAlt4);
+    gpio_pin_set_func(TMS, GFAlt4);
+    gpio_pin_set_func(TDI, GFAlt4);
+    gpio_pin_set_func(TDO, GFAlt4);
+    gpio_pin_set_func(TRST, GFAlt4);
 
-    // gpio_pin_enable(TCK);
-    // gpio_pin_enable(TMS);
-    // gpio_pin_enable(TDI);
-    // gpio_pin_enable(TDO);
-    // gpio_pin_enable(TRST);
+    gpio_pin_enable(TCK);
+    gpio_pin_enable(TMS);
+    gpio_pin_enable(TDI);
+    gpio_pin_enable(TDO);
+    gpio_pin_enable(TRST);
 
-
-    // SWD
-    // #define SWCLK 22
-    // #define SWDIO 4
-    // #define RESET 25  // Optional
-
-    // gpio_pin_set_func(SWCLK, GFAlt4);
-    // gpio_pin_set_func(SWDIO, GFAlt4);
-    // gpio_pin_set_func(RESET, GFAlt4);
-
-    // gpio_pin_enable(SWCLK);
-    // gpio_pin_enable(SWDIO);
-    // gpio_pin_enable(RESET);
+    int gate = 0;
+    printf("Waiting for gate to be released by debugger...\n");
+    while(!gate);
 }
 
 void hardware_init(){
@@ -83,16 +71,21 @@ int kernel_main(){
 
     printf("Execution level: %d\n", get_el());
 
-    printf("Enabling debugging via JTAG interface...\n");
-    debug_init();
+    #ifdef DEBUG
+        printf("Enabling debugging via JTAG interface...\n");
+        debug_init();
+    #endif
+
     hardware_init();
 
     printf("GICD Enanbles[0]: %x\n", REGS_GICD->gicd_isenabler[0]);
     // turn 17 on
-    pulse(PIN17, FALSE);
+    // pulse(USER_PIN, FALSE);
     int intnum = 0;
     while(1){
         WFI();
         printf("Intnum: %d\n", intnum++);
     }
+
+    return 0;
 }
