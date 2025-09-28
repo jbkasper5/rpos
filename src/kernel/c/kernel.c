@@ -37,6 +37,8 @@ void debug_init(){
     while(!gate);
 }
 
+void mmu_init();
+
 void hardware_init(){
     printf("Initializing IRQ vector table...\n");
     irq_init_vectors();

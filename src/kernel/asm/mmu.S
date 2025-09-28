@@ -1,3 +1,5 @@
+#include "sysregs.h"
+
 .section .data
 .align 2
 debug_str:
@@ -19,59 +21,15 @@ debug_str:
 .globl mmu_init
 mmu_init:
     stp x29, x30, [sp, #-16]!
-
-    ldr x0, =_page_table_base
-    ldr x1, =_page_table_metadata
-    // c code to initialize the page tables
-    bl initialize_page_tables
-
-
-    // –––––––––––––––––––– NO VM FOR NOW –––––––––––––––––––– //
-
-    # // HERE!
-    ldr x0, =debug_str
-    bl printf
-
-
-    ldr x0, =_page_table_base
-    // put the page table base into the system register to denote page table 1
-    // for now, set both kernel and user page tables to the same location
+    adrp x0, _page_table_base
     msr TTBR0_EL1, x0
-    msr TTBR1_EL1, x0
 
-    ldr x0, =TCR_EL1_VALUE
-    msr TCR_EL1, x0
+    bl init_mmu
 
-    // HERE!
-    ldr x0, =debug_str
-    bl printf
-
-    isb
-
-    ldr x0, =0xFF44FF
-    msr MAIR_EL1, x0
-
-    // HERE!
-    ldr x0, =debug_str
-    bl printf
-
-    dsb ish
-    isb
-
-    // HERE!
-    ldr x0, =debug_str
-    bl printf
-
-    mrs x0, sctlr_el1
-    orr x0, x0, #(1 << 0)      // M (MMU enable)
-    msr sctlr_el1, x0
-
-    isb
-    // ––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
-
-    // HERE!
-    ldr x0, =debug_str
-    bl printf
+    # mrs x0, SCTLR_EL1
+    # mov x1, #SCTLR_MMU_ENABLED
+    # orr x0, x0, x1
+    # msr SCTLR_EL1, x0
 
     ldp x29, x30, [sp], #16
     ret

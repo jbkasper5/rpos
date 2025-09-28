@@ -1,5 +1,7 @@
 #include "mm.h"
+#include "mmu.h"
 #include "sysregs.h"
+
 .section ".text.boot"
 
 .globl _start
@@ -38,12 +40,25 @@ master:
    ldr x0, =SPSR_VALUE
    msr spsr_el3, x0
 
+   
+   // –––––––– MMU INIT –––––––– //
+   ldr x0, =CPACR_EL1_VAL
+   msr CPACR_EL1, x0
+
+   ldr x0, =TCR_EL1_VAL
+   msr TCR_EL1, x0
+
+   ldr x0, =MAIR_VALUE
+   msr MAIR_EL1, x0
+   // –––––––––––––––––––––––––– //
+
    adr x0, el1_entry
    msr elr_el3, x0
 
    eret
 
 el1_entry:
+   mov sp, #LOW_MEMORY
    adr x0, bss_begin
    adr x1, bss_end
    sub x1, x1, x0
@@ -51,9 +66,13 @@ el1_entry:
    # clear the bss segment
    bl memzero
 
-   mov sp, #LOW_MEMORY
    bl kernel_main
    b _infinite
 
 _infinite:
     b _infinite
+
+.globl page_table_base
+page_table_base:
+   adrp x0, _page_table_base
+   ret
