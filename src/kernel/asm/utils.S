@@ -38,3 +38,8 @@ mmu_enabled:
     mrs x0, SCTLR_EL1
     and x0, x0, #1      // isolate bit 0 (M bit)
     ret
+
+.globl page_table_base
+page_table_base:
+    adrp x0, _page_table_base
+    ret

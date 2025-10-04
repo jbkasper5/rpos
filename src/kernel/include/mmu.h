@@ -5,6 +5,16 @@
 #include "mem.h"
 #include "utils.h"
 
+typedef enum {
+    EL0_NA_EL1_RW = 0,
+    EL0_RW_EL1_RW = 1,
+    EL0_NA_EL1_RO = 2,
+    EL0_RO_EL1_RO = 3
+} AccessPermissions_t;
+
+#define NO_EXECUTE      1
+#define ALLOW_EXECUTE   008
+
 typedef union {
     uint64_t value;
     struct {
@@ -61,14 +71,21 @@ typedef struct pt_metadata_s{
 
 
 void mmu_init();
-void initialize_page_tables(void* page_table_base, pt_metadata_t* pt_metadata);
+void initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata);
 void create_kernel_identity_mapping(pt_metadata_t* pt0_metadata);
 void create_peripheral_identity_mapping(pt_metadata_t* l0_page_table_metadata);
 void create_user_mapping(void* l0_page_table);
 void _alloc_pt_metadata(pt_level_t level);
 
 
+/*
+// first L2 2MiB block entry starting at address 0x0: 0x705 = 0b 0111 0000 0101
+// next L2 2MiB block entry starting at address 0x40000000: 0x40000705
 
+// 0x705 -> 01111 0000 0101
+// --> 0 1 1 11 00 0 001 0 1
+// --> addr = 0, ng = 1, af = 1, sh = 11, ap = 00, ns = 0, attr_idx = 001, type = 0, valid = 1
+*/
 
 
 

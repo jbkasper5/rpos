@@ -124,7 +124,6 @@ sync_invalid_el1h:
     isb
     mrs x1, par_el1
 
-    b .
     mrs x10, esr_el1
     mrs x11, far_el1
     mrs x12, elr_el1

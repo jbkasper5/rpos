@@ -10,12 +10,12 @@ This method is capable of debugging the kernel on the pi4b as it executes. In or
 
 | Pi4B Pin Number | J-Link Pin Number | 
 | --------------- | ----------------- |
-| 13              | 7                 |
-| 15              | 3                 |
 | 17              | 1                 |
-| 18              | 13                |
-| 22              | 9                 |
+| 15              | 3                 |
 | 37              | 5                 |
+| 13              | 7                 |
+| 22              | 9                 |
+| 18              | 13                |
 | 39              | 4                 |
 
 ### Software Configuration

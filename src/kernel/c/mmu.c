@@ -7,8 +7,17 @@
 b create_kernel_identity_mapping; b create_peripheral_identity_mapping; b initialize_page_tables
 */
 
+uint64_t mmutest(uint64_t);
+void* page_table_base();
 
-void mmutest();
+void print_page_table(uint64_t* pt_addr, int n_entries){
+    int n = n_entries;
+    printf("Dumping top %d entries of page table at address 0x%x:\n", n, pt_addr);
+    for(int i = 0; i < n; i++){
+        printf("\t%d: 0x%x\n", i, pt_addr[i]);
+    }
+}
+
 
 void* _translate(uint64_t address, pt_metadata_t* l0_metadata){
     uint16_t l0_index = (address >> 39) & 0x1FF;
@@ -50,7 +59,7 @@ void create_kernel_identity_mapping(pt_metadata_t* pt0_metadata){
 
     // L1 page table data
     void* l1_page_table = UNSCALED_POINTER_ADD(l0_page_table, PAGE_TABLE_SIZE);
-    pt_metadata_t* l1_metadata = UNSCALED_POINTER_ADD(pt0_metadata, sizeof(pt_metadata_t));
+    // pt_metadata_t* l1_metadata = UNSCALED_POINTER_ADD(pt0_metadata, sizeof(pt_metadata_t));
 
     table_descriptor_t l0_table_descriptor = {0};
     l0_table_descriptor.bits.valid = 1;
@@ -61,52 +70,50 @@ void create_kernel_identity_mapping(pt_metadata_t* pt0_metadata){
     pt0_metadata->count++;
 
 
-    // locate the metadata for the first L1 page table, and mark it as valid with 1 entry (to be added)
-    l1_metadata->index = 0;
-    l1_metadata->count = 1;
-    l1_metadata->level = PT_LEVEL1;
-    l1_metadata->table_address = l1_page_table;
-    l1_metadata->next = NULL;
+    // add an entry for the first L2 page table in the list
+    void* l2_page_table = l1_page_table;
+    table_descriptor_t l1_table_descriptor = {0};
+    l1_table_descriptor.bits.valid = 1;
+    l1_table_descriptor.bits.type = 1;
 
-    // create the 1 GiB block descriptor
-    mem_descriptor_t block_descriptor = {0};
-    block_descriptor.bits.valid = 1;        // mark as valid
-    block_descriptor.bits.type = 0;         // at l1, 0 is a 1GiB block mapping
-    block_descriptor.bits.attr_index = 0;   // TBD
-    block_descriptor.bits.ap = 0b11;        // 
-    block_descriptor.bits.sh = 0b11;        // 0b11 is inner shareable
-    block_descriptor.bits.af = 1;           // set access flag
-    block_descriptor.bits.ng = 1;           // set non-global
-    block_descriptor.bits.address = 0x0;    // start map with physical address 0
-    block_descriptor.bits.uxn = 0;          // allow user to execute in this range (DANGEROUS!!!)
-    block_descriptor.bits.pxn = 0;          // allow higher privelage (kernel) to execute
 
-    // add the entry to the page table
-    put64((uint64_t) l1_page_table, block_descriptor.value);
+    printf("Creating L1 table...\n");
+    // page table descriptor
+    for(int i = 0; i < 4; i++){
+        // move pointer to next l2 table
+        l2_page_table = UNSCALED_POINTER_ADD(l2_page_table, PAGE_TABLE_SIZE);
 
+        // update address to that table
+        l1_table_descriptor.bits.address = ((uint64_t)l2_page_table) >> 12;
+
+        // write new entry into the L1 table
+        put64((uint64_t) ((uint64_t*) l1_page_table + i), l1_table_descriptor.value);
+    }
+
+    printf("Populating L2 tables...\n");
+    // --> addr = 0, ng = 1, af = 1, sh = 11, ap = 00, ns = 0, attr_index = 001, type = 0, valid = 1
+    // this block maps the first 2MiB: 0x0-0x40000000
+    mem_descriptor_t l2_block_descriptor = {0};
+    l2_block_descriptor.bits.af = 1;
+    l2_block_descriptor.bits.sh = 3;
+    l2_block_descriptor.bits.ap = 0;
+    l2_block_descriptor.bits.ns = 0;
+    l2_block_descriptor.bits.attr_index = 1;
+    l2_block_descriptor.bits.type = 0;
+    l2_block_descriptor.bits.valid = 1;
+
+
+    l2_page_table = (uint64_t*) UNSCALED_POINTER_ADD(l1_page_table, PAGE_TABLE_SIZE);
+    uint64_t base_addr = 0;
+    for(int i = 0; i < 4 * 512; i++){
+        l2_block_descriptor.bits.address = (base_addr >> 12);
+        put64((uint64_t) ((uint64_t*) l2_page_table + i), l2_block_descriptor.value);
+        base_addr += (1 << 21);
+    }
 }
 
 void create_peripheral_identity_mapping(pt_metadata_t* l0_page_table_metadata){
-    // we now need to map th 3rd index of the L1 page table to address base 0xC0000000
-    pt_metadata_t* l1_metadata = UNSCALED_POINTER_ADD(l0_page_table_metadata, sizeof(pt_metadata_t));
-    void* l1_page_table = l1_metadata->table_address;
-    uint64_t* entry3 = (uint64_t*) l1_page_table + 3;
 
-    mem_descriptor_t block_descriptor = {0};
-    block_descriptor.bits.valid = 1;        // mark as valid
-    block_descriptor.bits.type = 0;         // at l1, 0 is a 1GiB block mapping
-    block_descriptor.bits.attr_index = 0;   // TBD
-    block_descriptor.bits.ap = 0b00;        // access permission of 0b00 means El1 RW, EL0 no access
-    block_descriptor.bits.sh = 0b11;        // 0b11 is inner shareable
-    block_descriptor.bits.af = 1;           // set access flag
-    block_descriptor.bits.ng = 1;           // set non-global
-
-    // the base for the 1GiB block containing the peripherals is 0xC0000000
-    block_descriptor.bits.address = 0xC0000000 >> 12;
-    block_descriptor.bits.uxn = 1;          // don't allow user to execute
-    block_descriptor.bits.pxn = 1;          // don't allow kernel to execute
-
-    put64((uint64_t) entry3, block_descriptor.value);
 }
 
 // not used for early kernel development
@@ -120,10 +127,11 @@ void create_peripheral_identity_mapping(pt_metadata_t* l0_page_table_metadata){
 // }
 
 
-void initialize_page_tables(void* page_table_base, pt_metadata_t* pt_metadata_start){
+void initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata_start){
     // first, invalidate all metadata in the region
     printf("\tInitializing page tables...\n");
     memset(pt_metadata_start, sizeof(pt_metadata_t) * 513, INVALID_PT_METADATA);
+    memset(ptb, 6 * 8 * 512, 0);
 
     // set up the page table metadata 
     // there's only 1 L0 table, so the next bytes are read as that
@@ -134,12 +142,24 @@ void initialize_page_tables(void* page_table_base, pt_metadata_t* pt_metadata_st
     l0_page_table_metadata->index = 0;
     l0_page_table_metadata->count = 0;
     l0_page_table_metadata->level = PT_LEVEL0;
-    l0_page_table_metadata->table_address = page_table_base;
+    l0_page_table_metadata->table_address = ptb;
     l0_page_table_metadata->next = NULL;
 
     create_kernel_identity_mapping(pt_metadata_start);
     // create_peripheral_identity_mapping(pt_metadata_start);
-    mmutest();
+    
+    // should both be 0xb00
+    printf("MMU Test with 0x0: 0x%x\n", mmutest(0x0));
+    printf("MMU Test with 0x100000: 0x%x\n", mmutest(0x100000));
+
+
+    print_page_table((uint64_t*) page_table_base(), 5);
+    print_page_table((uint64_t*) ((uint64_t)page_table_base() + (1 * PAGE_SIZE)), 5);
+    print_page_table((uint64_t*) ((uint64_t)page_table_base() + (2 * PAGE_SIZE)), 25);
+    print_page_table((uint64_t*) ((uint64_t)page_table_base() + (3 * PAGE_SIZE)), 25);
+    print_page_table((uint64_t*) ((uint64_t)page_table_base() + (4 * PAGE_SIZE)), 25);
+    print_page_table((uint64_t*) ((uint64_t)page_table_base() + (5 * PAGE_SIZE)), 25);
+
 
     printf("\tTable initialization complete. Enabling MMU...\n");
 }

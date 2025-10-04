@@ -2,8 +2,8 @@ ENTRY(_start)
 
 /* Total of 512 MB of RAM, 256 for kernel, 256 for user*/
 MEMORY {
-  KRAM (rwx) : ORIGIN = 0x00000000, LENGTH = 0x10000000  /* 256 MiB for kernel */
-  URAM (rwx) : ORIGIN = 0x10000000, LENGTH = 0x10000000  /* 256 MiB for user */
+  KRAM (rwx) : ORIGIN = 0x000000, LENGTH = 0x100000  /* 128 MiB for kernel */
+  URAM (rwx) : ORIGIN = 0x100000, LENGTH = 0x100000  /* 128 MiB for user */
 }
 
 /* TODO: Eventually make some segments that are (rw) and (rx) instead of all being (rwx) */

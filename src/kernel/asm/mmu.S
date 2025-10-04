@@ -16,6 +16,7 @@ debug_str:
      (0b11 << 28)| /* SH1 = Inner Shareable */ \
      (0b10 << 30)) /* TG1 = 4KB granule */
 
+
 .globl mmu_init
 mmu_init:
     stp x29, x30, [sp, #-16]!
@@ -39,7 +40,7 @@ mmu_init:
     msr TTBR0_EL1, x0
     msr TTBR1_EL1, x0
 
-    ldr x0, =TCR_EL1_VALUE
+    ldr x0, =0x80100010
     msr TCR_EL1, x0
 
     // HERE!
@@ -48,7 +49,7 @@ mmu_init:
 
     isb
 
-    ldr x0, =0xFF44FF
+    ldr x0, =0x4400
     msr MAIR_EL1, x0
 
     // HERE!
@@ -69,9 +70,9 @@ mmu_init:
     isb
     // ––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
-    // HERE!
-    ldr x0, =debug_str
-    bl printf
+    # // HERE!
+    # ldr x0, =debug_str
+    # bl printf
 
     ldp x29, x30, [sp], #16
     ret

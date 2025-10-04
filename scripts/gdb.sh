@@ -1,1 +1,2 @@
-aarch64-none-elf-gdb exe -ex "target extended-remote localhost:3333"
+aarch64-none-elf-gdb exe \
+    -ex "target extended-remote localhost:3333"
