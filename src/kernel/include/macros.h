@@ -11,8 +11,8 @@ typedef uint8_t bool;
 #define TRUE        1
 
 
-#define DEBUG_PIN           26
-#define USER_PIN            17
+#define DEBUG_PIN           17
+#define USER_PIN            18
 
 
 #define UNSCALED_POINTER_ADD(ptr, val)      ((void*)((char*)ptr + val))

@@ -12,6 +12,12 @@ typedef enum {
     EL0_RO_EL1_RO = 3
 } AccessPermissions_t;
 
+typedef enum {
+    L1_BLOCK = 1,
+    L2_BLOCK = 2,
+    PAGE = 3
+} blocktype_t;
+
 #define NO_EXECUTE      1
 #define ALLOW_EXECUTE   008
 
@@ -74,7 +80,7 @@ void mmu_init();
 void initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata);
 void create_kernel_identity_mapping(pt_metadata_t* pt0_metadata);
 void create_peripheral_identity_mapping(pt_metadata_t* l0_page_table_metadata);
-void create_user_mapping(void* l0_page_table);
+void create_user_mapping(pt_metadata_t* pt0_metadata);
 void _alloc_pt_metadata(pt_level_t level);
 
 

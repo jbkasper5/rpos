@@ -66,10 +66,11 @@ my_string_2:
     ldp x28, x29, [sp, #16 * 14]
     ldp x30, x0, [sp, #16 * 15]
 
-    msr SP_EL0, x0
-    ldp x0, x1, [sp, #16 * 16]
-    msr ELR_EL1, x0
-    msr SPSR_EL1, x1
+    # msr SP_EL0, x0
+    # msr SP_EL1, x1
+    # ldp x0, x1, [sp, #16 * 16]
+    # msr ELR_EL1, x0
+    # msr SPSR_EL1, x1
 
     ldp x0, x1, [sp, #16 * 0]
     add sp, sp, #S_FRAME_SIZE

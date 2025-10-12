@@ -33,6 +33,7 @@ SECTIONS {
     *(.text) 
   } > KRAM
 
+  /* String literals end up going here */
   .rodata . : { 
     *(.rodata) 
   } > KRAM

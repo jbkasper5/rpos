@@ -1,6 +1,7 @@
 #include "mini_uart.h"
 #include "gpio.h"
 #include "utils.h"
+#include "printf.h"
 
 #define TXD 14
 #define RXD 15
@@ -23,6 +24,8 @@ void uart_init(){
 
     uart_putc('\n');
     uart_putc('\n');
+
+    printf("UART Initialized.\n");
 }
 
 void uart_putc(char c){

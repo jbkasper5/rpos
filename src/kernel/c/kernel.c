@@ -39,7 +39,7 @@ void debug_init(){
 
 void hardware_init(){
     printf("Initializing IRQ vector table...\n");
-    irq_init_vectors();
+    // irq_init_vectors();
 
     printf("Enabling interrupt controller...\n");
     enable_interrupt_controller();
@@ -47,11 +47,11 @@ void hardware_init(){
     printf("Enabling system timers...\n");
     timer_init();
 
-    printf("Enabling physical timer...\n");
-    physical_timer_enable();
+    // printf("Enabling physical timer...\n");
+    // physical_timer_enable();
 
-    printf("Priming physical timer...\n");
-    prime_physical_timer();
+    // printf("Priming physical timer...\n");
+    // prime_physical_timer();
 
     printf("Enabling IRQ interrupts...\n");
     irq_enable();
@@ -65,28 +65,33 @@ void hardware_init(){
     printf("Hardware initialization complete.\n\n");
 }
 
+
+void drop_to_user();
+
 int kernel_main(){
-    uart_init();
+    // uart_init();
     printf("\nRaspberry PI Baremetal OS Initializing...\n");
 
     printf("Execution level: %d\n", get_el());
 
-    #ifdef DEBUG
-        printf("Enabling debugging via JTAG interface...\n");
-        debug_init();
-    #endif
+    // #ifdef DEBUG
+    //     printf("Enabling debugging via JTAG interface...\n");
+    //     debug_init();
+    // #endif
 
     hardware_init();
 
     printf("GICD Enanbles[0]: %x\n", REGS_GICD->gicd_isenabler[0]);
     // turn 17 on
-    // pulse(USER_PIN, FALSE);
+    pulse(USER_PIN, FALSE);
     int intnum = 0;
-    while(1){
-        WFI();
+    while(intnum < 10){
+        // WFI();
         printf("Intnum: %d\n", intnum++);
+        timer_sleep(500);
     }
-
+    printf("Waiting complete, dropping to user mode...\n");
+    drop_to_user();
     return 0;
 }
 

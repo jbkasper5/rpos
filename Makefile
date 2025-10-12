@@ -69,3 +69,6 @@ clean:
 
 asm: local
 	aarch64-none-elf-objdump -d $(TARGET) > objdump.S
+
+read: local
+	aarch64-none-elf-readelf -S $(TARGET)
