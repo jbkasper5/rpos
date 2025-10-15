@@ -208,37 +208,13 @@ void create_user_mapping(pt_metadata_t* pt0_metadata){
 
 }
 
-// not used for early kernel development
-// void _alloc_pt_metadata(pt_level_t level){
+void map_page(uint64_t* pt, uint64_t virt, uint64_t phys, int flags){
 
-// }
+}
 
+void unmap_page(uint64_t* pt, uint64_t virt){
 
-// void map(uint64_t virtual_addr, uint64_t physical_addr, blocktype_t blocktype){
-//     int shift = 39;
-//     uint16_t l0_index = (virtual_addr >> shift) & 0x1FF;
-//     uint16_t l1_index = (virtual_addr >> 30) & 0x1FF;
-//     uint16_t l2_index = (virtual_addr >> 21) & 0x1FF;
-//     uint16_t l3_index = (virtual_addr >> 12) & 0x1FF;
-
-//     table_descriptor_t table_descriptor = {0};
-//     mem_descriptor_t mem_descriptor = {0};
-
-//     pt_metadata_t* pt0_metadata = (pt_metadata_t*) 0x8000;
-
-//     // get l0 address
-//     uint64_t* table = pt0_metadata->table_address;
-//     table_descriptor.value = table[l0_index];
-
-//     // blocktype determines the depth we must traverse
-//     // i.e. blocktype = 1 means an L1 block, so 1 layer down
-//     //      blocktype = 2 means an L2 block, so 2 layers down
-//     for(int i = 0; i < blocktype; i++){
-
-
-//         shift -= 9;
-//     }
-// }
+}
 
 
 void initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata_start){

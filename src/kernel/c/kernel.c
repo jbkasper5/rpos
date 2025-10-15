@@ -57,7 +57,7 @@ void hardware_init(){
     irq_enable();
 
     printf("Initializing MMU...\n");
-    mmu_init();
+    // mmu_init();
 
     printf("Enabling system scheduler...\n");
     scheduler_init();
@@ -69,29 +69,24 @@ void hardware_init(){
 void drop_to_user();
 
 int kernel_main(){
-    // uart_init();
     printf("\nRaspberry PI Baremetal OS Initializing...\n");
 
     printf("Execution level: %d\n", get_el());
 
-    // #ifdef DEBUG
-    //     printf("Enabling debugging via JTAG interface...\n");
-    //     debug_init();
-    // #endif
-
     hardware_init();
 
-    printf("GICD Enanbles[0]: %x\n", REGS_GICD->gicd_isenabler[0]);
     // turn 17 on
     pulse(USER_PIN, FALSE);
     int intnum = 0;
     while(intnum < 10){
         // WFI();
         printf("Intnum: %d\n", intnum++);
-        timer_sleep(500);
+        timer_sleep(100);
     }
+
     printf("Waiting complete, dropping to user mode...\n");
     drop_to_user();
+
     return 0;
 }
 

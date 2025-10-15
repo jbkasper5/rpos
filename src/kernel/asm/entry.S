@@ -45,8 +45,11 @@ my_string_2:
     mrs x1, SPSR_EL1
     stp x0, x1, [sp, #16 * 16]
 
+    // reload x0 and x1 to preserve the parameters passed to the kernel
+    ldp x0, x1, [sp, #16 * 0]
+
     # move stack pointer into x0, so when we call the scheduler, we're passing the register file to it
-    mov x0, sp
+    # mov x0, sp
 .endm
 
 .macro kernel_exit
@@ -146,12 +149,20 @@ error_invalid_el1h:
 handle_el0_svc:
     # disable interrupts while we're handling the system call
     msr daifset, #0xf
+
+    // since x8 contains the syscall number, move it into parameter register 7 to call
+    // the syscall handler
+    mov x6, x8
     kernel_entry
     bl handle_syscall
     kernel_exit
 
+    // tell the kernel to jump back to EL0
+    mov x0, #0 // DAIF=0000 M[4:0]=00000 EL0t.
+    msr SPSR_EL1, x0
+
     # re-enable interrupts after system call is completed
-    msr daifclr, #0xf
+    # msr daifclr, #0xf
     eret
 
 irq_invalid_el0_64:
