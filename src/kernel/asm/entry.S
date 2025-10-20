@@ -4,7 +4,9 @@
 my_string:
     .asciz "ELR_EL1: 0x%x\n"
 my_string_2:
-    .asciz "EL: %d\n"
+    .asciz "Coming from EL: %d\n"
+my_string_3:
+    .asciz "IRQ from EL: %d\n"
 
 .section .text
 .macro ventry label
@@ -13,7 +15,7 @@ my_string_2:
 .endm
 
 .macro handle_invalid_entry type
-    kernel_entry
+    kernel_entry SP_EL1
     mov x0, #\type
     mrs x1, esr_el1
     mrs x2, elr_el1
@@ -21,8 +23,7 @@ my_string_2:
     b err_hang
 .endm
 
-
-.macro kernel_entry
+.macro kernel_entry reg
     sub sp, sp, #S_FRAME_SIZE
     stp x0, x1, [sp, #16 * 0]
     stp x2, x3, [sp, #16 * 1]
@@ -39,8 +40,13 @@ my_string_2:
     stp x24, x25, [sp, #16 * 12]
     stp x26, x27, [sp, #16 * 13]
     stp x28, x29, [sp, #16 * 14]
-    mrs x0, SP_EL0
+
+    // TODO: FIGURE OUT WHICH SP REGISTER TO LOAD
+    mrs x0, \reg
+
     stp x30, x0, [sp, #16 * 15]
+
+    // THIS IS FINE
     mrs x0, ELR_EL1
     mrs x1, SPSR_EL1
     stp x0, x1, [sp, #16 * 16]
@@ -52,7 +58,7 @@ my_string_2:
     # mov x0, sp
 .endm
 
-.macro kernel_exit
+.macro kernel_exit reg
     ldp x2, x3, [sp, #16 * 1]
     ldp x4, x5, [sp, #16 * 2]
     ldp x6, x7, [sp, #16 * 3]
@@ -69,11 +75,11 @@ my_string_2:
     ldp x28, x29, [sp, #16 * 14]
     ldp x30, x0, [sp, #16 * 15]
 
-    # msr SP_EL0, x0
-    # msr SP_EL1, x1
-    # ldp x0, x1, [sp, #16 * 16]
-    # msr ELR_EL1, x0
-    # msr SPSR_EL1, x1
+    mrs x0, \reg
+
+    ldp x0, x1, [sp, #16 * 16]
+    msr ELR_EL1, x0
+    msr SPSR_EL1, x1
 
     ldp x0, x1, [sp, #16 * 0]
     add sp, sp, #S_FRAME_SIZE
@@ -94,7 +100,7 @@ vectors:
 
     # system calls from user processes
     ventry handle_el0_svc
-    ventry irq_invalid_el0_64
+    ventry handle_el0_irq
     ventry fiq_invalid_el0_64
     ventry error_invalid_el0_64
 
@@ -117,17 +123,6 @@ error_invalid_el1t:
     handle_invalid_entry ERROR_INVALID_EL1T
 
 sync_invalid_el1h:
-    ldr x0, =0x0
-    at s1e1r, x0
-    isb
-    mrs x1, par_el1
-    mov x2, x1
-
-    ldr x0, =0x1000
-    at s1e1r, x0
-    isb
-    mrs x1, par_el1
-
     mrs x10, esr_el1
     mrs x11, far_el1
     mrs x12, elr_el1
@@ -135,9 +130,18 @@ sync_invalid_el1h:
     # handle_invalid_entry SYNC_INVALID_EL1H
 
 handle_el1_irq:
-    kernel_entry
+    kernel_entry SP_EL1
+
+    mrs x1, SPSR_EL1
+    lsr x1, x1, #2
+    and x1, x1, #3         // x1 = EL (0, 1, etc.)
+
+    ldr x0, =my_string_3
+    bl printf
+
+
     bl handle_irq
-    kernel_exit
+    kernel_exit SP_EL1
     eret
 
 fiq_invalid_el1h:
@@ -150,23 +154,56 @@ handle_el0_svc:
     # disable interrupts while we're handling the system call
     msr daifset, #0xf
 
+    // backup all user registers and processor state
+    kernel_entry SP_EL0
+
+    mrs x1, SPSR_EL1
+    lsr x1, x1, #2
+    and x1, x1, #3         // x1 = EL (0, 1, etc.)
+
+    ldr x0, =my_string_2
+    bl printf
+
+    // prepare arguments for the system call
+    ldp x0, x1, [sp, #16 * 0]
+    ldp x2, x3, [sp, #16 * 1]
+    ldp x4, x5, [sp, #16 * 2]    
+    ldr x8, [sp, #16 * 4]
+
     // since x8 contains the syscall number, move it into parameter register 7 to call
     // the syscall handler
     mov x6, x8
-    kernel_entry
-    bl handle_syscall
-    kernel_exit
 
-    // tell the kernel to jump back to EL0
-    mov x0, #0 // DAIF=0000 M[4:0]=00000 EL0t.
-    msr SPSR_EL1, x0
+    // handle the system call
+    bl handle_syscall
+
+    # // tell the kernel to jump back to EL0
+    # mov x0, #0 // DAIF=0000 M[4:0]=00000 EL0t.
+    # msr SPSR_EL1, x0
+
+    // restore registers and processor state
+    kernel_exit SP_EL0
 
     # re-enable interrupts after system call is completed
-    # msr daifclr, #0xf
+    msr daifclr, #0xf
     eret
 
-irq_invalid_el0_64:
-    handle_invalid_entry IRQ_INVALID_EL0_64
+handle_el0_irq:
+    msr daifset, #0xf           // disable interrupts
+    kernel_entry SP_EL0
+
+    mrs x1, SPSR_EL1
+    lsr x1, x1, #2
+    and x1, x1, #3         // x1 = EL (0, 1, etc.)
+
+    ldr x0, =my_string_3
+    bl printf
+
+
+    bl handle_irq
+    kernel_exit SP_EL0
+    msr daifclr, #0xf
+    eret
 
 fiq_invalid_el0_64:
     handle_invalid_entry FIQ_INVALUD_EL0_64

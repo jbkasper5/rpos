@@ -14,7 +14,11 @@ _start:
 test_master:
    mov sp, #KSTACK
    bl uart_init
+
+   #ifdef DEBUG
    bl debug_init
+   #endif
+
    bl irq_init_vectors
    
    // set up kernel stack when we trap into exception handler
@@ -57,12 +61,19 @@ master:
    // initialize UART and set up debugging via JLINK
    mov sp, #KSTACK
    bl uart_init
+   
+   #ifdef DEBUG
    bl debug_init
+   #endif
+
    bl irq_init_vectors
 
    // initialize kernel stack for when we enter the trap handler
    mov x0, #KSTACK
    msr SP_EL1, x0
+
+   // tell kernel to use SP_EL1 instead of SP_EL0
+   msr SPSel, #1
 
    // Enable GIC Distributor
    ldr x0, =0xFF840000           // GICD base

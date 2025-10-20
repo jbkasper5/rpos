@@ -1,10 +1,4 @@
 .section ".uram.text"
-.globl do_user_things_asm
-do_user_things_asm:
-    ldr x30, =user_pulse
-    ret
-
-
 .globl syscall
 // calling conventions state:
 //  x0-x5: arguments to system call

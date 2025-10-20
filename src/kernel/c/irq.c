@@ -43,12 +43,12 @@ void enable_interrupt_controller() {
 
 
 void handle_irq(uint64_t reg_addr){
-	printf("Handling IRQ (context: 0x%x)...\n", reg_addr);
+	// printf("Handling IRQ (context: 0x%x)...\n", reg_addr);
 
     uint32_t irq = REGS_BCMIRQ->irq0_pending_0;
 	uint32_t gic_irq = REGS_GICC->gicc_iar;
 
-	printf("BCM IRQ: %d, GIC IRQ: %d\n", irq, gic_irq);
+	// printf("BCM IRQ: %d, GIC IRQ: %d\n", irq, gic_irq);
     while(irq){
         if(irq & AUX_IRQ){
             irq &= ~AUX_IRQ;
@@ -73,7 +73,7 @@ void handle_irq(uint64_t reg_addr){
 		}
     }
 
-	printf("GIC IRQ: %d\n", gic_irq);
+	// printf("GIC IRQ: %d\n", gic_irq);
 
     if (gic_irq < 1020) {  // 1020 = spurious interrupt ID threshold
         if (gic_irq == 30) {

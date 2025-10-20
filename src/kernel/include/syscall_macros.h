@@ -26,6 +26,7 @@
 #define SYS_GETPID                  172
 
 #define SYS_MUNMAP                  215
+#define SYS_EXECVE                  221
 #define SYS_MMAP                    222
 
 #define SYS_PULSE_LED               292

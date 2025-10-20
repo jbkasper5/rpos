@@ -8,8 +8,6 @@
 #include "scheduler.h"
 #include "mmu.h"
 
-#define PIN26 26
-
 
 void debug_init(){
 
@@ -47,11 +45,11 @@ void hardware_init(){
     printf("Enabling system timers...\n");
     timer_init();
 
-    // printf("Enabling physical timer...\n");
-    // physical_timer_enable();
+    printf("Enabling physical timer...\n");
+    physical_timer_enable();
 
-    // printf("Priming physical timer...\n");
-    // prime_physical_timer();
+    printf("Priming physical timer...\n");
+    prime_physical_timer();
 
     printf("Enabling IRQ interrupts...\n");
     irq_enable();
@@ -75,8 +73,8 @@ int kernel_main(){
 
     hardware_init();
 
-    // turn 17 on
-    pulse(USER_PIN, FALSE);
+    // turn 18 on
+    pulse(DEBUG_PIN, FALSE);
     int intnum = 0;
     while(intnum < 10){
         // WFI();
@@ -89,17 +87,3 @@ int kernel_main(){
 
     return 0;
 }
-
-// TODO: Get MAIR and TCR values from other person code
-    // MAIR_VALUE: 0x4400
-    // TCR_VALUE: 0x80100010
-
-// plug em into mine
-    // DONE
-
-// fuq L1 memory map, go to L2 memory map using 2MiB blocks
-
-// make sure peripherals have a different attr_index value set cuz apparently that's necessary
-    // normal memory = 1
-    // peripheral device = 0
-// FML

@@ -6,8 +6,12 @@ MEMORY {
   URAM (rwx) : ORIGIN = 0x100000, LENGTH = 0x100000  /* 128 MiB for user */
 }
 
-/* TODO: Eventually make some segments that are (rw) and (rx) instead of all being (rwx) */
-
+PHDRS {
+  text PT_LOAD FLAGS(0x5);  /* R | X */
+  rodata PT_LOAD FLAGS(0x4); /* R */
+  data PT_LOAD FLAGS(0x6);  /* R | W */
+  bss  PT_LOAD FLAGS(0x6);  /* R | W */
+}
 
 SECTIONS {
   . = 0x8000;
@@ -15,7 +19,7 @@ SECTIONS {
   .page_table_metadata . : {
     KEEP(*(.page_table_metadata))
     . = . + 0x8000;   /* Reserve 32 KiB for metadata, for example */
-  } > KRAM
+  } > KRAM : data
 
   . = 0x10000;
   . = ALIGN(0x1000);
@@ -23,33 +27,33 @@ SECTIONS {
   .page_table . : {
     KEEP(*(.page_table))
     . = . + 0x2000;   /* Ensure enough space for L1 and L2 page tables */
-  } > KRAM
+  } > KRAM : data
 
   .text.boot 0x80000 : { 
     *(.text.boot) 
-  } > KRAM
+  } > KRAM : text
 
   .text . : { 
     *(.text) 
-  } > KRAM
+  } > KRAM : text
 
   /* String literals end up going here */
   .rodata . : { 
     *(.rodata) 
-  } > KRAM
+  } > KRAM : rodata
 
   .data . : { 
     *(.data) 
-  } > KRAM
+  } > KRAM : data
 
   . = ALIGN(0x8);
-  .bss . : ALIGN(0x1000) {
+  .bss : {
     bss_begin = .;
     *(.bss*)
     bss_end = .;
-  } > KRAM
+  } > KRAM : bss
 
   .uram.text : {
     *(.uram.text)
-  } > URAM
+  } > URAM : text
 }

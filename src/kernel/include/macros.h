@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 typedef volatile uint32_t reg32_t;
+typedef volatile uint64_t reg64_t;
 typedef uint8_t bool;
 
 #define NULL        0

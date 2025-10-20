@@ -44,23 +44,23 @@ void scheduler(reglist_t* reg_addr){
     printf("Doing scheduler stuffs\n");
     prime_physical_timer();
 
-    if(active_process != 0){
-        active_process = 0;
-        reglist_t* new_regs = &proclist.proclist[active_process].registers;
+    // if(active_process != 0){
+    //     active_process = 0;
+    //     reglist_t* new_regs = &proclist.proclist[active_process].registers;
 
-        // printf("New context: \n");
-        // print_reg_file(new_regs);
+    //     // printf("New context: \n");
+    //     // print_reg_file(new_regs);
 
-        // printf("Old context: \n");
-        // print_reg_file(reg_addr);
+    //     // printf("Old context: \n");
+    //     // print_reg_file(reg_addr);
 
-        // copy the context swapped process into the EL1 stack to return to new user context
-        memcpy((void*)reg_addr, (void*)new_regs, sizeof(reglist_t));
+    //     // copy the context swapped process into the EL1 stack to return to new user context
+    //     memcpy((void*)reg_addr, (void*)new_regs, sizeof(reglist_t));
 
-        reg_addr->pc = (uint64_t) &do_user_things;
+    //     reg_addr->pc = (uint64_t) &do_user_things;
         
-        // printf("Post-context switch: \n");
-        // print_reg_file(reg_addr);
-    }
+    //     // printf("Post-context switch: \n");
+    //     // print_reg_file(reg_addr);
+    // }
     pulse(DEBUG_PIN, TRUE);
 }
