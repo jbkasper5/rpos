@@ -65,6 +65,7 @@ clean:
 	rm -rf $(BIN_DIR)
 	rm -rf $(TARGET)
 	rm -rf objdump.S
+	rm -rf screenlog.0
 	rm -rf $(KERNEL_IMG)
 
 asm: local
