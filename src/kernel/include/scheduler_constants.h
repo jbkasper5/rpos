@@ -1,0 +1,6 @@
+#ifndef __SCHEDULER_CONSTANTS_H__
+#define __SCHEDULER_CONSTANTS_H__
+
+#define QUANTUM 1000000
+
+#endif

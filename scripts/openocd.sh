@@ -1,0 +1,1 @@
+openocd -f /Users/jakekasper/C/RaspberryPi/rpos/pi4b-jlink.cfg
