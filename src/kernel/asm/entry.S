@@ -7,6 +7,8 @@ my_string_2:
     .asciz "Coming from EL: %d\n"
 my_string_3:
     .asciz "IRQ from EL: %d\n"
+pc_string:
+    .asciz "Return PC: 0x%x\n"
 
 .section .text
 .macro ventry label
@@ -15,7 +17,7 @@ my_string_3:
 .endm
 
 .macro handle_invalid_entry type
-    kernel_entry SP_EL1
+    kernel_entry
     mov x0, #\type
     mrs x1, esr_el1
     mrs x2, elr_el1
@@ -23,7 +25,7 @@ my_string_3:
     b err_hang
 .endm
 
-.macro kernel_entry reg
+.macro kernel_entry
     sub sp, sp, #S_FRAME_SIZE
     stp x0, x1, [sp, #16 * 0]
     stp x2, x3, [sp, #16 * 1]
@@ -40,16 +42,16 @@ my_string_3:
     stp x24, x25, [sp, #16 * 12]
     stp x26, x27, [sp, #16 * 13]
     stp x28, x29, [sp, #16 * 14]
-
-    // TODO: FIGURE OUT WHICH SP REGISTER TO LOAD
-    mrs x0, \reg
-
     stp x30, x0, [sp, #16 * 15]
 
     // THIS IS FINE
     mrs x0, ELR_EL1
     mrs x1, SPSR_EL1
     stp x0, x1, [sp, #16 * 16]
+
+    mrs x1, ELR_EL1
+    ldr x0, =pc_string
+    bl printf
 
     // reload x0 and x1 to preserve the parameters passed to the kernel
     ldp x0, x1, [sp, #16 * 0]
@@ -58,7 +60,7 @@ my_string_3:
     # mov x0, sp
 .endm
 
-.macro kernel_exit reg
+.macro kernel_exit
     ldp x2, x3, [sp, #16 * 1]
     ldp x4, x5, [sp, #16 * 2]
     ldp x6, x7, [sp, #16 * 3]
@@ -74,8 +76,6 @@ my_string_3:
     ldp x26, x27, [sp, #16 * 13]
     ldp x28, x29, [sp, #16 * 14]
     ldp x30, x0, [sp, #16 * 15]
-
-    mrs x0, \reg
 
     ldp x0, x1, [sp, #16 * 16]
     msr ELR_EL1, x0
@@ -130,7 +130,7 @@ sync_invalid_el1h:
     # handle_invalid_entry SYNC_INVALID_EL1H
 
 handle_el1_irq:
-    kernel_entry SP_EL1
+    kernel_entry
 
     mrs x1, SPSR_EL1
     lsr x1, x1, #2
@@ -141,7 +141,7 @@ handle_el1_irq:
 
 
     bl handle_irq
-    kernel_exit SP_EL1
+    kernel_exit
     eret
 
 fiq_invalid_el1h:
@@ -155,7 +155,7 @@ handle_el0_svc:
     msr daifset, #0xf
 
     // backup all user registers and processor state
-    kernel_entry SP_EL0
+    kernel_entry
 
     mrs x1, SPSR_EL1
     lsr x1, x1, #2
@@ -182,15 +182,12 @@ handle_el0_svc:
     # msr SPSR_EL1, x0
 
     // restore registers and processor state
-    kernel_exit SP_EL0
-
-    # re-enable interrupts after system call is completed
-    msr daifclr, #0xf
+    kernel_exit
     eret
 
 handle_el0_irq:
     msr daifset, #0xf           // disable interrupts
-    kernel_entry SP_EL0
+    kernel_entry
 
     mrs x1, SPSR_EL1
     lsr x1, x1, #2
@@ -201,7 +198,7 @@ handle_el0_irq:
 
 
     bl handle_irq
-    kernel_exit SP_EL0
+    kernel_exit
     msr daifclr, #0xf
     eret
 

@@ -1,5 +1,4 @@
 #include "mm.h"
-#include "sysregs.h"
 .section ".text.boot"
 
 .globl _start
@@ -11,51 +10,51 @@ _start:
 
 
 
-test_master:
-   mov sp, #KSTACK
-   bl uart_init
+# test_master:
+#    mov sp, #KSTACK
+#    bl uart_init
 
-   #ifdef DEBUG
-   bl debug_init
-   #endif
+#    #ifdef DEBUG
+#    bl debug_init
+#    #endif
 
-   bl irq_init_vectors
+#    bl irq_init_vectors
    
-   // set up kernel stack when we trap into exception handler
-   mov x0, #KSTACK
-   msr SP_EL1, x0
+#    // set up kernel stack when we trap into exception handler
+#    mov x0, #KSTACK
+#    msr SP_EL1, x0
 
-   msr SCTLR_EL2, xzr
-   msr HCR_EL2, xzr
+#    msr SCTLR_EL2, xzr
+#    msr HCR_EL2, xzr
 
-   mrs x0, SCR_EL3
-   orr x0, x0, #(1<<10) // RW EL2 Execution state is AArch64.
-   orr x0, x0, #(1<<0) // NS EL1 is Non-secure world.
-   msr SCR_EL3, x0
-   mov x0, #0b01001 // DAIF=0000
-   msr SPSR_EL3, x0 // M[4:0]=01001 EL2h must match SCR_EL3.RW
+#    mrs x0, SCR_EL3
+#    orr x0, x0, #(1<<10) // RW EL2 Execution state is AArch64.
+#    orr x0, x0, #(1<<0) // NS EL1 is Non-secure world.
+#    msr SCR_EL3, x0
+#    mov x0, #0b01001 // DAIF=0000
+#    msr SPSR_EL3, x0 // M[4:0]=01001 EL2h must match SCR_EL3.RW
 
-   adr x0, el2_entry // el2_entry points to the first instruction of
-   msr ELR_EL3, x0 
+#    adr x0, el2_entry // el2_entry points to the first instruction of
+#    msr ELR_EL3, x0 
 
-   eret
+#    eret
 
-test_el1_entry:
-   // EL1 confirmed
-   bl get_el
-   mov x0, #0b00000 // DAIF=0000 M[4:0]=00000 EL0t.
-   msr SPSR_EL1, x0
+# test_el1_entry:
+#    // EL1 confirmed
+#    bl get_el
+#    mov x0, #0b00000 // DAIF=0000 M[4:0]=00000 EL0t.
+#    msr SPSR_EL1, x0
 
-   // set up user stack
-   mov x0, #USTACK
-   msr SP_EL0, x0
+#    // set up user stack
+#    mov x0, #USTACK
+#    msr SP_EL0, x0
 
-   adr x0, el0_entry // el1_entry points to the first instruction of
-   msr ELR_EL1, x0 // EL0 code.
-   eret
+#    adr x0, el0_entry // el1_entry points to the first instruction of
+#    msr ELR_EL1, x0 // EL0 code.
+#    eret
 
-el0_entry:
-   b do_user_things
+# el0_entry:
+#    b do_user_things
 
 master:
    // initialize UART and set up debugging via JLINK
@@ -73,7 +72,7 @@ master:
    msr SP_EL1, x0
 
    // tell kernel to use SP_EL1 instead of SP_EL0
-   msr SPSel, #1
+   # msr SPSel, #1
 
    // Enable GIC Distributor
    ldr x0, =0xFF840000           // GICD base
@@ -105,7 +104,9 @@ master:
    eret
 
 el2_entry:
-   msr SCTLR_EL1, xzr 
+   mov x0, #(1 << 29) | (1 << 28) | (1 << 23) | (1 << 22)
+   msr SCTLR_EL1, x0
+   isb
    mrs x0, HCR_EL2
    ORR x0, x0, #(1<<31) // RW=1 EL1 Execution state is AArch64.
    msr HCR_EL2, x0
@@ -113,6 +114,9 @@ el2_entry:
    msr SPSR_EL2, x0 // M[4:0]=00101 EL1h must match HCR_EL2.RW.
    adr x0, el1_entry // el1_entry points to the first instruction of
    msr ELR_EL2, x0 // EL1 code.
+
+   // specify the kernel to use SP_EL1
+   msr spsel, #1
 
    // drop into el1
    eret

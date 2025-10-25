@@ -12,8 +12,9 @@ typedef uint8_t bool;
 #define TRUE        1
 
 
-#define DEBUG_PIN           17
-#define USER_PIN            18
+#define DEBUG_PIN           17 // pi pin 11, ground pin 9
+#define USER_PIN            18 // pi pin 12, ground pin 14
+#define USER_PIN_2          11 // pi pin 23, ground pin 25
 
 
 #define UNSCALED_POINTER_ADD(ptr, val)      ((void*)((char*)ptr + val))

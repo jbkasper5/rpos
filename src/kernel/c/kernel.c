@@ -75,12 +75,6 @@ int kernel_main(){
 
     // turn 18 on
     pulse(DEBUG_PIN, FALSE);
-    int intnum = 0;
-    while(intnum < 10){
-        // WFI();
-        printf("Intnum: %d\n", intnum++);
-        timer_sleep(100);
-    }
 
     printf("Waiting complete, dropping to user mode...\n");
     drop_to_user();

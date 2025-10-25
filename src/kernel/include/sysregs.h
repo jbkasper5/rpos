@@ -1,33 +1,124 @@
 #ifndef __SYSREGS_H__
 #define __SYSREGS_H__
 
-#define SCTLR_RESERVED                  (3 << 28) | (3 << 22) | (1 << 20) | (1 << 11)
-#define SCTLR_EE_LITTLE_ENDIAN          (0 << 25)
-#define SCTLR_EOE_LITTLE_ENDIAN         (0 << 24)
-#define SCTLR_I_CACHE_DISABLED          (0 << 12)
-#define SCTLR_D_CACHE_DISABLED          (0 << 2)
-#define SCTLR_MMU_DISABLED              (0 << 0)
-#define SCTLR_MMU_ENABLED               (1 << 0)
+#include "macros.h"
 
-#define SCTLR_VALUE_MMU_DISABLED (SCTLR_RESERVED | SCTLR_EE_LITTLE_ENDIAN | SCTLR_I_CACHE_DISABLED | SCTLR_D_CACHE_DISABLED | SCTLR_MMU_DISABLED)
+typedef union {
+    struct {
+        uint64_t m           : 1;  // [0]
+        uint64_t a           : 1;  // [1]
+        uint64_t c           : 1;  // [2]
+        uint64_t sa          : 1;  // [3]
+        uint64_t res1        : 2;  // [5:4]
+        uint64_t naa         : 1;  // [6]
+        uint64_t res2        : 4;  // [10:7]
+        uint64_t eos         : 1;  // [11]
+        uint64_t i           : 1;  // [12]
+        uint64_t endb        : 1;  // [13]
+        uint64_t res3        : 5;  // [18:14]
+        uint64_t wxn         : 1;  // [19]
+        uint64_t res4        : 1;  // [20]
+        uint64_t iesb        : 1;  // [21]
+        uint64_t res4        : 2;  // [23:22]
+        uint64_t e0e         : 1;  // [24]
+        uint64_t ee          : 1;  // [25]
+        uint64_t uci         : 1;  // [26]
+        uint64_t enda        : 1;  // [27]
+        uint64_t res0_28     : 1;  // [28]
+        uint64_t res0_29     : 1;  // [29]
+        uint64_t res0_30     : 1;  // [30]
+        uint64_t res0_31     : 1;  // [31]
+        uint64_t enia        : 1;  // [32]
+        uint64_t cmow        : 1;  // [33]
+        uint64_t mscen       : 1;  // [34]
+        uint64_t res0_35     : 1;  // [35]
+        uint64_t bt          : 1;  // [36]
+        uint64_t itfsb       : 1;  // [37]
+        uint64_t res0_38_39  : 2;  // [39:38]
+        uint64_t res0_40_41  : 2;  // [41:40]
+        uint64_t res0_42     : 1;  // [42]
+        uint64_t res0_43     : 1;  // [43]
+        uint64_t res0_44     : 1;  // [44]
+        uint64_t res0_45     : 1;  // [45]
+        uint64_t res0_46_49  : 4;  // [49:46]
+        uint64_t res0_50_53  : 4;  // [53:50]
+        uint64_t enasr       : 1;  // [54]
+        uint64_t enas0       : 1;  // [55]
+        uint64_t enals       : 1;  // [56]
+        uint64_t epan        : 1;  // [57]
+        uint64_t tcso0       : 1;  // [58]
+        uint64_t tcso        : 1;  // [59]
+        uint64_t entp2       : 1;  // [60]
+        uint64_t nmi         : 1;  // [61]
+        uint64_t spintmask   : 1;  // [62]
+        uint64_t tidcp       : 1;  // [63]
+    };
+    uint64_t value;
+} sctlr_el3_t;
 
-//D13.2.47
 
-#define HCR_RW                          (1 << 31)
-#define HCR_VALUE                       HCR_RW
+scr_el3_t scr_el3_value = {0};
 
-//D13.2.112
-
-#define SCR_RESERVED                    (3 << 4)
-#define SCR_RW                          (1 << 10)
-#define SCR_NS                          (1 << 0)
-#define SCR_VALUE                       (SCR_RESERVED | SCR_RW | SCR_NS)
-
-//C5.2.19
-
-#define SPSR_MASK_ALL                   (7 << 6)
-#define SPSR_EL1h                       (5 << 0)
-#define SPSR_EL2h                       (9 << 0)
-#define SPSR_VALUE                      (SPSR_MASK_ALL | SPSR_EL1h)
+typedef union{
+    struct {
+        uint64_t m                  : 1; // [0]
+        uint64_t a                  : 1; // [1]
+        uint64_t c                  : 1; // [2]
+        uint64_t sa                 : 1; // [3]
+        uint64_t sa0                : 1; // [4]
+        uint64_t cp15ben            : 1; // [5]
+        uint64_t naa                : 1; // [6]
+        uint64_t itd                : 1; // [7]
+        uint64_t sed                : 1; // [8]
+        uint64_t res1               : 1; // [9]
+        uint64_t enrctx             : 1; // [10]
+        uint64_t eos                : 1; // [11]
+        uint64_t i                  : 1; // [12]
+        uint64_t endb               : 1; // [13]
+        uint64_t dze                : 1; // [14]
+        uint64_t uct                : 1; // [15]
+        uint64_t ntwi               : 1; // [16]
+        uint64_t res2               : 1; // [17]
+        uint64_t ntwe               : 1; // [18]
+        uint64_t wxn                : 1; // [19]
+        uint64_t tscxt              : 1; // [20]
+        uint64_t iesb               : 1; // [21]
+        uint64_t eis                : 1; // [22]
+        uint64_t span               : 1; // [23]
+        uint64_t e0e                : 1; // [24]
+        uint64_t ee                 : 1; // [25]
+        uint64_t uci                : 1; // [26]
+        uint64_t enda               : 1; // [27]
+        uint64_t ntlsmd             : 1; // [28]
+        uint64_t lsmaoe             : 1; // [29]
+        uint64_t enib               : 1; // [30]
+        uint64_t enia               : 1; // [31]
+        uint64_t cmow               : 1; // [32]
+        uint64_t mscen              : 1; // [33]
+        uint64_t enfpm              : 1; // [34]
+        uint64_t bt0                : 1; // [35]
+        uint64_t bt                 : 1; // [36]
+        uint64_t itfsb              : 1; // [37]
+        uint64_t tcf0               : 2; // [39:38]
+        uint64_t tcf                : 2; // [41:40]
+        uint64_t ata0               : 1; // [42]
+        uint64_t ata                : 1; // [43]
+        uint64_t dssbs              : 1; // [44]
+        uint64_t twedel             : 1; // [45]
+        uint64_t twedel             : 4; // [49:46]
+        uint64_t res                : 4; // [53:50]
+        uint64_t enasr              : 1; // [54]
+        uint64_t enas0              : 1; // [55]
+        uint64_t enals              : 1; // [56]
+        uint64_t epan               : 1; // [57]
+        uint64_t tcso0              : 1; // [58]
+        uint64_t tcso               : 1; // [59]
+        uint64_t entp2              : 1; // [60]
+        uint64_t nmi                : 1; // [61]
+        uint64_t spintmask          : 1; // [62]
+        uint64_t tidcp              : 1; // [63]
+    };
+    uint64_t value;
+} sctlr_el2_t;
 
 #endif
