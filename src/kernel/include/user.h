@@ -3,5 +3,6 @@
 
 
 void do_user_things();
+void do_user_things_2();
 
 #endif

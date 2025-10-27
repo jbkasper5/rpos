@@ -28,6 +28,10 @@ uint64_t sys_nanosleep(uint64_t ns, uint64_t unused1, uint64_t unused2, uint64_t
     return 0;
 }
 
+uint64_t sys_clock_gettime(uint64_t clock, uint64_t kernel_timespec, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5){
+    return 0;
+}
+
 uint64_t sys_mmap(uint64_t addr, uint64_t len, uint64_t prot, uint64_t flags, uint64_t fd, uint64_t offset){
     // attempt to map a section of virtual memory 
     // if cannot be mapped, return -1

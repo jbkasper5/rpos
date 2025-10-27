@@ -14,17 +14,25 @@ void scheduler_init(){
     // debug pins
     gpio_pin_enable(USER_PIN);
     gpio_pin_set_func(USER_PIN, GFOutput);
+    gpio_pin_enable(USER_PIN_2);
+    gpio_pin_set_func(USER_PIN_2, GFOutput);
     gpio_pin_enable(DEBUG_PIN);
     gpio_pin_set_func(DEBUG_PIN, GFOutput);
 
-    // for now, we say there is 1 task, the IDLE task, which is a placeholder for when the CPU is idle
-    proclist.processes = 1;
+    // creare 2 active processes
+    proclist.processes = 2;
 
     // first user process program counter will point to the function do user things
     proclist.proclist[0].registers.pc = (uint64_t) &do_user_things;
     proclist.proclist[0].registers.sp = (uint64_t) USTACK;
-    // proclist.proclist[0].registers.spsr = 0; // DAIF = 1111, EL0t mode
-    active_process = -1;
+    proclist.proclist[0].registers.spsr = 0;
+
+    // second user process will point to the other user function
+    proclist.proclist[1].registers.pc = (uint64_t) &do_user_things_2;
+    proclist.proclist[1].registers.sp = (uint64_t) (USTACK - (1 << 11));
+    proclist.proclist[1].registers.spsr = 0;
+
+    active_process = 0;
 }
 
 void print_reg_file(reglist_t* regfile){
@@ -41,26 +49,24 @@ void scheduler(reglist_t* reg_addr){
 
     pulse(DEBUG_PIN, FALSE);
     // static int trigger = 0;
-    printf("Doing scheduler stuffs\n");
+    printf("Doing scheduler stuffs. Active process is: %d\n", active_process);
+
+    printf("Incoming context:\n");
+    print_reg_file(reg_addr);
+
+    // backup process state
+    // dest, src, # bytes
+    memcpy(&proclist.proclist[active_process].registers, reg_addr, sizeof(reglist_t));
+
+    printf("Backed up context:\n");
+    print_reg_file(&proclist.proclist[active_process].registers);
+    active_process = !active_process;
+
+    // swap in context of new process
+    memcpy(reg_addr, &proclist.proclist[active_process].registers, sizeof(reglist_t));
+    printf("Returning to new context:\n");
+    print_reg_file(reg_addr);
+
     prime_physical_timer();
-
-    // if(active_process != 0){
-    //     active_process = 0;
-    //     reglist_t* new_regs = &proclist.proclist[active_process].registers;
-
-    //     // printf("New context: \n");
-    //     // print_reg_file(new_regs);
-
-    //     // printf("Old context: \n");
-    //     // print_reg_file(reg_addr);
-
-    //     // copy the context swapped process into the EL1 stack to return to new user context
-    //     memcpy((void*)reg_addr, (void*)new_regs, sizeof(reglist_t));
-
-    //     reg_addr->pc = (uint64_t) &do_user_things;
-        
-    //     // printf("Post-context switch: \n");
-    //     // print_reg_file(reg_addr);
-    // }
     pulse(DEBUG_PIN, TRUE);
 }
