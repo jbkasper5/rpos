@@ -21,6 +21,7 @@
 #define SYS_WRITE                   64
 #define SYS_EXIT                    93
 #define SYS_NANOSLEEP               101
+#define SYS_CLOCK_GETTIME           113
 #define SYS_KILL                    129
 #define SYS_REBOOT                  142
 #define SYS_GETPID                  172

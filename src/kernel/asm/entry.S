@@ -42,6 +42,9 @@ pc_string:
     stp x24, x25, [sp, #16 * 12]
     stp x26, x27, [sp, #16 * 13]
     stp x28, x29, [sp, #16 * 14]
+
+    // save SP_EL0 context
+    mrs x0, SP_EL0
     stp x30, x0, [sp, #16 * 15]
 
     // THIS IS FINE
@@ -76,6 +79,9 @@ pc_string:
     ldp x26, x27, [sp, #16 * 13]
     ldp x28, x29, [sp, #16 * 14]
     ldp x30, x0, [sp, #16 * 15]
+
+    // write value back into stack pointer
+    msr SP_EL0, x0
 
     ldp x0, x1, [sp, #16 * 16]
     msr ELR_EL1, x0
@@ -122,6 +128,7 @@ fiq_invalid_el1t:
 error_invalid_el1t:
     handle_invalid_entry ERROR_INVALID_EL1T
 
+# ERROR HANDLER FOR KERNEL MODE
 sync_invalid_el1h:
     mrs x10, esr_el1
     mrs x11, far_el1
@@ -129,6 +136,7 @@ sync_invalid_el1h:
     b .   // halt here for GDB to inspect
     # handle_invalid_entry SYNC_INVALID_EL1H
 
+# IRQ HANDLER FOR KERNEL MODE
 handle_el1_irq:
     kernel_entry
 
@@ -139,10 +147,16 @@ handle_el1_irq:
     ldr x0, =my_string_3
     bl printf
 
+    mrs x1, SPSR_EL1
+    lsr x1, x1, #2
+    and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
+
+    // don't handle IRQs for EL1->EL1 yet
     bl handle_irq
     kernel_exit
     eret
+
 
 fiq_invalid_el1h:
     handle_invalid_entry FIQ_INVALUD_EL1H
@@ -150,6 +164,7 @@ fiq_invalid_el1h:
 error_invalid_el1h:
     handle_invalid_entry ERROR_INVALID_EL1H
 
+# SYSTEM CALL HANDLER FOR USER MODE
 handle_el0_svc:
     # disable interrupts while we're handling the system call
     msr daifset, #0xf
@@ -177,14 +192,12 @@ handle_el0_svc:
     // handle the system call
     bl handle_syscall
 
-    # // tell the kernel to jump back to EL0
-    # mov x0, #0 // DAIF=0000 M[4:0]=00000 EL0t.
-    # msr SPSR_EL1, x0
-
     // restore registers and processor state
     kernel_exit
     eret
 
+
+# IRQ HANDLER FOR USER MODE
 handle_el0_irq:
     msr daifset, #0xf           // disable interrupts
     kernel_entry
@@ -196,11 +209,19 @@ handle_el0_irq:
     ldr x0, =my_string_3
     bl printf
 
+    // put the register file pointer into x0
+    mov x0, sp
+
+    // reload EL into x1
+    mrs x1, SPSR_EL1
+    lsr x1, x1, #2
+    and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     bl handle_irq
     kernel_exit
-    msr daifclr, #0xf
     eret
+
+
 
 fiq_invalid_el0_64:
     handle_invalid_entry FIQ_INVALUD_EL0_64

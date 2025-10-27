@@ -8,13 +8,13 @@ uint64_t syscall(uint64_t sysnum, ...);
 
 URAM_FN void dot(int pin){
     // on
-    syscall(SYS_PULSE_LED, USER_PIN, TRUE);
+    syscall(SYS_PULSE_LED, pin, TRUE);
 
     // sleep quarter second while on
     syscall(SYS_NANOSLEEP, BLIT);
 
     // turn 17 off
-    syscall(SYS_PULSE_LED, USER_PIN, FALSE);
+    syscall(SYS_PULSE_LED, pin, FALSE);
 
     // sleep 1 blit off
     syscall(SYS_NANOSLEEP, BLIT);
@@ -22,13 +22,13 @@ URAM_FN void dot(int pin){
 
 URAM_FN void dash(int pin){
     // turn 17 on
-    syscall(SYS_PULSE_LED, USER_PIN, TRUE);
+    syscall(SYS_PULSE_LED, pin, TRUE);
 
     // sleep 3/4 second
     syscall(SYS_NANOSLEEP, (3 * BLIT));
 
     // turn 17 off
-    syscall(SYS_PULSE_LED, USER_PIN, FALSE);
+    syscall(SYS_PULSE_LED, pin, FALSE);
 
     // sleep 1 blit off
     syscall(SYS_NANOSLEEP, BLIT);
@@ -79,21 +79,17 @@ URAM_FN void morse(char* str, int pin){
 URAM_FN void do_user_things(){
     // write system call takes filedescriptor, buffer, count as arguments
     char str[] = "Free Coffee\n";
-    // syscall(SYS_WRITE, NULL, str);
     while(TRUE){
+        syscall(SYS_WRITE, NULL, str);
         morse(str, USER_PIN);
-        // HACK: stall here to make sure the EL0->EL1 timer transition works
-        // WFI();
     }
 }
 
-URAM_FN void do_user_things2(){
+URAM_FN void do_user_things_2(){
     // write system call takes filedescriptor, buffer, count as arguments
-    char str[] = "Free Coffee\n";
-    // syscall(SYS_WRITE, NULL, str);
+    char str[] = "Free Snacks\n";
     while(TRUE){
+        syscall(SYS_WRITE, NULL, str);
         morse(str, USER_PIN_2);
-        // HACK: stall here to make sure the EL0->EL1 timer transition works
-        // WFI();
     }
 }

@@ -23,11 +23,12 @@ typedef struct PCB_S{
     uint32_t pid;
     reglist_t registers;
     // memory information
-    // register information
+        // page tables
     // file structure information
     // file descriptor information
     // thread information
     // signal information
+    // timer information
 }pcb_t;
 
 typedef struct PCB_LIST_S{

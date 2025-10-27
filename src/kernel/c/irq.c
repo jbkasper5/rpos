@@ -42,7 +42,8 @@ void enable_interrupt_controller() {
 }
 
 
-void handle_irq(uint64_t reg_addr){
+void handle_irq(uint64_t reg_addr, uint8_t el){
+	printf("Handling IRQ from EL %d\n", el);
 	// printf("Handling IRQ (context: 0x%x)...\n", reg_addr);
 
     uint32_t irq = REGS_BCMIRQ->irq0_pending_0;
@@ -79,8 +80,17 @@ void handle_irq(uint64_t reg_addr){
         if (gic_irq == 30) {
 			printf("Handling interrupt 30...\n");
             // Handle ARM physical timer interrupt
-			scheduler((reglist_t*) reg_addr);
-        }
+			// if in EL1, just prime the timer
+			// if in EL0, actually jump to scheduler code
+			if(el){
+				prime_physical_timer();
+			}else{
+				scheduler((reglist_t*) reg_addr);
+			}
+        }else if(gic_irq == 27){
+			printf("Handling interrupt 27...\n");
+			// handle the timer sleep stack
+		}
         // Acknowledge end of interrupt
         REGS_GICC->gicc_eoir = gic_irq;
     }
