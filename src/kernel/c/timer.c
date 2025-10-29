@@ -11,6 +11,14 @@ uint32_t curr_val_1 = 0;
 const uint32_t interval_3 = CLOCKHZ / 4;
 uint32_t curr_val_3 = 0;
 
+pqnode_t heap_storage[MAX_PROCESSES];
+
+pq_t sleep_timer_queue = {
+    .heap = heap_storage,
+    .size = MAX_PROCESSES,
+    .items = 0
+};
+
 void timer_init(){
     curr_val_1 = REGS_TIMER->counter_lo;
     curr_val_1 += interval_1;
@@ -57,4 +65,9 @@ uint64_t timer_get_ticks(){
 void timer_sleep(uint32_t milliseconds){
     uint64_t start = timer_get_ticks();
     while(timer_get_ticks() < start + (milliseconds * 1000));
+}
+
+void timer_nanosleep(uint64_t nanoseconds){
+    prime_virtual_timer((nanoseconds * CLOCKHZ) / 1000000000ULL);
+    // deschedule();
 }

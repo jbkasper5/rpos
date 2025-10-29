@@ -45,8 +45,11 @@ void hardware_init(){
     printf("Enabling system timers...\n");
     timer_init();
 
-    printf("Enabling physical timer...\n");
-    physical_timer_enable();
+    // printf("Enabling physical timer...\n");
+    // physical_timer_enable();
+
+    printf("Enabling virtual timer...\n");
+    virtual_timer_enable();
 
     printf("Priming physical timer...\n");
     prime_physical_timer();
@@ -72,6 +75,14 @@ int kernel_main(){
     printf("Execution level: %d\n", get_el());
 
     hardware_init();
+
+    printf("Priming virtual timer...\n");
+    timer_nanosleep(1e9);
+
+    while(TRUE);
+
+    // sleep 2 seconds to let the virtual timer fire
+    // timer_sleep(2000);
 
     // turn 18 on
     pulse(DEBUG_PIN, FALSE);

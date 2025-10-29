@@ -49,24 +49,28 @@ void scheduler(reglist_t* reg_addr){
 
     pulse(DEBUG_PIN, FALSE);
     // static int trigger = 0;
-    printf("Doing scheduler stuffs. Active process is: %d\n", active_process);
+    // printf("Doing scheduler stuffs. Active process is: %d\n", active_process);
 
-    printf("Incoming context:\n");
-    print_reg_file(reg_addr);
+    // printf("Incoming context:\n");
+    // print_reg_file(reg_addr);
 
     // backup process state
     // dest, src, # bytes
     memcpy(&proclist.proclist[active_process].registers, reg_addr, sizeof(reglist_t));
 
-    printf("Backed up context:\n");
-    print_reg_file(&proclist.proclist[active_process].registers);
+    // printf("Backed up context:\n");
+    // print_reg_file(&proclist.proclist[active_process].registers);
     active_process = !active_process;
 
     // swap in context of new process
     memcpy(reg_addr, &proclist.proclist[active_process].registers, sizeof(reglist_t));
-    printf("Returning to new context:\n");
-    print_reg_file(reg_addr);
+    // printf("Returning to new context:\n");
+    // print_reg_file(reg_addr);
 
     prime_physical_timer();
     pulse(DEBUG_PIN, TRUE);
+}
+
+void deschedule(){
+    // move the current running process to the waiting queue
 }

@@ -4,6 +4,11 @@
 #define URAM_FN __attribute__((section(".uram.text")))
 #define BLIT 250000000
 
+
+void idle_proc(){
+    while(TRUE);
+}
+
 uint64_t syscall(uint64_t sysnum, ...);
 
 URAM_FN void dot(int pin){
