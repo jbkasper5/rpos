@@ -68,6 +68,12 @@ void timer_sleep(uint32_t milliseconds){
 }
 
 void timer_nanosleep(uint64_t nanoseconds){
-    prime_virtual_timer((nanoseconds * CLOCKHZ) / 1000000000ULL);
-    // deschedule();
+    uint64_t timer_request = (nanoseconds * CLOCKHZ) / 1000000000ULL;
+
+    // pq_add(timer_request)
+    if(!sleep_timer_queue.items){
+
+    }
+    prime_virtual_timer(timer_request);
+    deschedule();
 }

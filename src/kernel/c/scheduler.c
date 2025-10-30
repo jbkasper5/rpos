@@ -112,4 +112,9 @@ void start_scheduler(){
 
 void deschedule(){
     // move the current running process to the waiting queue
+    proclist.proclist[active_process].state = PROCESS_BLOCKED;
+}
+
+void reschedule(int procnum){
+    proclist.proclist[procnum].state = PROCESS_READY;
 }
