@@ -20,19 +20,27 @@ void scheduler_init(){
     gpio_pin_set_func(DEBUG_PIN, GFOutput);
 
     // creare 2 active processes
-    proclist.processes = 2;
+    proclist.processes = 1;
+
+    // idle process, for when no real user processes are available
+    proclist.proclist[0].registers.pc = (uint64_t) &idle_proc;
+    proclist.proclist[0].registers.sp = (uint64_t) (USTACK - (1 << 11) + 128);
+    proclist.proclist[0].registers.spsr = 0;
+    proclist.proclist[0].state = PROCESS_READY;
 
     // first user process program counter will point to the function do user things
-    proclist.proclist[0].registers.pc = (uint64_t) &do_user_things;
-    proclist.proclist[0].registers.sp = (uint64_t) USTACK;
-    proclist.proclist[0].registers.spsr = 0;
+    proclist.processes++;
+    proclist.proclist[1].registers.pc = (uint64_t) &do_user_things;
+    proclist.proclist[1].registers.sp = (uint64_t) USTACK;
+    proclist.proclist[1].registers.spsr = 0;
+    proclist.proclist[1].state = PROCESS_BLOCKED;
 
     // second user process will point to the other user function
-    proclist.proclist[1].registers.pc = (uint64_t) &do_user_things_2;
-    proclist.proclist[1].registers.sp = (uint64_t) (USTACK - (1 << 11));
-    proclist.proclist[1].registers.spsr = 0;
-
-    active_process = 0;
+    proclist.processes++;
+    proclist.proclist[2].registers.pc = (uint64_t) &do_user_things_2;
+    proclist.proclist[2].registers.sp = (uint64_t) (USTACK - (1 << 11));
+    proclist.proclist[2].registers.spsr = 0;
+    proclist.proclist[2].state = PROCESS_READY;
 }
 
 void print_reg_file(reglist_t* regfile){
@@ -46,29 +54,60 @@ void print_reg_file(reglist_t* regfile){
 }
 
 void scheduler(reglist_t* reg_addr){
-
     pulse(DEBUG_PIN, FALSE);
-    // static int trigger = 0;
-    // printf("Doing scheduler stuffs. Active process is: %d\n", active_process);
 
-    // printf("Incoming context:\n");
-    // print_reg_file(reg_addr);
+    // switch active processes
+    int selected_process = 0;
+    for(int i = 1; i < proclist.processes; i++){
+        // only look for processes that are ready
+        if(proclist.proclist[i].state == PROCESS_READY){
 
-    // backup process state
-    // dest, src, # bytes
-    memcpy(&proclist.proclist[active_process].registers, reg_addr, sizeof(reglist_t));
+            // if a process is ready and it's not the one currently executing, switch immediately
+            if(i != active_process){
+                selected_process = i;
+                break;
+            }
 
-    // printf("Backed up context:\n");
-    // print_reg_file(&proclist.proclist[active_process].registers);
-    active_process = !active_process;
+        // if we haven't selected a process yet and the current one is still running, select it
+        }else if(proclist.proclist[i].state == PROCESS_RUNNING && !selected_process){
+            selected_process = i;
+        }
+    }
+    // at this point, either we found a new process, the active process hasn't changed, or the selected process
+    // is the idle process
 
-    // swap in context of new process
-    memcpy(reg_addr, &proclist.proclist[active_process].registers, sizeof(reglist_t));
-    // printf("Returning to new context:\n");
-    // print_reg_file(reg_addr);
+    // if the selected process differs from the active process, we need to perform a context switch
+    if(selected_process != active_process){
+        // backup process state into proclist
+        // dest, src, # bytes
+        memcpy(&proclist.proclist[active_process].registers, reg_addr, sizeof(reglist_t));
 
+        // change the running process to ready instead of running
+        proclist.proclist[active_process].state = PROCESS_READY;
+
+        // swap in context of new process
+        memcpy(reg_addr, &proclist.proclist[selected_process].registers, sizeof(reglist_t));
+
+        // update active process
+        active_process = selected_process;
+
+        // set active process to running
+        proclist.proclist[active_process].state = PROCESS_RUNNING;
+    }
+
+    // prime the scheduler timer for another quantum
     prime_physical_timer();
     pulse(DEBUG_PIN, TRUE);
+}
+
+void start_scheduler(){
+    active_process = 2;
+    proclist.proclist[active_process].state = PROCESS_RUNNING;
+
+    uint64_t sp = proclist.proclist[active_process].registers.sp;
+    uint64_t pc = proclist.proclist[active_process].registers.pc;
+    uint64_t spsr = proclist.proclist[active_process].registers.spsr;
+    drop_to_user(sp, pc, spsr);
 }
 
 void deschedule(){
