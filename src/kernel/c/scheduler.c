@@ -33,7 +33,7 @@ void scheduler_init(){
     proclist.proclist[1].registers.pc = (uint64_t) &do_user_things;
     proclist.proclist[1].registers.sp = (uint64_t) USTACK;
     proclist.proclist[1].registers.spsr = 0;
-    proclist.proclist[1].state = PROCESS_BLOCKED;
+    proclist.proclist[1].state = PROCESS_READY;
 
     // second user process will point to the other user function
     proclist.processes++;

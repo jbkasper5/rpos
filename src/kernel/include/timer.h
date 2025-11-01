@@ -11,7 +11,8 @@ void physical_timer_enable();
 void prime_virtual_timer(uint64_t cycles);
 void virtual_timer_enable();
 
-uint64_t read_timer();
+uint64_t read_physical_timer();
+uint64_t read_virtual_timer();
 
 void clear_virtual_timer();
 

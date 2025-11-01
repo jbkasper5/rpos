@@ -12,7 +12,6 @@ const uint32_t interval_3 = CLOCKHZ / 4;
 uint32_t curr_val_3 = 0;
 
 pqnode_t heap_storage[MAX_PROCESSES];
-
 pq_t sleep_timer_queue = {
     .heap = heap_storage,
     .size = MAX_PROCESSES,
@@ -68,12 +67,13 @@ void timer_sleep(uint32_t milliseconds){
 }
 
 void timer_nanosleep(uint64_t nanoseconds){
-    uint64_t timer_request = (nanoseconds * CLOCKHZ) / 1000000000ULL;
+    uint64_t timer_request = ((nanoseconds * CLOCKHZ) / 1000000000ULL) + read_virtual_timer();
 
-    // pq_add(timer_request)
-    if(!sleep_timer_queue.items){
+    // priority = absolute timer request, element = active process
+    pq_add(&sleep_timer_queue, timer_request, active_process);
 
-    }
-    prime_virtual_timer(timer_request);
+    // in case the incoming request is less than that of the existing request, reprogram
+    // the timer, since the queue always has the earliest deadline first
+    prime_virtual_timer(pq_peek(&sleep_timer_queue).priority);
     deschedule();
 }
