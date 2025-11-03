@@ -20,6 +20,7 @@ void timer_init();
 void handle_timer_1();
 void handle_timer_3();
 void handle_physical_timer();
+void handle_virtual_timer();
 uint64_t timer_get_ticks();
 void timer_sleep(uint32_t milliseconds);
 void timer_nanosleep(uint64_t nanoseconds);

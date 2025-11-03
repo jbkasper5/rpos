@@ -49,6 +49,25 @@ void handle_physical_timer(){
     printf("Physical timer received.\n");
 }
 
+void handle_virtual_timer(){
+    // pop node from top of the queue
+    // priority contains the timer that just completed
+    // element is the integer proclist index that finished the timer request
+    pqnode_t node = pq_pop(&sleep_timer_queue);
+
+    // reschedule((uint64_t) node.element);/
+
+    if(sleep_timer_queue.items){
+        printf("Items remaining in queue: %d\n", sleep_timer_queue.items);
+        // prime the next request, if there is one
+        prime_virtual_timer(pq_peek(&sleep_timer_queue).priority);
+    }else{
+        // otherwise, disable the timer until someone else makes the nanosleep syscall
+        printf("No more sleep requests, clearing virtual timer. \n");
+        clear_virtual_timer();
+    }
+}
+
 uint64_t timer_get_ticks(){
     uint32_t hi = REGS_TIMER->counter_hi;
     uint32_t lo = REGS_TIMER->counter_lo;

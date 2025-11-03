@@ -7,6 +7,8 @@
 #include "mem.h"
 #include "mm.h"
 
+extern reglist_t* user_context_ptr;
+
 pcb_list_t proclist;
 uint64_t active_process;
 
@@ -40,7 +42,7 @@ void scheduler_init(){
     proclist.proclist[2].registers.pc = (uint64_t) &do_user_things_2;
     proclist.proclist[2].registers.sp = (uint64_t) (USTACK - (1 << 11));
     proclist.proclist[2].registers.spsr = 0;
-    proclist.proclist[2].state = PROCESS_READY;
+    proclist.proclist[2].state = PROCESS_BLOCKED;
 }
 
 void print_reg_file(reglist_t* regfile){
@@ -95,13 +97,16 @@ void scheduler(reglist_t* reg_addr){
         proclist.proclist[active_process].state = PROCESS_RUNNING;
     }
 
+    printf("Scheduled %d\n", active_process);
+
     // prime the scheduler timer for another quantum
     prime_physical_timer();
     pulse(DEBUG_PIN, TRUE);
 }
 
 void start_scheduler(){
-    active_process = 2;
+    // SAFE - start running the idle task and have scheduler switch active process in
+    active_process = 0;
     proclist.proclist[active_process].state = PROCESS_RUNNING;
 
     uint64_t sp = proclist.proclist[active_process].registers.sp;
@@ -113,8 +118,21 @@ void start_scheduler(){
 void deschedule(){
     // move the current running process to the waiting queue
     proclist.proclist[active_process].state = PROCESS_BLOCKED;
+
+    printf("Descheduling %d\n", active_process);
+
+    // make active idle so it actually finds the next active process properly
+    active_process = 0;
+
+    // printf("Context file saved for process %d: \n", active_process);
+    // print_reg_file(user_context_ptr);
+
+    // reschedule now that we changed the state of things
+    scheduler(user_context_ptr);
 }
 
-void reschedule(int procnum){
+void reschedule(uint64_t procnum){
+    printf("Rescheduling %d\n", procnum);
     proclist.proclist[procnum].state = PROCESS_READY;
+    scheduler(user_context_ptr);
 }

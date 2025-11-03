@@ -11,5 +11,6 @@ void scheduler_init();
 void start_scheduler();
 void scheduler(reglist_t* reg_addr);
 void deschedule();
+void reschedule(uint64_t procnum);
 
 #endif
