@@ -1,9 +1,14 @@
 #include "scheduler_constants.h"
 
 .section .text
-.globl read_timer
-read_timer:
-    mrs x0, CNTP_TVAL_EL0
+.globl read_physical_timer
+read_physical_timer:
+    mrs x0, CNTPCT_EL0
+    ret
+
+.globl read_virtual_timer
+read_virtual_timer:
+    mrs x0, CNTVCT_EL0
     ret
 
 .globl physical_timer_enable
@@ -14,6 +19,7 @@ physical_timer_enable:
     msr cntkctl_el1, x0
     ret
 
+// TVAL uses relative delay
 .globl prime_physical_timer
 prime_physical_timer:
     ldr x0, =QUANTUM
@@ -26,9 +32,10 @@ virtual_timer_enable:
     msr cntkctl_el1, x0 
     ret
 
+// CVAL uses absolute delay
 .globl prime_virtual_timer
 prime_virtual_timer:
-    msr CNTV_TVAL_EL0, x0
+    msr CNTV_CVAL_EL0, x0
     mov x0, #1 // enable, no imask, no status
     msr CNTV_CTL_EL0, x0
     ret
