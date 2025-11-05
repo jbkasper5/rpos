@@ -55,7 +55,7 @@ void handle_virtual_timer(){
     // element is the integer proclist index that finished the timer request
     pqnode_t node = pq_pop(&sleep_timer_queue);
 
-    // reschedule((uint64_t) node.element);/
+    reschedule((uint64_t) node.element);
 
     if(sleep_timer_queue.items){
         printf("Items remaining in queue: %d\n", sleep_timer_queue.items);

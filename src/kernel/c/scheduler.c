@@ -42,7 +42,7 @@ void scheduler_init(){
     proclist.proclist[2].registers.pc = (uint64_t) &do_user_things_2;
     proclist.proclist[2].registers.sp = (uint64_t) (USTACK - (1 << 11));
     proclist.proclist[2].registers.spsr = 0;
-    proclist.proclist[2].state = PROCESS_BLOCKED;
+    proclist.proclist[2].state = PROCESS_READY;
 }
 
 void print_reg_file(reglist_t* regfile){
@@ -60,7 +60,12 @@ void scheduler(reglist_t* reg_addr){
 
     // switch active processes
     int selected_process = 0;
-    for(int i = 1; i < proclist.processes; i++){
+    int i = active_process;
+    for(int idx = 0; idx < proclist.processes; idx++){
+
+        // handle wraparounds
+        i %= proclist.processes;
+
         // only look for processes that are ready
         if(proclist.proclist[i].state == PROCESS_READY){
 
@@ -74,6 +79,8 @@ void scheduler(reglist_t* reg_addr){
         }else if(proclist.proclist[i].state == PROCESS_RUNNING && !selected_process){
             selected_process = i;
         }
+
+        i++;
     }
     // at this point, either we found a new process, the active process hasn't changed, or the selected process
     // is the idle process
@@ -84,8 +91,10 @@ void scheduler(reglist_t* reg_addr){
         // dest, src, # bytes
         memcpy(&proclist.proclist[active_process].registers, reg_addr, sizeof(reglist_t));
 
-        // change the running process to ready instead of running
-        proclist.proclist[active_process].state = PROCESS_READY;
+        // if the process was running, change it back to ready
+        if(proclist.proclist[active_process].state == PROCESS_RUNNING){
+            proclist.proclist[active_process].state = PROCESS_READY;
+        }
 
         // swap in context of new process
         memcpy(reg_addr, &proclist.proclist[selected_process].registers, sizeof(reglist_t));
@@ -120,9 +129,6 @@ void deschedule(){
     proclist.proclist[active_process].state = PROCESS_BLOCKED;
 
     printf("Descheduling %d\n", active_process);
-
-    // make active idle so it actually finds the next active process properly
-    active_process = 0;
 
     // printf("Context file saved for process %d: \n", active_process);
     // print_reg_file(user_context_ptr);

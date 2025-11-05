@@ -2,7 +2,7 @@
 #include "macros.h"
 
 #define URAM_FN __attribute__((section(".uram.text")))
-#define BLIT 250000000
+#define BLIT 500000000
 
 
 void idle_proc(){
@@ -16,13 +16,13 @@ URAM_FN void dot(int pin){
     syscall(SYS_PULSE_LED, pin, TRUE);
 
     // sleep quarter second while on
-    syscall(SYS_NANOSLEEP, BLIT, 0);
+    syscall(SYS_NANOSLEEP, BLIT, 1);
 
     // turn 17 off
     syscall(SYS_PULSE_LED, pin, FALSE);
 
     // sleep 1 blit off
-    syscall(SYS_NANOSLEEP, BLIT, 0);
+    syscall(SYS_NANOSLEEP, BLIT, 1);
 }
 
 URAM_FN void dash(int pin){
@@ -30,17 +30,17 @@ URAM_FN void dash(int pin){
     syscall(SYS_PULSE_LED, pin, TRUE);
 
     // sleep 3/4 second
-    syscall(SYS_NANOSLEEP, (3 * BLIT), 0);
+    syscall(SYS_NANOSLEEP, (3 * BLIT), 1);
 
     // turn 17 off
     syscall(SYS_PULSE_LED, pin, FALSE);
 
     // sleep 1 blit off
-    syscall(SYS_NANOSLEEP, BLIT, 0);
+    syscall(SYS_NANOSLEEP, BLIT, 1);
 }
 
 URAM_FN void pause(int blits){
-    syscall(SYS_NANOSLEEP, blits * BLIT, 0);
+    syscall(SYS_NANOSLEEP, blits * BLIT, 1);
 }
 
 URAM_FN void morse_character(char c, int pin){
@@ -83,18 +83,10 @@ URAM_FN void morse(char* str, int pin){
 
 URAM_FN void do_user_things(){
     // write system call takes filedescriptor, buffer, count as arguments
-    // char str[] = "Free Coffee\n";
-    // while(TRUE){
-    //     syscall(SYS_WRITE, NULL, str);
-    //     morse(str, USER_PIN);
-    // }
-    syscall(SYS_PULSE_LED, USER_PIN, TRUE);
-
-    // when the LED is on, the process is active, and when it's off, it should be blocked
+    char str[] = "Free Coffee\n";
     while(TRUE){
-        syscall(SYS_PULSE_LED, USER_PIN, FALSE);
-        syscall(SYS_NANOSLEEP, 10000000000, 1);
-        syscall(SYS_PULSE_LED, USER_PIN, TRUE);
+        syscall(SYS_WRITE, NULL, str);
+        morse(str, USER_PIN);
     }
 }
 
