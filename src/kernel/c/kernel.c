@@ -48,6 +48,9 @@ void hardware_init(){
     printf("Enabling physical timer...\n");
     physical_timer_enable();
 
+    printf("Enabling virtual timer...\n");
+    virtual_timer_enable();
+
     printf("Priming physical timer...\n");
     prime_physical_timer();
 
@@ -73,11 +76,14 @@ int kernel_main(){
 
     hardware_init();
 
+    // printf("Priming virtual timer...\n");
+    // timer_nanosleep(1e9);
+
     // turn 18 on
     pulse(DEBUG_PIN, FALSE);
 
     printf("Waiting complete, dropping to user mode...\n");
-    drop_to_user();
+    start_scheduler();
 
     return 0;
 }

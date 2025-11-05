@@ -10,6 +10,12 @@ my_string_3:
 pc_string:
     .asciz "Return PC: 0x%x\n"
 
+.section .data
+.align 3
+.global user_context_ptr
+user_context_ptr:
+    .quad 0               // 8 bytes, initialized to 0
+
 .section .text
 .macro ventry label
 .align 7
@@ -23,6 +29,13 @@ pc_string:
     mrs x2, elr_el1
     bl show_invalid_entry_message
     b err_hang
+.endm
+
+.macro store_context
+    adrp x0, user_context_ptr
+    add  x0, x0, :lo12:user_context_ptr
+    mov  x1, sp
+    str  x1, [x0]
 .endm
 
 .macro kernel_entry
@@ -172,6 +185,9 @@ handle_el0_svc:
     // backup all user registers and processor state
     kernel_entry
 
+    // store user context into context variable
+    store_context
+
     mrs x1, SPSR_EL1
     lsr x1, x1, #2
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
@@ -201,6 +217,9 @@ handle_el0_svc:
 handle_el0_irq:
     msr daifset, #0xf           // disable interrupts
     kernel_entry
+
+    // store user context into context variable
+    store_context
 
     mrs x1, SPSR_EL1
     lsr x1, x1, #2

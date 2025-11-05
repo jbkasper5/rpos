@@ -89,7 +89,9 @@ void handle_irq(uint64_t reg_addr, uint8_t el){
 			}
         }else if(gic_irq == 27){
 			printf("Handling interrupt 27...\n");
+			
 			// handle the timer sleep stack
+			handle_virtual_timer();
 		}
         // Acknowledge end of interrupt
         REGS_GICC->gicc_eoir = gic_irq;

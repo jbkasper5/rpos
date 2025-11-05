@@ -47,6 +47,9 @@ loop_group:
     mov w1, #(1 << (30 % 32))
     str w1, [x2, #GICD_ISENABLER + (30 / 32) * 4]  // Enable interrupt 30
 
+    mov w1, #(1 << (27 % 32))
+    str w1, [x2, #GICD_ISENABLER + (27 / 32) * 4]  // Enable interrupt 27
+
     ret
 
 
