@@ -4,7 +4,7 @@
 #include "macros.h"
 
 typedef struct pqnode_s{
-    int priority;
+    uint64_t priority;
     uintptr_t element; // generic element pointer
 } pqnode_t;
 

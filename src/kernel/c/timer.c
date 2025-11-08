@@ -11,6 +11,7 @@ uint32_t curr_val_1 = 0;
 const uint32_t interval_3 = CLOCKHZ / 4;
 uint32_t curr_val_3 = 0;
 
+// BUG: PQ seems bugged, processes happen to deadlock by mistake
 pqnode_t heap_storage[MAX_PROCESSES];
 pq_t sleep_timer_queue = {
     .heap = heap_storage,
@@ -93,6 +94,9 @@ void timer_nanosleep(uint64_t nanoseconds){
 
     // in case the incoming request is less than that of the existing request, reprogram
     // the timer, since the queue always has the earliest deadline first
-    prime_virtual_timer(pq_peek(&sleep_timer_queue).priority);
+
+    timer_request = pq_peek(&sleep_timer_queue).priority;
+    printf("Timer request value: 0x%x\n", timer_request);
+    prime_virtual_timer(timer_request);
     deschedule();
 }
