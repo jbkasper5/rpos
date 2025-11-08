@@ -6,6 +6,13 @@
 typedef volatile uint32_t reg32_t;
 typedef volatile uint64_t reg64_t;
 typedef uint8_t bool;
+typedef uint16_t pid_t;
+
+#ifdef DEBUG
+#define PDEBUG(...) printf("DEBUG | "); printf(__VA_ARGS__);
+#else
+#define PDEBUG(...)
+#endif
 
 #define NULL        0
 #define FALSE       0

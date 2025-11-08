@@ -75,6 +75,12 @@ typedef struct pt_metadata_s{
     int16_t index;                  // signed int describing which entry in the parent table this belongs, -1 means invalid
 } pt_metadata_t;
 
+// 48 bits/6 bytes of metadata per frame (page)
+typedef struct page_frame_s {
+    uint16_t refcount;   // number of mappings or owners
+    uint16_t  flags;      // free/used, zeroed, kernel, user, etc.
+    pid_t    owner;      // optional: owning process or allocator ID
+} page_frame_t;
 
 void mmu_init();
 void initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata);

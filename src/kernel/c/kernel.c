@@ -31,14 +31,12 @@ void debug_init(){
     gpio_pin_enable(TRST);
 
     int gate = 0;
-    printf("Waiting for gate to be released by debugger...\n");
+    PDEBUG("Waiting for gate to be released by debugger...\n");
     while(!gate);
 }
 
 void hardware_init(){
-    printf("Initializing IRQ vector table...\n");
-    // irq_init_vectors();
-
+    
     printf("Enabling interrupt controller...\n");
     enable_interrupt_controller();
 
@@ -58,7 +56,7 @@ void hardware_init(){
     irq_enable();
 
     printf("Initializing MMU...\n");
-    // mmu_init();
+    mmu_init();
 
     printf("Enabling system scheduler...\n");
     scheduler_init();
@@ -70,19 +68,16 @@ void hardware_init(){
 void drop_to_user();
 
 int kernel_main(){
-    printf("\nRaspberry PI Baremetal OS Initializing...\n");
+    PDEBUG("\nRaspberry PI Baremetal OS Initializing...\n");
 
-    printf("Execution level: %d\n", get_el());
+    PDEBUG("Execution level: %d\n", get_el());
 
     hardware_init();
-
-    // printf("Priming virtual timer...\n");
-    // timer_nanosleep(1e9);
 
     // turn 18 on
     pulse(DEBUG_PIN, FALSE);
 
-    printf("Waiting complete, dropping to user mode...\n");
+    PDEBUG("Waiting complete, dropping to user mode...\n");
     start_scheduler();
 
     return 0;

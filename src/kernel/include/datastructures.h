@@ -17,7 +17,7 @@ typedef struct pq_s{
 pq_t* pq_init();
 void pq_destroy();
 
-void pq_add(pq_t* pq, int priority, uintptr_t element);
+void pq_add(pq_t* pq, uint64_t priority, uintptr_t element);
 pqnode_t pq_pop(pq_t* pq);
 pqnode_t pq_peek(pq_t* pq);
 

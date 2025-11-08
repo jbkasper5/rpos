@@ -5,11 +5,26 @@
 #include "printf.h"
 
 /*
-b create_kernel_identity_mapping; b create_peripheral_identity_mapping; b initialize_page_tables
++===========================+===========================+
+|          Address          |          Region           |
++===========================+===========================+
+| 0x0                       | RAM Start                 |
++---------------------------+---------------------------+
+| 0x8000                    | Kernel code + data        |
++---------------------------+---------------------------+
+| __kernel_end              | End of kernel code        |
++---------------------------+---------------------------+
+| __kernel_end + KSTACK     | Start of the kernel stack |
++---------------------------+---------------------------+
+| __kernel_end + KSTACK + 1 | User addressable memory   |
++---------------------------+---------------------------+
 */
 
 uint64_t mmutest(uint64_t);
 void* page_table_base();
+
+// one frame for every physical page in RAM
+// page_frame_t frame_metadata[(1 << 20)];
 
 void print_page_table(uint64_t* pt_addr, int n_entries){
     int n = n_entries;
@@ -30,18 +45,18 @@ void* _translate(uint64_t address){
     table_descriptor_t table_descriptor = {0};
     mem_descriptor_t mem_descriptor = {0};
 
-    printf("L0 index: %d\n", l0_index);
-    printf("L1 index: %d\n", l1_index);
-    printf("L2 index: %d\n", l2_index);
-    printf("L3 index: %d\n", l3_index);
+    PDEBUG("L0 index: %d\n", l0_index);
+    PDEBUG("L1 index: %d\n", l1_index);
+    PDEBUG("L2 index: %d\n", l2_index);
+    PDEBUG("L3 index: %d\n", l3_index);
 
-    printf("Deconstructing virtual addres...\n");
+    PDEBUG("Deconstructing virtual addres...\n");
     uint64_t* l0 = l0_metadata->table_address;
     table_descriptor.value = l0[l0_index];
 
 
     if(!table_descriptor.bits.valid){
-        printf("WARNING: Encountered invalid PTE in L0 table at index %d.\n", l0_index);
+        PDEBUG("WARNING: Encountered invalid PTE in L0 table at index %d.\n", l0_index);
     }
     uint64_t* l1 = (uint64_t*)((uint64_t) (table_descriptor.bits.address << 12));
     uint64_t l1_pte = l1[l1_index];
@@ -49,34 +64,34 @@ void* _translate(uint64_t address){
         table_descriptor.value = l1_pte;
     }else if(l1_pte & 0b01){
         mem_descriptor.value = l1_pte;
-        printf("Translation complete. Base address: 0x%x\n", (mem_descriptor.bits.address << 12));
+        PDEBUG("Translation complete. Base address: 0x%x\n", (mem_descriptor.bits.address << 12));
         return (void*) ((uint64_t) (mem_descriptor.bits.address << 12));
     }else{
-        printf("WARNING: Encountered invalid PTE in L1 table at index %d.\n", l1_index);
+        PDEBUG("WARNING: Encountered invalid PTE in L1 table at index %d.\n", l1_index);
         return 0;
     }
 
     uint64_t* l2 = (uint64_t*)((uint64_t) (table_descriptor.bits.address << 12));
     uint64_t l2_pte = l2[l2_index];
-    printf("L2 PTE: 0x%x\n", l2_pte);
+    PDEBUG("L2 PTE: 0x%x\n", l2_pte);
     if((l2_pte & 0b11) == 0b11){
         table_descriptor.value = l2_pte;
     }else if(l2_pte & 0b01){
         mem_descriptor.value = l2_pte;
-        printf("Translation complete. Base address: 0x%x\n", (mem_descriptor.bits.address << 12));
+        PDEBUG("Translation complete. Base address: 0x%x\n", (mem_descriptor.bits.address << 12));
         return (void*) ((uint64_t) (mem_descriptor.bits.address << 12));
     }else{
-        printf("WARNING: Encountered invalid PTE in L2 table at index %d.\n", l2_index);
+        PDEBUG("WARNING: Encountered invalid PTE in L2 table at index %d.\n", l2_index);
         return 0;
     }
 
     uint64_t* l3 = (uint64_t*)((uint64_t) (table_descriptor.bits.address << 12));
     mem_descriptor.value = l3[l3_index];
     if(!mem_descriptor.bits.valid){
-        printf("WARNING: Encountered invalid PTE in L3 table at index %d.\n", l3_index);
+        PDEBUG("WARNING: Encountered invalid PTE in L3 table at index %d.\n", l3_index);
         return 0;
     }
-    printf("Translation complete. Base address: 0x%x\n", (mem_descriptor.bits.address << 12));
+    PDEBUG("Translation complete. Base address: 0x%x\n", (mem_descriptor.bits.address << 12));
     return (void*) ((uint64_t) (mem_descriptor.bits.address << 12));
 }
 
@@ -110,7 +125,7 @@ void create_kernel_identity_mapping(pt_metadata_t* pt0_metadata){
     l1_table_descriptor.bits.type = 1;
 
 
-    printf("Creating L1 table...\n");
+    PDEBUG("Creating L1 table...\n");
     // page table descriptor
     for(int i = 0; i < 4; i++){
         // move pointer to next l2 table
@@ -123,7 +138,7 @@ void create_kernel_identity_mapping(pt_metadata_t* pt0_metadata){
         put64((uint64_t) ((uint64_t*) l1_page_table + i), l1_table_descriptor.value);
     }
 
-    printf("Populating L2 tables...\n");
+    PDEBUG("Populating L2 tables...\n");
     // --> addr = 0, ng = 1, af = 1, sh = 11, ap = 00, ns = 0, attr_index = 001, type = 0, valid = 1
     // this block maps the first 2MiB: 0x0-0x40000000
     mem_descriptor_t l2_block_descriptor = {0};
@@ -219,7 +234,7 @@ void unmap_page(uint64_t* pt, uint64_t virt){
 
 void initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata_start){
     // first, invalidate all metadata in the region
-    printf("\tInitializing page tables...\n");
+    PDEBUG("\tInitializing page tables...\n");
     memset(pt_metadata_start, sizeof(pt_metadata_t) * 513, INVALID_PT_METADATA);
     memset(ptb, 6 * 8 * 512, 0);
 
@@ -238,8 +253,8 @@ void initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata_start){
     create_kernel_identity_mapping(pt_metadata_start);
     create_user_mapping(pt_metadata_start);
     // should both be 0xb00
-    // printf("MMU Test with 0x0: 0x%x\n", mmutest(0x0));
-    // printf("MMU Test with 0x100000: 0x%x\n", mmutest(0x100000));
+    // PDEBUG("MMU Test with 0x0: 0x%x\n", mmutest(0x0));
+    // PDEBUG("MMU Test with 0x100000: 0x%x\n", mmutest(0x100000));
 
 
     // print_page_table((uint64_t*) page_table_base(), 5);
@@ -251,18 +266,18 @@ void initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata_start){
     // print_page_table((uint64_t*) ((uint64_t)page_table_base() + (6 * PAGE_SIZE)), 512);
 
 
-    void* result;
+    // void* result;
     // result = _translate(0x100000);
-    // printf("Translation result of user memory: 0x%x\n", result);
+    // PDEBUG("Translation result of user memory: 0x%x\n", result);
     // result = _translate(0x0FFFFF);
-    // printf("Translation result of user memory - 1: 0x%x\n", result);
+    // PDEBUG("Translation result of user memory - 1: 0x%x\n", result);
     // result = _translate(PBASE);
-    // printf("Translation result of peripheral base: 0x%x\n", result);
-    result = _translate(0x100000);
-    printf("Translation result of user code segment: 0x%x\n", result);
+    // PDEBUG("Translation result of peripheral base: 0x%x\n", result);
+    // result = _translate(0x100000);
+    // PDEBUG("Translation result of user code segment: 0x%x\n", result);
 
 
-    // printf("\tTable initialization complete. Enabling MMU...\n");
+    // PDEBUG("\tTable initialization complete. Enabling MMU...\n");
 }
 
 // first PTE address ranges from 0x0 - 0x200 (which is 0x40000000 >> 21)
