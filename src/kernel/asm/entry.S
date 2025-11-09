@@ -65,9 +65,11 @@ user_context_ptr:
     mrs x1, SPSR_EL1
     stp x0, x1, [sp, #16 * 16]
 
+    #ifdef DEBUG
     mrs x1, ELR_EL1
     ldr x0, =pc_string
     bl printf
+    #endif
 
     // reload x0 and x1 to preserve the parameters passed to the kernel
     ldp x0, x1, [sp, #16 * 0]
@@ -153,12 +155,14 @@ sync_invalid_el1h:
 handle_el1_irq:
     kernel_entry
 
+    #ifdef DEBUG
     mrs x1, SPSR_EL1
     lsr x1, x1, #2
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     ldr x0, =my_string_3
     bl printf
+    #endif
 
     mrs x1, SPSR_EL1
     lsr x1, x1, #2
@@ -188,12 +192,14 @@ handle_el0_svc:
     // store user context into context variable
     store_context
 
+    #ifdef DEBUG
     mrs x1, SPSR_EL1
     lsr x1, x1, #2
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     ldr x0, =my_string_2
     bl printf
+    #endif
 
     // prepare arguments for the system call
     ldp x0, x1, [sp, #16 * 0]
@@ -221,12 +227,14 @@ handle_el0_irq:
     // store user context into context variable
     store_context
 
+    #ifdef DEBUG
     mrs x1, SPSR_EL1
     lsr x1, x1, #2
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     ldr x0, =my_string_3
     bl printf
+    #endif
 
     // put the register file pointer into x0
     mov x0, sp

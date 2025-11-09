@@ -28,12 +28,6 @@ mmu_init:
 
 
     // –––––––––––––––––––– NO VM FOR NOW –––––––––––––––––––– //
-
-    # // HERE!
-    ldr x0, =debug_str
-    bl printf
-
-
     ldr x0, =_page_table_base
     // put the page table base into the system register to denote page table 1
     // for now, set both kernel and user page tables to the same location
@@ -43,25 +37,13 @@ mmu_init:
     ldr x0, =0x80100010
     msr TCR_EL1, x0
 
-    // HERE!
-    ldr x0, =debug_str
-    bl printf
-
     isb
 
     ldr x0, =0x4400
     msr MAIR_EL1, x0
 
-    // HERE!
-    ldr x0, =debug_str
-    bl printf
-
     dsb ish
     isb
-
-    // HERE!
-    ldr x0, =debug_str
-    bl printf
 
     mrs x0, sctlr_el1
     orr x0, x0, #(1 << 0)      // M (MMU enable)
@@ -69,10 +51,6 @@ mmu_init:
 
     isb
     // ––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
-
-    # // HERE!
-    # ldr x0, =debug_str
-    # bl printf
 
     ldp x29, x30, [sp], #16
     ret

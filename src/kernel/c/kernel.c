@@ -36,7 +36,7 @@ void debug_init(){
 }
 
 void hardware_init(){
-    
+
     printf("Enabling interrupt controller...\n");
     enable_interrupt_controller();
 
@@ -56,7 +56,7 @@ void hardware_init(){
     irq_enable();
 
     printf("Initializing MMU...\n");
-    mmu_init();
+    // mmu_init();
 
     printf("Enabling system scheduler...\n");
     scheduler_init();
