@@ -39,7 +39,22 @@ mmu_enabled:
     and x0, x0, #1      // isolate bit 0 (M bit)
     ret
 
-.globl page_table_base
-page_table_base:
-    adrp x0, _page_table_base
+.globl page_frame_array_start
+page_frame_array_start:
+    adrp x0, __page_frame_array_start
+    ret
+
+.globl page_frame_array_end
+page_frame_array_end:
+    adrp x0, __page_frame_array_end
+    ret
+
+.globl kernel_start
+kernel_start:
+    adrp x0, __kernel_start
+    ret
+
+.globl kernel_end
+kernel_end:
+    adrp x0, __kernel_end
     ret

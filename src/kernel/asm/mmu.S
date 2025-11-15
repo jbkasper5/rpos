@@ -21,16 +21,14 @@ debug_str:
 mmu_init:
     stp x29, x30, [sp, #-16]!
 
-    ldr x0, =_page_table_base
-    ldr x1, =_page_table_metadata
     // c code to initialize the page tables
     bl initialize_page_tables
 
 
     // –––––––––––––––––––– NO VM FOR NOW –––––––––––––––––––– //
-    ldr x0, =_page_table_base
     // put the page table base into the system register to denote page table 1
     // for now, set both kernel and user page tables to the same location
+    mov x0, #0
     msr TTBR0_EL1, x0
     msr TTBR1_EL1, x0
 
@@ -53,4 +51,12 @@ mmu_init:
     // ––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 
     ldp x29, x30, [sp], #16
+    ret
+
+
+.globl walk
+walk:
+    // stage 1 el0 read translation
+    at S1E0R, x0
+    mrs x0, PAR_EL1
     ret
