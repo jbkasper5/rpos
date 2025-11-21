@@ -75,15 +75,6 @@ typedef struct pt_metadata_s{
     int16_t index;                  // signed int describing which entry in the parent table this belongs, -1 means invalid
 } pt_metadata_t;
 
-typedef union {
-    uint8_t value;
-    struct {
-        uint8_t owner         : 1;
-        uint8_t allocated     : 1;
-        uint8_t reserved      : 6;
-    } __attribute__((packed)) bits;
-} page_frame_t;
-
 // 4 GiB RAM = 2 ^ 32
 // 4 KiB pages = 2 ^ 12
 // 2 ^ 20 = (1 << 20) pages = (1 << 20) bytes given 1B metadata per page
@@ -91,6 +82,7 @@ typedef union {
 void mmu_init();
 void initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata);
 void create_kernel_identity_mapping();
+void initialize_page_frame_array();
 void create_peripheral_identity_mapping(pt_metadata_t* l0_page_table_metadata);
 void create_user_mapping(pt_metadata_t* pt0_metadata);
 void _alloc_pt_metadata(pt_level_t level);

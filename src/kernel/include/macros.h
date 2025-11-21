@@ -2,6 +2,7 @@
 #define __MACROS_H__
 
 #include <stdint.h>
+#include <stddef.h>
 
 typedef volatile uint32_t reg32_t;
 typedef volatile uint64_t reg64_t;
@@ -14,7 +15,12 @@ typedef uint16_t pid_t;
 #define PDEBUG(...)
 #endif
 
+#ifdef NULL
+#undef NULL
+#endif
+
 #define NULL        0
+
 #define FALSE       0
 #define TRUE        1
 

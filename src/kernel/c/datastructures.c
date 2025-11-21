@@ -19,7 +19,6 @@ void pq_add(pq_t* pq, uint64_t priority, uintptr_t element){
     _pq_swim(pq, pq->items++);
 }
 
-
 pqnode_t pq_pop(pq_t* pq){
     pqnode_t node = { .priority = 0, .element = 0 };
     if(!pq->items) return node;
