@@ -41,6 +41,7 @@ typedef struct page_frame_s{
 
 
 uintptr_t buddy_alloc(uint64_t bytes);
-void initialize_page_frame_array();
+uint64_t initialize_page_frame_array();
+uint8_t get_block_order(uint64_t addr);
 
 #endif

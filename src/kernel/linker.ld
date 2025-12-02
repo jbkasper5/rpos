@@ -41,6 +41,13 @@ SECTIONS {
     bss_end = .;
   } > KRAM : bss
 
+  . = ALIGN(0x10);
+  .kstack_top (NOLOAD) : {
+    __kstack_top = .;
+    . = . + 0x2000;
+    __kstack_bottom = .;
+  }
+
   __kernel_end = .;
 
   . = ALIGN(0x10);

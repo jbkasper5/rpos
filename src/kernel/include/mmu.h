@@ -80,9 +80,8 @@ typedef struct pt_metadata_s{
 // 2 ^ 20 = (1 << 20) pages = (1 << 20) bytes given 1B metadata per page
 
 void mmu_init();
-void initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata);
-void create_kernel_identity_mapping();
-void initialize_page_frame_array();
+uint64_t* initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata);
+uint64_t* create_kernel_identity_mapping();
 void create_peripheral_identity_mapping(pt_metadata_t* l0_page_table_metadata);
 void create_user_mapping(pt_metadata_t* pt0_metadata);
 void _alloc_pt_metadata(pt_level_t level);

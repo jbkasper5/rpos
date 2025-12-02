@@ -21,16 +21,17 @@ debug_str:
 mmu_init:
     stp x29, x30, [sp, #-16]!
 
-    // c code to initialize the page tables
+    // c code to initialize the kernel page tables
     bl initialize_page_tables
 
-
-    // –––––––––––––––––––– NO VM FOR NOW –––––––––––––––––––– //
-    // put the page table base into the system register to denote page table 1
-    // for now, set both kernel and user page tables to the same location
-    mov x0, #0
-    msr TTBR0_EL1, x0
+    // move returned L0 page table pointer into TTBR1_EL1
     msr TTBR1_EL1, x0
+    msr TTBR0_EL1, x0
+
+
+    // TODO: create the VM mapping for user processes
+    // this will have to be set in the context switching section of the kernel
+    # msr TTBR0_EL1, x0
 
     ldr x0, =0x80100010
     msr TCR_EL1, x0
@@ -48,7 +49,9 @@ mmu_init:
     msr sctlr_el1, x0
 
     isb
-    // ––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
+
+    ldr x0, =0x3fffd0
+    bl walk
 
     ldp x29, x30, [sp], #16
     ret

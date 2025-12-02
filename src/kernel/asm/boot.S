@@ -58,7 +58,8 @@ _start:
 
 master:
    // initialize UART and set up debugging via JLINK
-   mov sp, #KSTACK
+   adrp x0, __kstack_top
+   mov sp, x0
    bl uart_init
    
    #ifdef DEBUG
@@ -68,7 +69,8 @@ master:
    bl irq_init_vectors
 
    // initialize kernel stack for when we enter the trap handler
-   mov x0, #KSTACK
+   adrp x0, __kstack_top
+   mov sp, x0
    msr SP_EL1, x0
 
    // tell kernel to use SP_EL1 instead of SP_EL0
@@ -132,7 +134,8 @@ el1_entry:
    mov x0, #0b00000 // DAIF=0000 M[4:0]=00000 EL0t.
    msr SPSR_EL1, x0
 
-   mov sp, #KSTACK
+   adrp x0, __kstack_top
+   mov sp, x0
    bl kernel_main
    b _infinite
 

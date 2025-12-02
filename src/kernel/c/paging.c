@@ -1,6 +1,7 @@
 #include "paging.h"
 
 void* page_frame_array_start();
+void* page_frame_array_end();
 void* kernel_start();
 void* kernel_end();
 
@@ -23,6 +24,8 @@ uintptr_t _split_down(uint8_t req_order, uint8_t curr_order){
     PDEBUG("PFN: %d\n", pfn);
     PDEBUG("Buddy PFN: %d\n", buddy_pfn);
 
+
+    // TODO: at some point, verify if any coalescing is required as we split blocks downward
     list_remove(buddy_lists[curr_order].next);
     list_add(&frame_metadata[buddy_pfn].list, &buddy_lists[curr_order - 1]);
     list_add(&og_frame->list, &buddy_lists[curr_order - 1]);
@@ -42,8 +45,18 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
     // mark the block as allocated
     block->flags.bits.allocated = TRUE;
 
-    // return the frame
-    return (uintptr_t) block;
+    uint64_t pfn = block - frame_metadata;
+
+    // return the pointer to the start of the allocated page
+    return pfn << 12;
+}
+
+void buddy_free(page_frame_t* frame){
+    // mark the frame as free
+    // look in the buddy list for any free buddies of the same size
+    // if the list contains a free buddy of the same size, check for coalescing
+    // if coalescing is possible, remove existing buddy from the list, merge blocks, and promote order
+    // then add the new block to the higher order buddy list
 }
 
 // page allocator - uses buddy allocation
@@ -67,23 +80,36 @@ uintptr_t buddy_alloc(uint64_t bytes){
     return 0;
 }
 
-void initialize_page_frame_array(){
-    frame_metadata = page_frame_array_start();
-    frame_metadata->order = MAX_ORDER;
-    INIT_LIST_HEAD(&frame_metadata->list);
-    for (int i = 0; i <= MAX_ORDER; i++) INIT_LIST_HEAD(&buddy_lists[i]);
-    list_add(&frame_metadata->list, &buddy_lists[MAX_ORDER]);
+static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t available_pages){
+    PDEBUG("Initializing buddy allocator for 0x%x available pages...\n", available_pages)
+    uint64_t curr_pfn = start_page_addr >> 12;
+    for(int64_t i = MAX_ORDER; i >= 0; i--){
+        if(available_pages & (1ULL << i)){
+            frame_metadata[curr_pfn].order = i;
+            list_add(&frame_metadata[curr_pfn].list, &buddy_lists[i]);
+            curr_pfn += (1ULL << i);
+        }
+    }
+}
 
-    uint64_t kernel_size = (uint64_t) kernel_end();
-    PDEBUG("Kernel size: 0x%x\n", kernel_size);
-    PDEBUG("Frame metadata start: 0x%x\n", frame_metadata);
-    page_frame_t* frame = (page_frame_t*) buddy_alloc(kernel_size);
+uint8_t get_block_order(uint64_t addr){
+    if(addr & 0xFFF){
+        return -1;
+    }
 
-    // calculate page index in the metadata
-    uint64_t physical_page_start = (frame - frame_metadata);
+    uint64_t pfn = addr >> 12;
+    return frame_metadata[pfn].order;
+}
 
-    // shift left by 12 to get physical address of the page
-    physical_page_start <<= 12;
-    
-    PDEBUG("Allocated kernel memory. Block start: 0x%x, block order: %d\n", physical_page_start, frame->order);
+uint64_t initialize_page_frame_array(){
+    for(int i = 0; i <= MAX_ORDER; i++) INIT_LIST_HEAD(&buddy_lists[i]);
+    frame_metadata = (page_frame_t*) page_frame_array_start();
+    uint64_t reserved_memory = (uint64_t) page_frame_array_end();
+    uint64_t reserved_pages = (reserved_memory + 0xFFF) >> 12;
+    uint64_t start_page_addr = (reserved_memory + 0xFFF) & (~0xFFF);
+
+    // stay in the lower 1 GiB for now
+    uint64_t available_pages = (1ULL << 18) - reserved_pages;
+    _initialize_buddy_allocator(start_page_addr, available_pages);   
+    return reserved_pages;
 }
