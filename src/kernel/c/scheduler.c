@@ -43,6 +43,13 @@ void scheduler_init(){
     proclist.proclist[2].registers.sp = (uint64_t) (USTACK - (1 << 11));
     proclist.proclist[2].registers.spsr = 0;
     proclist.proclist[2].state = PROCESS_READY;
+
+    // third user process will lead to assembly for testing purposes
+    // proclist.processes++;
+    // proclist.proclist[3].registers.pc = (uint64_t) &do_user_things_2;
+    // proclist.proclist[3].registers.sp = (uint64_t) (USTACK - (1 << 11));
+    // proclist.proclist[3].registers.spsr = 0;
+    // proclist.proclist[3].state = PROCESS_READY;
 }
 
 void print_reg_file(reglist_t* regfile){
@@ -106,7 +113,7 @@ void scheduler(reglist_t* reg_addr){
         proclist.proclist[active_process].state = PROCESS_RUNNING;
     }
 
-    printf("Scheduled %d\n", active_process);
+    PDEBUG("Scheduled %d\n", active_process);
 
     // prime the scheduler timer for another quantum
     prime_physical_timer();
@@ -128,9 +135,9 @@ void deschedule(){
     // move the current running process to the waiting queue
     proclist.proclist[active_process].state = PROCESS_BLOCKED;
 
-    printf("Descheduling %d\n", active_process);
+    PDEBUG("Descheduling %d\n", active_process);
 
-    // printf("Context file saved for process %d: \n", active_process);
+    // PDEBUG("Context file saved for process %d: \n", active_process);
     // print_reg_file(user_context_ptr);
 
     // reschedule now that we changed the state of things
@@ -138,7 +145,7 @@ void deschedule(){
 }
 
 void reschedule(uint64_t procnum){
-    printf("Rescheduling %d\n", procnum);
+    PDEBUG("Rescheduling %d\n", procnum);
     proclist.proclist[procnum].state = PROCESS_READY;
     scheduler(user_context_ptr);
 }

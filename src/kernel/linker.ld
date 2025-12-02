@@ -2,8 +2,8 @@ ENTRY(_start)
 
 /* Total of 512 MB of RAM, 256 for kernel, 256 for user*/
 MEMORY {
-  KRAM (rwx) : ORIGIN = 0x000000, LENGTH = 0x100000  /* 128 MiB for kernel */
-  URAM (rwx) : ORIGIN = 0x100000, LENGTH = 0x100000  /* 128 MiB for user */
+  KRAM (rwx) : ORIGIN = 0x000000, LENGTH = 0x800000  /* 128 MiB for kernel */
+  URAM (rwx) : ORIGIN = 0x800000, LENGTH = 0x100000  /* 128 MiB for user */
 }
 
 PHDRS {
@@ -15,20 +15,8 @@ PHDRS {
 
 SECTIONS {
   . = 0x8000;
-  _page_table_metadata = .;
-  .page_table_metadata . : {
-    KEEP(*(.page_table_metadata))
-    . = . + 0x8000;   /* Reserve 32 KiB for metadata, for example */
-  } > KRAM : data
 
-  . = 0x10000;
-  . = ALIGN(0x1000);
-  _page_table_base = .;
-  .page_table . : {
-    KEEP(*(.page_table))
-    . = . + 0x2000;   /* Ensure enough space for L1 and L2 page tables */
-  } > KRAM : data
-
+  __kernel_start = .;
   .text.boot 0x80000 : { 
     *(.text.boot) 
   } > KRAM : text
@@ -52,6 +40,22 @@ SECTIONS {
     *(.bss*)
     bss_end = .;
   } > KRAM : bss
+
+  . = ALIGN(0x10);
+  .kstack_top (NOLOAD) : {
+    __kstack_top = .;
+    . = . + 0x2000;
+    __kstack_bottom = .;
+  }
+
+  __kernel_end = .;
+
+  . = ALIGN(0x10);
+  .page_frame_array (NOLOAD) : {
+    __page_frame_array_start = .;
+    . = . + 0x100000;
+    __page_frame_array_end = .;
+  } > KRAM : data
 
   .uram.text : {
     *(.uram.text)

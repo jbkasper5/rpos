@@ -12,13 +12,12 @@ void pq_destroy(){
     return;
 }
 
-void pq_add(pq_t* pq, int priority, uintptr_t element){
+void pq_add(pq_t* pq, uint64_t priority, uintptr_t element){
     if(pq->items >= pq->size) return; // or realloc
     pq->heap[pq->items].priority = priority;
     pq->heap[pq->items].element = element;
     _pq_swim(pq, pq->items++);
 }
-
 
 pqnode_t pq_pop(pq_t* pq){
     pqnode_t node = { .priority = 0, .element = 0 };

@@ -2,7 +2,7 @@
 #include "macros.h"
 
 #define URAM_FN __attribute__((section(".uram.text")))
-#define BLIT 500000000
+#define BLIT 500000000ULL
 
 
 void idle_proc(){
@@ -16,13 +16,13 @@ URAM_FN void dot(int pin){
     syscall(SYS_PULSE_LED, pin, TRUE);
 
     // sleep quarter second while on
-    syscall(SYS_NANOSLEEP, BLIT, 1);
+    syscall(SYS_NANOSLEEP, BLIT);
 
     // turn 17 off
     syscall(SYS_PULSE_LED, pin, FALSE);
 
     // sleep 1 blit off
-    syscall(SYS_NANOSLEEP, BLIT, 1);
+    syscall(SYS_NANOSLEEP, BLIT);
 }
 
 URAM_FN void dash(int pin){
@@ -30,17 +30,17 @@ URAM_FN void dash(int pin){
     syscall(SYS_PULSE_LED, pin, TRUE);
 
     // sleep 3/4 second
-    syscall(SYS_NANOSLEEP, (3 * BLIT), 1);
+    syscall(SYS_NANOSLEEP, 5 * BLIT);
 
     // turn 17 off
     syscall(SYS_PULSE_LED, pin, FALSE);
 
     // sleep 1 blit off
-    syscall(SYS_NANOSLEEP, BLIT, 1);
+    syscall(SYS_NANOSLEEP, BLIT);
 }
 
-URAM_FN void pause(int blits){
-    syscall(SYS_NANOSLEEP, blits * BLIT, 1);
+URAM_FN void pause(uint64_t blits){
+    syscall(SYS_NANOSLEEP, blits * BLIT);
 }
 
 URAM_FN void morse_character(char c, int pin){
@@ -73,7 +73,7 @@ URAM_FN void morse_character(char c, int pin){
         case 'z': case 'Z': dash(pin); dash(pin); dot(pin); dot(pin); break;
         case ' ': pause(1); break;
     }
-    pause(2);
+    pause(1);
 }
 
 URAM_FN void morse(char* str, int pin){
@@ -87,14 +87,16 @@ URAM_FN void do_user_things(){
     while(TRUE){
         syscall(SYS_WRITE, NULL, str);
         morse(str, USER_PIN);
+        pause(5);
     }
 }
 
 URAM_FN void do_user_things_2(){
     // write system call takes filedescriptor, buffer, count as arguments
-    char str[] = "Free Snacks\n";
+    char str[] = "Free snacks\n";
     while(TRUE){
         syscall(SYS_WRITE, NULL, str);
         morse(str, USER_PIN_2);
+        pause(5);
     }
 }

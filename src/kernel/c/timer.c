@@ -11,7 +11,6 @@ uint32_t curr_val_1 = 0;
 const uint32_t interval_3 = CLOCKHZ / 4;
 uint32_t curr_val_3 = 0;
 
-// BUG: PQ seems bugged, processes happen to deadlock by mistake
 pqnode_t heap_storage[MAX_PROCESSES];
 pq_t sleep_timer_queue = {
     .heap = heap_storage,
@@ -34,7 +33,7 @@ void handle_timer_1(){
     REGS_TIMER->compare[1] = curr_val_1;
     REGS_TIMER->control_status |= SYS_TIMER_IRQ_1;
 
-    printf("Timer 1 received.\n");
+    PDEBUG("Timer 1 received.\n");
 }
 
 void handle_timer_3(){
@@ -42,12 +41,12 @@ void handle_timer_3(){
     REGS_TIMER->compare[3] = curr_val_3;
     REGS_TIMER->control_status |= SYS_TIMER_IRQ_3;
 
-    printf("Timer 3 received.\n");
+    PDEBUG("Timer 3 received.\n");
 }
 
 void handle_physical_timer(){
     prime_physical_timer();
-    printf("Physical timer received.\n");
+    PDEBUG("Physical timer received.\n");
 }
 
 void handle_virtual_timer(){
@@ -59,12 +58,12 @@ void handle_virtual_timer(){
     reschedule((uint64_t) node.element);
 
     if(sleep_timer_queue.items){
-        printf("Items remaining in queue: %d\n", sleep_timer_queue.items);
+        PDEBUG("Items remaining in queue: %d\n", sleep_timer_queue.items);
         // prime the next request, if there is one
         prime_virtual_timer(pq_peek(&sleep_timer_queue).priority);
     }else{
         // otherwise, disable the timer until someone else makes the nanosleep syscall
-        printf("No more sleep requests, clearing virtual timer. \n");
+        PDEBUG("No more sleep requests, clearing virtual timer. \n");
         clear_virtual_timer();
     }
 }
@@ -87,6 +86,7 @@ void timer_sleep(uint32_t milliseconds){
 }
 
 void timer_nanosleep(uint64_t nanoseconds){
+    // TODO: CLOCKHZ needs tuning, nanoseconds don't properly convert to seconds
     uint64_t timer_request = ((nanoseconds * CLOCKHZ) / 1000000000ULL) + read_virtual_timer();
 
     // priority = absolute timer request, element = active process
@@ -96,7 +96,7 @@ void timer_nanosleep(uint64_t nanoseconds){
     // the timer, since the queue always has the earliest deadline first
 
     timer_request = pq_peek(&sleep_timer_queue).priority;
-    printf("Timer request value: 0x%x\n", timer_request);
+    PDEBUG("Timer request value: 0x%x\n", timer_request);
     prime_virtual_timer(timer_request);
     deschedule();
 }

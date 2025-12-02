@@ -35,10 +35,10 @@ void gpio_pin_enable(uint8_t pinNumber){
 
 void pulse(uint32_t pin, bool on){
     if(on){
-        printf("Turning %d off...\n", pin);
+        PDEBUG("Turning %d off...\n", pin);
         gpio_set_pin_low(pin);
     }else{
-        printf("Turning %d on...\n", pin);
+        PDEBUG("Turning %d on...\n", pin);
         gpio_set_pin_high(pin);
     }
 }

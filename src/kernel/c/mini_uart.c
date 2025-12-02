@@ -25,7 +25,7 @@ void uart_init(){
     uart_putc('\n');
     uart_putc('\n');
 
-    printf("UART Initialized.\n");
+    PDEBUG("UART Initialized.\n");
 }
 
 void uart_putc(char c){

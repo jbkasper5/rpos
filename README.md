@@ -24,7 +24,7 @@ By default, these GPIO pins on the pi are not configured for the JTAG interface.
 
 ```c
 // JTAG init above
-printf("Waiting for debug gate to be released...\n");
+PDEBUG("Waiting for debug gate to be released...\n");
 int gate = 0;
 while(!gate);
 ```
