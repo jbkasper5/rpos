@@ -65,6 +65,10 @@ user_context_ptr:
     mrs x1, SPSR_EL1
     stp x0, x1, [sp, #16 * 16]
 
+    // store user page table base into the stack as well
+    mrs x0, TTBR0_EL1
+    str x0, [sp, 16 * 17]
+
     #ifdef DEBUG
     mrs x1, ELR_EL1
     ldr x0, =pc_string
@@ -98,9 +102,14 @@ user_context_ptr:
     // write value back into stack pointer
     msr SP_EL0, x0
 
+    // restore user program counter and processor state
     ldp x0, x1, [sp, #16 * 16]
     msr ELR_EL1, x0
     msr SPSR_EL1, x1
+
+    // restore user page table base from stack
+    ldr x0, [sp, #16 * 17]
+    msr TTBR0_EL1, x0
 
     ldp x0, x1, [sp, #16 * 0]
     add sp, sp, #S_FRAME_SIZE

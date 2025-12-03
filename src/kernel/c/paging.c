@@ -113,3 +113,15 @@ uint64_t initialize_page_frame_array(){
     _initialize_buddy_allocator(start_page_addr, available_pages);   
     return reserved_pages;
 }
+
+void map(uint64_t virt_block, uint64_t phys_block, uint8_t block_order, uint64_t flags, uint64_t pid){
+    // block order of 9 means it's a 2MiB block and can be block allocated in an L2 table instead
+    int idx0 = (virt_block >> 39) & 0x1FF;
+    int idx1 = (virt_block >> 30) & 0x1FF;
+    int idx2 = (virt_block >> 21) & 0x1FF;
+    if(block_order >= 9){
+
+    }else{
+
+    }
+}
