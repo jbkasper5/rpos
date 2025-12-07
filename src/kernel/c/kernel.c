@@ -9,6 +9,7 @@
 #include "mmu.h"
 #include "mailbox.h"
 #include "lcd.h"
+#include "sdcard.h"
 
 
 void debug_init(){
@@ -57,6 +58,7 @@ void hardware_init(){
     printf("Enabling IRQ interrupts...\n");
     irq_enable();
 
+    // TODO: need to set up VM for the framebuffer
     // printf("Initializing MMU...\n");
     // mmu_init();
 
@@ -65,7 +67,6 @@ void hardware_init(){
 
     printf("Enabling LCD panel...\n");
     init_framebuffer();
-
 
     printf("Hardware initialization complete.\n\n");
 }
@@ -80,8 +81,9 @@ int kernel_main(){
 
     hardware_init();
 
-    // turn 18 on
-    pulse(DEBUG_PIN, FALSE);
+    init_sd();
+    read_sd();
+    while(TRUE);
 
     PDEBUG("Waiting complete, dropping to user mode...\n");
     start_scheduler();
