@@ -8,54 +8,6 @@ _start:
    cbz x0, master
    b _infinite
 
-
-
-# test_master:
-#    mov sp, #KSTACK
-#    bl uart_init
-
-#    #ifdef DEBUG
-#    bl debug_init
-#    #endif
-
-#    bl irq_init_vectors
-   
-#    // set up kernel stack when we trap into exception handler
-#    mov x0, #KSTACK
-#    msr SP_EL1, x0
-
-#    msr SCTLR_EL2, xzr
-#    msr HCR_EL2, xzr
-
-#    mrs x0, SCR_EL3
-#    orr x0, x0, #(1<<10) // RW EL2 Execution state is AArch64.
-#    orr x0, x0, #(1<<0) // NS EL1 is Non-secure world.
-#    msr SCR_EL3, x0
-#    mov x0, #0b01001 // DAIF=0000
-#    msr SPSR_EL3, x0 // M[4:0]=01001 EL2h must match SCR_EL3.RW
-
-#    adr x0, el2_entry // el2_entry points to the first instruction of
-#    msr ELR_EL3, x0 
-
-#    eret
-
-# test_el1_entry:
-#    // EL1 confirmed
-#    bl get_el
-#    mov x0, #0b00000 // DAIF=0000 M[4:0]=00000 EL0t.
-#    msr SPSR_EL1, x0
-
-#    // set up user stack
-#    mov x0, #USTACK
-#    msr SP_EL0, x0
-
-#    adr x0, el0_entry // el1_entry points to the first instruction of
-#    msr ELR_EL1, x0 // EL0 code.
-#    eret
-
-# el0_entry:
-#    b do_user_things
-
 master:
    // initialize UART and set up debugging via JLINK
    adrp x0, __kstack_top
@@ -72,6 +24,10 @@ master:
    adrp x0, __kstack_top
    mov sp, x0
    msr SP_EL1, x0
+
+   mrs x0, CPTR_EL3
+   bic x0, x0, #(3 << 10)      // FPEN bits -> allow FP at EL2/EL1
+   msr CPTR_EL3, x0
 
    // tell kernel to use SP_EL1 instead of SP_EL0
    # msr SPSel, #1
@@ -117,6 +73,13 @@ el2_entry:
    adr x0, el1_entry // el1_entry points to the first instruction of
    msr ELR_EL2, x0 // EL1 code.
 
+   mrs x0, cptr_el2
+   bic x0, x0, #(1 << 10)
+   msr cptr_el2, x0
+   isb
+
+   mrs x0, cptr_el2
+
    // specify the kernel to use SP_EL1
    msr spsel, #1
 
@@ -131,11 +94,24 @@ el1_entry:
    # clear the bss segment
    bl memzero
 
+
    mov x0, #0b00000 // DAIF=0000 M[4:0]=00000 EL0t.
    msr SPSR_EL1, x0
 
+   // At EL1, MMU off
+   mrs x0, cpacr_el1
+   orr x0, x0, #(3<<20)    // enable FP/NEON
+   msr cpacr_el1, x0
+   isb
+
+   mrs x0, cpacr_el1
+
+   mov w1, #0xBEEF
+   dup v0.16b, w1
+
    adrp x0, __kstack_top
    mov sp, x0
+
    bl kernel_main
    b _infinite
 
