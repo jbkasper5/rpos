@@ -16,17 +16,27 @@ LINKERFILE := $(SRC_DIR)/linker.ld
 LINKER := aarch64-none-elf-ld
 ARMSTUB_BIN := $(PROD_DIR)/armstub.bin
 
+MOUNT_PREFACE:=
+
 DEBUG ?= 0
 
 ifeq ($(DEBUG), 1)
 	CFLAGS += -DDEBUG -g
 endif
 
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+ifeq ($(UNAME_S),Linux)
+  OS := linux
+  MOUNT_PREFACE=u
+endif
+
 
 all: $(BIN_DIR) $(KERNEL_IMG) $(ARMSTUB_BIN)
-	./scripts/mount.sh
+	./${MOUNT_PREFACE}scripts/mount.sh
 	cp -r $(PROD_DIR)/* $(SDCARD_DIR)/
-	./scripts/eject.sh
+	./${MOUNT_PREFACE}scripts/eject.sh
 
 local: $(BIN_DIR) $(KERNEL_IMG)
 
