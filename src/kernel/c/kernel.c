@@ -10,7 +10,7 @@
 #include "mailbox.h"
 #include "lcd.h"
 #include "sdcard.h"
-
+#include "fonttest.h"
 
 void debug_init(){
 
@@ -40,14 +40,20 @@ void debug_init(){
 
 void hardware_init(){
 
+    test_font();
+
+    printf("Enabling LCD panel...\n");
+    init_framebuffer();
+
+
     printf("Enabling interrupt controller...\n");
     enable_interrupt_controller();
 
     printf("Enabling system timers...\n");
     timer_init();
 
-    printf("Enabling physical timer...\n");
-    physical_timer_enable();
+    // printf("Enabling physical timer...\n");
+    // physical_timer_enable();
 
     printf("Enabling virtual timer...\n");
     virtual_timer_enable();
@@ -65,9 +71,7 @@ void hardware_init(){
     printf("Enabling system scheduler...\n");
     scheduler_init();
 
-    printf("Enabling LCD panel...\n");
-    init_framebuffer();
-
+    // enable the font
     printf("Hardware initialization complete.\n\n");
 }
 
@@ -81,9 +85,9 @@ int kernel_main(){
 
     hardware_init();
 
-    init_sd();
-    read_sd();
-    while(TRUE);
+    while(TRUE){
+        uart_putc(uart_getc());
+    }
 
     PDEBUG("Waiting complete, dropping to user mode...\n");
     start_scheduler();

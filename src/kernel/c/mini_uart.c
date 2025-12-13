@@ -2,6 +2,8 @@
 #include "gpio.h"
 #include "utils.h"
 #include "printf.h"
+#include "fonttest.h"
+#include "lcd.h"
 
 #define TXD 14
 #define RXD 15
@@ -35,6 +37,8 @@ void uart_putc(char c){
     }
     while(!(REGS_AUX->mu_lsr & 0x20));
     REGS_AUX->mu_io = c;
+
+    if(panel_ready()) print_glyph(c);
 }
 
 char uart_getc(){

@@ -49,7 +49,7 @@ void handle_irq(uint64_t reg_addr, uint8_t el){
     uint32_t irq = REGS_BCMIRQ->irq0_pending_0;
 	uint32_t gic_irq = REGS_GICC->gicc_iar;
 
-	// PDEBUG("BCM IRQ: %d, GIC IRQ: %d\n", irq, gic_irq);
+	PDEBUG("BCM IRQ: %d, GIC IRQ: %d\n", irq, gic_irq);
     while(irq){
         if(irq & AUX_IRQ){
             irq &= ~AUX_IRQ;

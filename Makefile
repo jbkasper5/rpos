@@ -38,7 +38,7 @@ $(KERNEL_IMG): $(TARGET)
 	aarch64-none-elf-objcopy -O binary $^ $@
 
 # @ is the rule, ^ is the prereqs
-$(TARGET): $(OBJS)
+$(TARGET): $(OBJS) $(BIN_DIR)/c/font.o
 	$(LINKER) -o $@ $^ -T $(LINKERFILE) $(LFLAGS)
 
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c
@@ -60,6 +60,10 @@ $(ARMSTUB_BIN): $(BIN_DIR)/armstub/armstub_s.o
 
 $(BIN_DIR)/armstub/armstub_s.o: src/armstub/armstub.S
 	$(CC) $(CFLAGS) -MMD -c $< -o $@
+
+
+$(BIN_DIR)/c/font.o: $(SRC_DIR)/fonts/tamzen10x20.psf
+	$(LINKER) -r -b binary $< -o $@
 
 clean:
 	rm -rf $(BIN_DIR)

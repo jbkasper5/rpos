@@ -1,4 +1,7 @@
 #include "printf.h"
+#include "lcd.h"
+#include "macros.h"
+
 
 #define BUFSIZE         128
 char conversion_buffer[BUFSIZE];
