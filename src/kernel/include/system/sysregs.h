@@ -57,7 +57,7 @@ typedef union {
 } sctlr_el3_t;
 
 
-scr_el3_t scr_el3_value = {0};
+sctlr_el3_t scr_el3_value = {0};
 
 typedef union{
     struct {
