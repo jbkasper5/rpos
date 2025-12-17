@@ -4,7 +4,7 @@ SDCARD_DIR := sdcard
 PROD_DIR := prod
 C_SRCS = $(shell find $(SRC_DIR) -type f -name '*.c') 
 ASM_SRCS = $(shell find $(SRC_DIR) -type f -name '*.S')
-OBJS = $(patsubst $(SRC_DIR)/%.c, $(BIN_DIR)/%.o, $(C_SRCS)) $(patsubst $(SRC_DIR)/%.S, $(BIN_DIR)/%.o, $(ASM_SRCS))
+OBJS = $(patsubst $(SRC_DIR)/%.c, $(BIN_DIR)/%.o, $(C_SRCS)) $(patsubst $(SRC_DIR)/%.S, $(BIN_DIR)/%_s.o, $(ASM_SRCS))
 
 TARGET := exe
 KERNEL_IMG := $(PROD_DIR)/kernel8-pi4.img
@@ -38,14 +38,14 @@ $(KERNEL_IMG): $(TARGET)
 	aarch64-none-elf-objcopy -O binary $^ $@
 
 # @ is the rule, ^ is the prereqs
-$(TARGET): $(OBJS) $(BIN_DIR)/c/font.o
+$(TARGET): $(OBJS) $(BIN_DIR)/font.o
 	$(LINKER) -o $@ $^ -T $(LINKERFILE) $(LFLAGS)
 
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c
 	mkdir -p $(dir $@)
 	$(CC) -c $< -o $@ $(CFLAGS) $(INCLUDES)
 
-$(BIN_DIR)/%.o: $(SRC_DIR)/%.S
+$(BIN_DIR)/%_s.o: $(SRC_DIR)/%.S
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -o $@ -c $< $(INCLUDES)
 
@@ -62,7 +62,7 @@ $(BIN_DIR)/armstub/armstub_s.o: src/armstub/armstub.S
 	$(CC) $(CFLAGS) -MMD -c $< -o $@
 
 
-$(BIN_DIR)/c/font.o: $(SRC_DIR)/fonts/tamzen10x20.psf
+$(BIN_DIR)/font.o: $(SRC_DIR)/fonts/tamzen10x20.psf
 	$(LINKER) -r -b binary $< -o $@
 
 clean:
