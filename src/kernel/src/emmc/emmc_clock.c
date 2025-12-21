@@ -1,8 +1,15 @@
 #include "emmc/emmc.h"
-#include "mailbox/mailbox.h"
-#include "macros.h"
+#include "emmc/emmc_clock.h"
 
-bool wait_reg_mask(reg32_t* reg, uint32_t mask, bool set, uint32_t timeout);
+bool wait_reg_mask(reg32_t* reg, uint32_t mask, bool set, uint32_t timeout){
+    for(int cycles = 0; cycles <= timeout; cycles++){
+        if ((*reg & mask) ? set : !set){
+            return TRUE;
+        }
+        timer_sleep(1);
+    }
+    return FALSE;
+}
 
 uint32_t get_clock_divider(uint32_t base_clock, uint32_t target_rate) {
     uint32_t target_div = 1;
@@ -81,27 +88,27 @@ bool switch_clock_rate(uint32_t base_clock, uint32_t target_rate) {
 bool emmc_setup_clock() {
     EMMC->control2 = 0;
 
-    // uint32_t rate = mailbox_clock_rate(CT_EMMC);
+    uint32_t rate = mailbox_clock_rate(CT_EMMC);
 
-    // uint32_t n = EMMC->control[1];
-    // n |= EMMC_CTRL1_CLK_INT_EN;
-    // n |= get_clock_divider(rate, SD_CLOCK_ID);
-    // n &= ~(0xf << 16);
-    // n |= (11 << 16);
+    uint32_t n = EMMC->control[1];
+    n |= EMMC_CTRL1_CLK_INT_EN;
+    n |= get_clock_divider(rate, SD_CLOCK_ID);
+    n &= ~(0xf << 16);
+    n |= (11 << 16);
 
-    // EMMC->control[1] = n;
+    EMMC->control[1] = n;
 
-    // if (!wait_reg_mask(&EMMC->control[1], EMMC_CTRL1_CLK_STABLE, TRUE, 2000)) {
-    //     printf("EMMC_ERR: SD CLOCK NOT STABLE\n");
-    //     return FALSE;
-    // }
+    if (!wait_reg_mask(&EMMC->control[1], EMMC_CTRL1_CLK_STABLE, TRUE, 2000)) {
+        PDEBUG("EMMC_ERR: SD CLOCK NOT STABLE\n");
+        return FALSE;
+    }
 
-    // timer_sleep(30);
+    timer_sleep(30);
 
-    // //enabling the clock
-    // EMMC->control[1] |= 4;
+    //enabling the clock
+    EMMC->control[1] |= 4;
 
-    // timer_sleep(30);
+    timer_sleep(30);
 
     return TRUE;
 }

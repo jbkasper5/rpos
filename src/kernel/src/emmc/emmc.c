@@ -2,21 +2,11 @@
 #include "io/printf.h"
 #include "io/gpio.h"
 #include "emmc/emmc.h"
+#include "emmc/emmc_clock.h"
 #include "utils/timer.h"
 
 static emmc_device_t device = {0};
 static const emmc_cmd_t INVALID_CMD = RES_CMD;
-
-
-static bool wait_reg_mask(reg32_t* reg, uint32_t mask, bool set, uint32_t timeout){
-    for(int cycles = 0; cycles <= timeout; cycles++){
-        if ((*reg & mask) ? set : !set){
-            return TRUE;
-        }
-        timer_sleep(1);
-    }
-    return FALSE;
-}
 
 static uint32_t sd_error_mask(sd_error_t err){
     return 1 << (16 + (uint32_t) err);
@@ -108,7 +98,7 @@ static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
 
         set_last_error(intr_val);
 
-        PDEBUG("EMMC_DEBUG: IRQFLAGS: %X - %X - %X\n", EMMC->int_flags, EMMC->status, intr_val);
+        PDEBUG("EMMC_DEBUG: IRQFLAGS: 0x%x - 0x%x - 0x%x\n", EMMC->int_flags, EMMC->status, intr_val);
 
         device.last_success = FALSE;
         return FALSE;
@@ -151,8 +141,28 @@ static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
     return TRUE;
 }
 
-static bool emmc_app_command(int one, int two, int three){
-    return TRUE;
+static bool emmc_app_command(uint32_t command, uint32_t arg, uint32_t timeout) {
+
+    if (commands[command].index >= 60) {
+        PDEBUG("EMMC_ERR: INVALID APP COMMAND\n");
+        return FALSE;
+    }
+
+    device.last_command = commands[CTApp];
+
+    uint32_t rca = 0;
+
+    if (device.rca) {
+        rca = device.rca << 16;
+    }
+
+    if (emmc_issue_command( device.last_command, rca, 2000)) {
+        device.last_command = commands[command];
+
+        return emmc_issue_command( device.last_command, arg, 2000);
+    }
+
+    return FALSE;
 }
 
 static bool emmc_command(uint32_t command, uint32_t arg, uint32_t timeout){
@@ -182,7 +192,7 @@ static bool reset_command() {
         timer_sleep(1);
     }
 
-    PDEBUG("EMMC_ERR: Command line failed to reset properly: %X\n",  EMMC->control[1]);
+    PDEBUG("EMMC_ERR: Command line failed to reset properly: 0x%x\n",  EMMC->control[1]);
     return FALSE;
 }
 
@@ -190,7 +200,7 @@ static bool check_ocr(){
     bool passed = FALSE;
     for(int i = 0; i < 5; i++){
         if(!emmc_app_command(CTOcrCheck, 0, 2000)){
-            PDEBUG("EMMC_WARNING: APP CMD OCR CHECK TRY %d FAILED\n.", i + 1);
+            PDEBUG("EMMC_WARNING: APP CMD OCR CHECK TRY %d FAILED.\n", i + 1);
             passed = FALSE;
         }else{
             passed = TRUE;
@@ -281,7 +291,7 @@ static bool check_rca() {
         return FALSE;
     }
 
-    PDEBUG("EMMC_DEBUG: CARD ID: %X.%X.%X.%X\n", device.last_response[0], device.last_response[1], device.last_response[2], device.last_response[3]);
+    PDEBUG("EMMC_DEBUG: CARD ID: 0x%x.0x%x.0x%x.0x%x\n", device.last_response[0], device.last_response[1], device.last_response[2], device.last_response[3]);
 
     if (!emmc_command( CTSendRelativeAddr, 0, 2000)) {
         PDEBUG("EMMC_ERR: Failed to send Relative Addr\n");
@@ -291,7 +301,7 @@ static bool check_rca() {
 
     device.rca = (device.last_response[0] >> 16) & 0xFFFF;
     
-    PDEBUG("EMMC_DEBUG: RCA: %X\n", device.rca);
+    PDEBUG("EMMC_DEBUG: RCA: 0x%x\n", device.rca);
 
     PDEBUG("EMMC_DEBUG: CRC_ERR: %d\n", (device.last_response[0] >> 15) & 1);
     PDEBUG("EMMC_DEBUG: CMD_ERR: %d\n", (device.last_response[0] >> 14) & 1);
@@ -329,7 +339,7 @@ static bool set_scr() {
         return FALSE;
     }
 
-    PDEBUG("EMMC_DEBUG: GOT SRC: SCR0: %X SCR1: %X BWID: %X\n", device.scr.scr[0], device.scr.scr[1], device.scr.bus_widths);
+    PDEBUG("EMMC_DEBUG: GOT SRC: SCR0: 0x%x SCR1: 0x%x BWID: 0x%x\n", device.scr.scr[0], device.scr.scr[1], device.scr.bus_widths);
 
     device.block_size = 512;
 
@@ -362,8 +372,24 @@ static bool set_scr() {
     return TRUE;
 }
 
-static bool select_card(){
-    return FALSE;
+static bool select_card() {
+    if (!emmc_command( CTSelectCard, device.rca << 16, 2000)) {
+        PDEBUG("EMMC_ERR: Failed to select card\n");
+        return FALSE;
+    }
+
+    PDEBUG("EMMC_DEBUG: Selected Card\n");
+
+    uint32_t status = (device.last_response[0] >> 9) & 0xF;
+
+    if (status != 3 && status != 4) {
+        PDEBUG("EMMC_ERR: Invalid Status: %d\n", status);
+        return FALSE;
+    }
+
+    PDEBUG("EMMC_DEBUG: Status: %d\n", status);
+
+    return TRUE;
 }
 
 static bool emmc_card_reset(){
