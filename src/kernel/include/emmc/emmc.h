@@ -167,6 +167,7 @@ typedef struct  {
 bool emmc_init();
 int emmc_read(uint8_t *buffer, uint32_t size);
 void emmc_seek(uint64_t offset);
+void emmc_seek_sector(uint64_t _sector);
 
 
 

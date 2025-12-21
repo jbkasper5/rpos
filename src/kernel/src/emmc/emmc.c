@@ -481,10 +481,90 @@ bool emmc_init(){
     return success;
 }
 
-int emmc_read(uint8_t *buffer, uint32_t size){
-    return 0;
+bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) {
+    if (!device.sdhc) {
+        block_no *= 512;
+    }
+
+    if (bsize < device.block_size) {
+        printf("EMMC_ERR: INVALID BLOCK SIZE: \n", bsize, device.block_size);
+        return FALSE;
+    }
+
+    device.transfer_blocks = bsize / device.block_size;
+
+    if (bsize % device.block_size) {
+        printf("EMMC_ERR: BAD BLOCK SIZE\n");
+        return FALSE;
+    }
+
+    device.buffer = b;
+
+    cmd_type command = CTReadBlock;
+
+    if (write && device.transfer_blocks > 1) {
+        command = CTWriteMultiple;
+    } else if (write) {
+        command = CTWriteBlock;
+    } else if (!write && device.transfer_blocks > 1) {
+        command = CTReadMultiple;
+    } 
+
+    int retry_count = 0;
+    int max_retries = 3;
+
+    if (EMMC_DEBUG) printf("EMMC_DEBUG: Sending command: %d\n", command);
+
+    while(retry_count < max_retries) {
+        if (emmc_command( command, block_no, 5000)) {
+            break;
+        }
+
+        if (++retry_count < max_retries) {
+            printf("EMMC_WARN: Retrying data command\n");
+        } else {
+            printf("EMMC_ERR: Giving up data command\n");
+            return FALSE;
+        }
+    }
+
+    return TRUE;
 }
 
-void emmc_seek(uint64_t offset){
+int do_read(uint8_t *b, uint32_t bsize, uint32_t block_no) {
+    //TODO ENSURE DATA MODE...
 
+    if (!do_data_command( FALSE, b, bsize, block_no)) {
+        printf("EMMC_ERR: do_data_command failed\n");
+        return -1;
+    }
+
+    return bsize;
+}
+
+
+int emmc_read(uint8_t *buffer, uint32_t size) {
+    if (device.offset % 512 != 0) {
+        printf("EMMC_ERR: INVALID OFFSET: %d\n", device.offset);
+        return -1;
+    }
+
+    uint32_t block = device.offset / 512;
+
+    int r = do_read( buffer, size, block);
+
+    if (r != size) {
+        printf("EMMC_ERR: READ FAILED: %d\n", r);
+        return -1;
+    }
+
+    return size;
+}
+
+void emmc_seek(uint64_t _offset) {
+    device.offset = _offset;
+}
+
+void emmc_seek_sector(uint64_t _sector) {
+    device.offset = _sector * 512;
 }

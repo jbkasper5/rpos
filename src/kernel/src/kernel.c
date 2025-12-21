@@ -11,6 +11,7 @@
 #include "io/lcd.h"
 #include "io/fonttest.h"
 #include "emmc/emmc.h"
+#include "system/filesystem.h"
 
 void debug_init(){
 
@@ -92,7 +93,36 @@ int kernel_main(){
     hardware_init();
 
     PDEBUG("Reading sd card...\n");
-    emmc_read(NULL, 0);
+    mbr mbr;
+    emmc_read((uint8_t*) &mbr, sizeof(mbr));
+    print_partitions(&mbr);
+
+    // seek to start sector of the boot partition
+    emmc_seek_sector(0x4000);
+
+    sector sector;
+    printf("Parsing sector 0x4000...\n");
+    int result = emmc_read(&sector.data, sizeof(sector));
+    if(result){
+        printf("Sector parsed.\n");
+    }else{
+        printf("ERROR: Error parsing sector.\n");
+    }
+
+    // should be where the boot filesystem is written
+    emmc_seek_sector(18460);
+    printf("Parsing sector 18460...\n");
+    result = emmc_read(&sector.data, sizeof(sector));
+    if(result){
+        printf("Sector parsed.\n");
+    }else{
+        printf("ERROR: Error parsing sector.\n");
+    }
+
+    print_directory(&sector);
+    emmc_seek_sector(18461);
+    result = emmc_read(&sector.data, sizeof(sector));
+    print_directory(&sector);
 
     while(TRUE){
         uart_putc(uart_getc());
