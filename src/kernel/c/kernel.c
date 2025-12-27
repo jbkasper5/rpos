@@ -7,6 +7,8 @@
 #include "peripherals/gic.h"
 #include "scheduler.h"
 #include "mmu.h"
+#include "mailbox.h"
+#include "lcd.h"
 
 
 void debug_init(){
@@ -55,11 +57,15 @@ void hardware_init(){
     printf("Enabling IRQ interrupts...\n");
     irq_enable();
 
-    printf("Initializing MMU...\n");
-    mmu_init();
+    // printf("Initializing MMU...\n");
+    // mmu_init();
 
     printf("Enabling system scheduler...\n");
     scheduler_init();
+
+    printf("Enabling LCD panel...\n");
+    init_framebuffer();
+
 
     printf("Hardware initialization complete.\n\n");
 }
