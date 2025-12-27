@@ -18,8 +18,8 @@ void print_partitions(mbr* mbr){
     printf("END MBR.\n");
 }
 
-void print_directory(sector* s){
-    directory_entry* dir = (directory_entry*) s->data;
+void print_fat32_directory(sector* s){
+    fat32_directory_entry* dir = (fat32_directory_entry*) s->data;
     
     for(int i = 0; i < 16; i++){
         if(!(*((char*) dir))) break;
