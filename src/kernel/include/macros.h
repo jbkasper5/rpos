@@ -36,4 +36,6 @@ typedef uint16_t pid_t;
 
 #define WFI()       __asm__("wfi");
 
+#define PACKED      __attribute__((packed))
+
 #endif

@@ -30,6 +30,12 @@ SECTIONS {
     *(.rodata) 
   } > KRAM : rodata
 
+  .font ALIGN(0x10) : {
+    __font_start = .;
+    bin/font.o(*)
+    __font_end = .;
+  } > KRAM : rodata
+
   .data . : { 
     *(.data) 
   } > KRAM : data
