@@ -4,6 +4,9 @@
 #include "io/lcd.h"
 
 #define EMPTY_GLYPH ' '
+#define COLOR_WHITE 0xFFFFFFFF
+#define COLOR_BLACK 0xFF000000
+#define COLOR_GREEN 0xFF24BF57
 
 extern unsigned char _binary_src_kernel_fonts_tamzen10x20_psf_end[];
 extern unsigned char _binary_src_kernel_fonts_tamzen10x20_psf_size[];
@@ -38,8 +41,8 @@ static void _print_glyph(unsigned char* glyph_location){
 
         uint16_t mask = 1 << 15;  // start at leftmost bit (MSB = pixel 0)
         for (int col = 0; col < 10; col++){
-            if (r & mask) color = 0xFF000000;  // black pixel
-            else          color = 0xFFFFFFFF;  // white pixel
+            if (r & mask) color = COLOR_GREEN;  // black pixel
+            else          color = COLOR_BLACK;  // white pixel
 
             write_pixel(fb_idx + (row * 800) + col, color);
             mask >>= 1;

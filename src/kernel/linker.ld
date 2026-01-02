@@ -57,9 +57,13 @@ SECTIONS {
   __kernel_end = .;
 
   . = ALIGN(0x10);
+  /*
+    If uisng 1 GiB RAM: PFE = 24 bytes, 2^12 page size, 2^30 pages => 2^21 * 3 bytes
+    If using 4 GiB RAM: PFE = 24 bytes, 2^12 page size, 2^32 pages => 2^23 * 3 bytes
+  */
   .page_frame_array (NOLOAD) : {
     __page_frame_array_start = .;
-    . = . + 0x100000;
+    . = . + 0x600000; /* 2^21 x 3 bytes, only maps 1GiB */
     __page_frame_array_end = .;
   } > KRAM : data
 

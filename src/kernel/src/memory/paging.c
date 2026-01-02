@@ -1,4 +1,6 @@
 #include "memory/paging.h"
+#include "memory/virtual_memory.h"
+#include "memory/mem.h"
 
 void* page_frame_array_start();
 void* page_frame_array_end();
@@ -35,6 +37,7 @@ uintptr_t _split_down(uint8_t req_order, uint8_t curr_order){
     return _split_down(req_order, curr_order - 1);
 }
 
+
 uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
     // get the correctly sized frame from the buddy list
     page_frame_t* block = list_entry(buddy_lists[req_order].next, page_frame_t, list);
@@ -45,6 +48,10 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
     // mark the block as allocated
     block->flags.bits.allocated = TRUE;
 
+    // set the reference count to 1, since someone is requesting this page from the allocator
+    block->refcount = 1;
+
+    // convert the relative coordinate of the block within the frame metadata to a physical page address
     uint64_t pfn = block - frame_metadata;
 
     // return the pointer to the start of the allocated page
@@ -77,8 +84,20 @@ uintptr_t buddy_alloc(uint64_t bytes){
     }
     
     // at this point, no free blocks exist of the requested size
-    return 0;
+    return NULL;
 }
+
+
+/**
+ * @brief Allocates and zeroes a single page for a page table   
+ * @return          Address of the page      
+ */
+uintptr_t buddy_alloc_pt(){
+    uintptr_t pt = buddy_alloc(PAGE_SIZE);
+    memset((void*) pt, 0, PAGE_SIZE / 16, 16);
+    return pt;
+}
+
 
 static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t available_pages){
     PDEBUG("Initializing buddy allocator for 0x%x available pages...\n", available_pages)
@@ -112,16 +131,4 @@ uint64_t initialize_page_frame_array(){
     uint64_t available_pages = (1ULL << 18) - reserved_pages;
     _initialize_buddy_allocator(start_page_addr, available_pages);   
     return reserved_pages;
-}
-
-void map(uint64_t virt_block, uint64_t phys_block, uint8_t block_order, uint64_t flags, uint64_t pid){
-    // block order of 9 means it's a 2MiB block and can be block allocated in an L2 table instead
-    int idx0 = (virt_block >> 39) & 0x1FF;
-    int idx1 = (virt_block >> 30) & 0x1FF;
-    int idx2 = (virt_block >> 21) & 0x1FF;
-    if(block_order >= 9){
-
-    }else{
-
-    }
 }

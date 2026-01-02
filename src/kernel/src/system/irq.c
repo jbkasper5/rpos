@@ -32,6 +32,7 @@ const char entry_error_messages[16][32] = {
 };
 
 void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t address){
+	disable_panel();
     printf("ERROR CAUGHT: %s - %d, ESR_EL1: %x, ELR_EL1: %x\n", entry_error_messages[type], type, esr, address);
 }
 

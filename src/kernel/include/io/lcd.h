@@ -23,11 +23,8 @@
 
 #define MBX ((mailbox_regs_t*)(PBASE + 0xB880))
 
-void mailbox_write(uint8_t channel, uint32_t data);
+void mailbox_write(uint8_t channel, uint64_t data);
 uint32_t mailbox_read(uint8_t channel);
-
-
-
 
 #include "macros.h"
 
@@ -39,6 +36,9 @@ typedef struct frame_s{
     uint32_t height;
     uint32_t pitch;
 } frame_t;
+
+
+extern frame_t frame;
 
 void scroll();
 int panel_ready();

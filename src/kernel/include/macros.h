@@ -15,6 +15,10 @@ typedef uint16_t pid_t;
 #define PDEBUG(...)
 #endif
 
+#define INFO(...) printf("INFO | "); printf(__VA_ARGS__);
+#define WARNING(...) printf("WARNING | "); printf(__VA_ARGS__);
+#define ERROR(...) printf("ERROR | "); printf(__VA_ARGS__);
+
 #ifdef NULL
 #undef NULL
 #endif

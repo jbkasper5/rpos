@@ -3,14 +3,16 @@
 #include "io/printf.h"
 #include "memory/mem.h"
 #include "macros.h"
+#include "memory/mmap.h"
 
 #define NUM_LINES 24
 #define LINE_WIDTH 100
 
+frame_t frame;
+
 bool LCD_READY = FALSE;
 
 static uint32_t mb[1024] __attribute__((aligned(16)));
-static frame_t frame;
 
 static void _init_framebuffer(uint32_t* mb, uint32_t width, uint32_t height, uint32_t depth) {
     uint32_t i = 0;
@@ -72,6 +74,10 @@ static void _init_framebuffer(uint32_t* mb, uint32_t width, uint32_t height, uin
     frame.width = width;
     frame.height = height;
     frame.pitch = pitch;
+
+    size_t fb_size = 800 * 480 * 4;
+    uint64_t n_pages = (fb_size + PAGE_SIZE - 1) >> 12;
+    uintptr_t addr = ((uintptr_t) fb_bytes);
 }
 
 static void fill_screen(frame_t* frame, uint32_t argb){
@@ -95,7 +101,7 @@ void scroll(){
 
     uint32_t* last_line = frame.fb + (line_bytes * (NUM_LINES - 1));
 
-    memset(last_line, 0xFFFFFFFF, line_bytes, sizeof(uint32_t));
+    memset(last_line, 0xFF000000, line_bytes, sizeof(uint32_t));
 }
 
 int panel_ready(){
@@ -110,7 +116,7 @@ int init_framebuffer(){
     // green fill
     // fill_screen(frame, 0xFF00c648);
 
-    fill_screen(&frame, 0xFFFFFFFF);
+    fill_screen(&frame, 0xFF000000);
     // PDEBUG("Panel initialization result: %d\n", ok);
 
     LCD_READY = TRUE;

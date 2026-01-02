@@ -23,4 +23,6 @@ struct AuxRegs{
 
 #define REGS_AUX ((struct AuxRegs*)(PBASE + 0x00215000))
 
+
+// 0xFE215000
 #endif

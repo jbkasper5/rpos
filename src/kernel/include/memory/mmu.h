@@ -5,6 +5,8 @@
 #include "memory/mem.h"
 #include "utils/utils.h"
 
+extern uint64_t* L0_TABLE;
+
 typedef enum {
     EL0_NA_EL1_RW = 0,
     EL0_RW_EL1_RW = 1,
@@ -60,29 +62,12 @@ typedef union {
 
 #define INVALID_PT_METADATA             -1
 
-typedef enum pt_level_s{
-    PT_LEVEL0 = 0,
-    PT_LEVEL1 = 1,
-    PT_LEVEL2 = 2,
-    PT_LEVEL3 = 3
-} pt_level_t;
-
-typedef struct pt_metadata_s{
-    void* table_address;            // physical address of the page table being described
-    struct pt_metadata_s* next;     // next metadata entry
-    pt_level_t level;               // which level page table this metadata is describing
-    uint16_t count;                 // how many entries in the table are in use
-    int16_t index;                  // signed int describing which entry in the parent table this belongs, -1 means invalid
-} pt_metadata_t;
-
 // 4 GiB RAM = 2 ^ 32
 // 4 KiB pages = 2 ^ 12
 // 2 ^ 20 = (1 << 20) pages = (1 << 20) bytes given 1B metadata per page
 
 void mmu_init();
-uint64_t* initialize_page_tables(void* ptb, pt_metadata_t* pt_metadata);
+uint64_t* initialize_page_tables();
 uint64_t* create_kernel_identity_mapping();
-void create_peripheral_identity_mapping(pt_metadata_t* l0_page_table_metadata);
-void create_user_mapping(pt_metadata_t* pt0_metadata);
-void _alloc_pt_metadata(pt_level_t level);
+
 #endif

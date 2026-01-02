@@ -50,9 +50,6 @@ mmu_init:
 
     isb
 
-    ldr x0, =0x3fffd0
-    bl walk
-
     ldp x29, x30, [sp], #16
     ret
 

@@ -46,7 +46,6 @@ void hardware_init(){
     printf("Enabling LCD panel...\n");
     init_framebuffer();
 
-
     printf("Enabling interrupt controller...\n");
     enable_interrupt_controller();
 
@@ -66,8 +65,13 @@ void hardware_init(){
     irq_enable();
 
     // TODO: need to set up VM for the framebuffer
-    // printf("Initializing MMU...\n");
-    // mmu_init();
+    printf("Initializing MMU...\n");
+    mmu_init();
+
+    // re-initialize MINI-UART
+    uart_init();
+
+    
 
     printf("Enabling system scheduler...\n");
     scheduler_init();
@@ -134,11 +138,11 @@ int kernel_main(){
     ext_superblock* sb = (ext_superblock*) s2;
 
     printf("\nParsing ext4 filesystem...\n");
-    PDEBUG("SUPERBLOCK VOLUME: %s\n", sb->s_volume_name);
-    PDEBUG("SUPERBLOCK MAGIC: 0x%x\n", sb->s_magic);
-    PDEBUG("BLOCK SIZE: 0x%x\n", 1024 << sb->s_log_block_size);
-    PDEBUG("INODE SIZE: 0x%x\n", sb->s_inode_size);
-    PDEBUG("INODES PER BLOCK: %d\n", (1024 << sb->s_log_block_size) / sb->s_inode_size);
+    printf("SUPERBLOCK VOLUME: %s\n", sb->s_volume_name);
+    printf("SUPERBLOCK MAGIC: 0x%x\n", sb->s_magic);
+    printf("BLOCK SIZE: 0x%x\n", 1024 << sb->s_log_block_size);
+    printf("INODE SIZE: 0x%x\n", sb->s_inode_size);
+    printf("INODES PER BLOCK: %d\n", (1024 << sb->s_log_block_size) / sb->s_inode_size);
     
     // each block is 8 sectors, so this should be block 1
     emmc_seek_sector(0x104008);

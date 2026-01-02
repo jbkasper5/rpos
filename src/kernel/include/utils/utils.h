@@ -15,4 +15,6 @@ uint64_t get64(uint64_t address);
 uint32_t get_el();
 uint8_t mmu_enabled();
 
+int log2_pow2(uint64_t num);
+
 #endif

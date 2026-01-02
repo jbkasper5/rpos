@@ -7,6 +7,7 @@
 
 char nibble_to_char(char nibble);
 void printf(char* format_str, ...);
+void disable_panel();
 char* _int_to_str(int num, char is_long);
 char* _to_hex_str(unsigned long num);
 
