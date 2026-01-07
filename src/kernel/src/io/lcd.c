@@ -74,10 +74,6 @@ static void _init_framebuffer(uint32_t* mb, uint32_t width, uint32_t height, uin
     frame.width = width;
     frame.height = height;
     frame.pitch = pitch;
-
-    size_t fb_size = 800 * 480 * 4;
-    uint64_t n_pages = (fb_size + PAGE_SIZE - 1) >> 12;
-    uintptr_t addr = ((uintptr_t) fb_bytes);
 }
 
 static void fill_screen(frame_t* frame, uint32_t argb){
@@ -95,13 +91,15 @@ void scroll(){
     // get number of consecutive bytes that make up one line on the screen
     // 800 pixels * size per pixel for 1 row
     // multiply by 20 since thats the height of 1 glyph
-    uint64_t line_bytes = 800 * 20;
+    uint32_t line_idxs = 800 * 20;
+    uint64_t line_bytes = line_idxs * 4;
 
-    memcpy(frame.fb, frame.fb + line_bytes, line_bytes * 16 * (NUM_LINES - 1));
+    // BUG: This extra * 4 shouldn't be here
+    memcpy(frame.fb, UNSCALED_POINTER_ADD(frame.fb, line_bytes), line_bytes * (NUM_LINES - 1));
 
-    uint32_t* last_line = frame.fb + (line_bytes * (NUM_LINES - 1));
+    uint32_t* last_line = UNSCALED_POINTER_ADD(frame.fb, (line_bytes * (NUM_LINES - 1)));
 
-    memset(last_line, 0xFF000000, line_bytes, sizeof(uint32_t));
+    memset(last_line, 0xFF000000, line_idxs, sizeof(uint32_t));
 }
 
 int panel_ready(){

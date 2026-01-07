@@ -68,11 +68,6 @@ void hardware_init(){
     printf("Initializing MMU...\n");
     mmu_init();
 
-    // re-initialize MINI-UART
-    uart_init();
-
-    
-
     printf("Enabling system scheduler...\n");
     scheduler_init();
 
@@ -240,3 +235,30 @@ int kernel_main(){
 
     return 0;
 }
+
+/*
+
+p /x *(struct AuxRegs*) 0xFE215000
+
+// before MMU
+$1 = {irq_status = 0x0, enables = 0x1, reserved = {0x61757830, 0x61757830, 
+    0x61757830, 0x61757830, 0x61757830, 0x61757830, 0x0, 0x1, 0x61757830, 
+    0x61757830, 0x61757830, 0x61757830, 0x61757830, 0x61757830}, mu_io = 0x0, 
+  mu_ier = 0x1, mu_iir = 0xc3, mu_lcr = 0x3, mu_mcr = 0x0, mu_lsr = 0x60, 
+  mu_msr = 0x10, mu_scratch = 0x0, mu_control = 0x3, mu_status = 0x34e, 
+  mu_baud_rate = 0x21d}
+
+// after mmu
+$2 = {irq_status = 0x0, enables = 0x0, reserved = {0x0, 0x0, 0x61757830, 
+    0x61757830, 0x61757830, 0x61757830, 0x0, 0x0, 0x0, 0x0, 0x61757830, 
+    0x61757830, 0x61757830, 0x61757830}, mu_io = 0x0, mu_ier = 0x0, mu_iir = 0x0, 
+  mu_lcr = 0x0, mu_mcr = 0x0, mu_lsr = 0x0, mu_msr = 0x0, mu_scratch = 0x0, 
+  mu_control = 0x3, mu_status = 0x3, mu_baud_rate = 0x3}
+
+*/
+
+/*
+start of frame buffer: 0x3ea83000
+end of frame buffer:   0x3eae0bff
+
+*/

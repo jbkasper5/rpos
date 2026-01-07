@@ -38,7 +38,7 @@ mmu_init:
 
     isb
 
-    ldr x0, =0x4400
+    ldr x0, =((0xFF << 0) | (0x04 << 8))
     msr MAIR_EL1, x0
 
     dsb ish

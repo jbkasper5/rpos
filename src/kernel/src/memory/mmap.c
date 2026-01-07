@@ -129,7 +129,7 @@ bool map_pages(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint64
 
         l3_table = (mem_descriptor_t*) (l2_table[idx2].bits.address << PAGE_SHIFT);
         if (!l3_table[idx3].bits.valid) {
-            ptme.bits.address = (pa >> 12);
+            ptme.bits.address = (pa >> PAGE_SHIFT);
             l3_table[idx3] = ptme;
         }
 
@@ -183,7 +183,7 @@ bool map_blocks(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint6
 
         l2_table = (mem_descriptor_t*) (l1_table[idx1].bits.address << PAGE_SHIFT);
         if (!l2_table[idx2].bits.valid) {
-            ptme.bits.address = (pa >> 12);
+            ptme.bits.address = (pa >> PAGE_SHIFT);
             l2_table[idx2] = ptme;
         }
 

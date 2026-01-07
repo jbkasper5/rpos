@@ -49,9 +49,9 @@ SECTIONS {
 
   . = ALIGN(0x10);
   .kstack_top (NOLOAD) : {
-    __kstack_top = .;
-    . = . + 0x2000;
     __kstack_bottom = .;
+    . = . + 0x2000;
+    __kstack_top = .;
   }
 
   __kernel_end = .;

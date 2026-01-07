@@ -4,7 +4,7 @@
 #include "memory/virtual_memory.h"
 #include "memory/paging.h"
 #include "io/lcd.h"
-
+#include "io/gpio.h"
 #include "peripherals/base.h"
 
 #include "io/printf.h"
@@ -78,7 +78,7 @@ uint64_t* create_kernel_identity_mapping(uint64_t allocated_pages){
 
 
     // peripheral addresses occupy a total of 16MiB, or 8 L2-blocks (each 2MiB)
-    flags |= MAP_DEVICE;
+    flags = MAP_DEVICE | MAP_KERNEL;
     map(PBASE, PBASE, 12, flags, (uint64_t) L0_TABLE);
 
     return (uint64_t*) kernel_l0_pt;
@@ -88,9 +88,11 @@ uint64_t* create_kernel_identity_mapping(uint64_t allocated_pages){
 uint64_t* initialize_page_tables(){
     uint64_t allocated_pages = initialize_page_frame_array();
     uint64_t* l0_pt = create_kernel_identity_mapping(allocated_pages);
-    map_pages(frame.fb, frame.fb, 375, MAP_KERNEL, (uint64_t) L0_TABLE);
+    map_pages(frame.fb, frame.fb, 376, MAP_KERNEL, (uint64_t) L0_TABLE);
 
     INFO("Translated PBASE: 0x%x\n", translate_va(PBASE, L0_TABLE));
+    INFO("Translated AUX: 0x%x\n", translate_va(REGS_AUX, L0_TABLE));
     INFO("Walk result: 0x%x\n", walk(PBASE));
+    INFO("Walk result: 0x%x\n", walk(REGS_AUX));
     return l0_pt;
 }

@@ -27,7 +27,7 @@ _neon_64_memcpy:
     ld1     {v3.16b}, [x1], #16
     st1     {v3.16b}, [x0], #16
 
-    subs x2, x2, #4
+    subs x2, x2, #1
 
     b.gt _neon_64_memcpy
 
