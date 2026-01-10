@@ -1,12 +1,17 @@
-#include "io/printf.h"
+#include "io/kprintf.h"
 #include "io/lcd.h"
 #include "macros.h"
+#include "io/cli.h"
 
 
 #define BUFSIZE         128
 char conversion_buffer[BUFSIZE];
 
-char _nibble_to_char(char nibble){
+static void parse_ansi_escape(char* s){
+
+}
+
+static char _nibble_to_char(char nibble){
     switch(nibble){
         case 0 ... 9:
             return '0' + nibble;
@@ -16,7 +21,7 @@ char _nibble_to_char(char nibble){
     return 0;
 }
 
-char* _int_to_str(int num, char is_long){
+static char* _int_to_str(int num, char is_long){
     char IS_NEGATIVE = FALSE;
     if(num < 0){
         IS_NEGATIVE = TRUE;
@@ -40,7 +45,7 @@ char* _int_to_str(int num, char is_long){
     return (str + loc + 1);
 }
 
-char* _to_hex_str(unsigned long num){
+static char* _to_hex_str(unsigned long num){
     char* str = conversion_buffer;
     str[BUFSIZE - 1] = '\0';
     int loc = BUFSIZE - 2;
@@ -56,7 +61,7 @@ char* _to_hex_str(unsigned long num){
     return (str + loc + 1);
 }
 
-void printf(char* format_str, ...){
+void kprintf(char* format_str, ...){
     char* ptr = format_str;
     int nargs = 1;
     while(*ptr){
@@ -102,6 +107,8 @@ void printf(char* format_str, ...){
                 uart_puts(str_conversion);
             }
             ptr++;
+        }else if(*ptr == '\e'){
+            parse_ansi_escape(ptr);
         }else{
             uart_putc(*ptr);
         }

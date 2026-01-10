@@ -3,9 +3,9 @@
 /**
  * @brief Rolls back a partial memory mapping made by the mapper functions on error.
  */
-static void invalidate(){
+// static void invalidate(){
 
-}
+// }
 
 
 /**
@@ -115,19 +115,19 @@ bool map_pages(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint64
             ptte.bits.address = ((uintptr_t) buddy_alloc_pt()) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
         }
-        l1_table = (table_descriptor_t*) (l0_table[idx0].bits.address << PAGE_SHIFT);
+        l1_table = (table_descriptor_t*) ((uint64_t) l0_table[idx0].bits.address << PAGE_SHIFT);
         if (!l1_table[idx1].bits.valid) {
             ptte.bits.address = ((uintptr_t) buddy_alloc_pt()) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
         }
 
-        l2_table = (table_descriptor_t*) (l1_table[idx1].bits.address << PAGE_SHIFT);
+        l2_table = (table_descriptor_t*) ((uint64_t) l1_table[idx1].bits.address << PAGE_SHIFT);
         if (!l2_table[idx2].bits.valid) {
             ptte.bits.address = ((uintptr_t) buddy_alloc_pt()) >> PAGE_SHIFT;
             l2_table[idx2] = ptte;
         }
 
-        l3_table = (mem_descriptor_t*) (l2_table[idx2].bits.address << PAGE_SHIFT);
+        l3_table = (mem_descriptor_t*) ((uint64_t) l2_table[idx2].bits.address << PAGE_SHIFT);
         if (!l3_table[idx3].bits.valid) {
             ptme.bits.address = (pa >> PAGE_SHIFT);
             l3_table[idx3] = ptme;
@@ -175,13 +175,13 @@ bool map_blocks(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint6
             ptte.bits.address = ((uintptr_t) buddy_alloc_pt()) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
         }
-        l1_table = (table_descriptor_t*) (l0_table[idx0].bits.address << PAGE_SHIFT);
+        l1_table = (table_descriptor_t*) ((uint64_t) l0_table[idx0].bits.address << PAGE_SHIFT);
         if (!l1_table[idx1].bits.valid) {
             ptte.bits.address = ((uintptr_t) buddy_alloc_pt()) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
         }
 
-        l2_table = (mem_descriptor_t*) (l1_table[idx1].bits.address << PAGE_SHIFT);
+        l2_table = (mem_descriptor_t*) ((uint64_t) l1_table[idx1].bits.address << PAGE_SHIFT);
         if (!l2_table[idx2].bits.valid) {
             ptme.bits.address = (pa >> PAGE_SHIFT);
             l2_table[idx2] = ptme;
@@ -208,7 +208,7 @@ bool map(uint64_t virt_block, uint64_t phys_block, uint8_t block_order, uint64_t
     // block order of 9 means it's a 2MiB block and can be block allocated in an L2 table instead
     int idx3 = (virt_block >> 12) & 0x1FF;
     int iters = 0;
-    bool (*mapping_func)(uint64_t, uint64_t, uint8_t, uint64_t, uint64_t);
+    bool (*mapping_func)(uint64_t, uint64_t, uint32_t, uint64_t, uint64_t);
 
     if(block_order >= 9 && idx3 == 0){
         mapping_func = map_blocks;

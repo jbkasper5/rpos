@@ -1,7 +1,7 @@
 #include "io/mini_uart.h"
 #include "io/gpio.h"
-#include "io/printf.h"
-#include "io/fonttest.h"
+#include "io/kprintf.h"
+#include "io/cli.h"
 #include "io/lcd.h"
 
 #include "utils/utils.h"

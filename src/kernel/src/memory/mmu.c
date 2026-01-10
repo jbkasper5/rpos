@@ -7,7 +7,9 @@
 #include "io/gpio.h"
 #include "peripherals/base.h"
 
-#include "io/printf.h"
+#include "io/kprintf.h"
+
+extern uint64_t walk();
 
 uint64_t* L0_TABLE;
 
@@ -55,9 +57,9 @@ uint64_t translate_va(uint64_t va, uint64_t ttbr1_base) {
 
 void print_page_table(uint64_t* pt_addr, int n_entries){
     int n = n_entries;
-    printf("Dumping top %d entries of page table at address 0x%x:\n", n, pt_addr);
+    kprintf("Dumping top %d entries of page table at address 0x%x:\n", n, pt_addr);
     for(int i = 0; i < n; i++){
-        printf("\t%d: 0x%x\n", i, pt_addr[i]);
+        kprintf("\t%d: 0x%x\n", i, pt_addr[i]);
     }
 }
 
@@ -92,6 +94,7 @@ uint64_t* initialize_page_tables(){
 
     INFO("Translated PBASE: 0x%x\n", translate_va(PBASE, L0_TABLE));
     INFO("Translated AUX: 0x%x\n", translate_va(REGS_AUX, L0_TABLE));
+    INFO("Translated AUX: 0x%x\n", translate_va(0x69bcb8, L0_TABLE));
     INFO("Walk result: 0x%x\n", walk(PBASE));
     INFO("Walk result: 0x%x\n", walk(REGS_AUX));
     return l0_pt;

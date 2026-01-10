@@ -1,4 +1,4 @@
-#include "io/printf.h"
+#include "io/kprintf.h"
 #include "peripherals/timer.h"
 #include "peripherals/irq.h"
 #include "peripherals/aux.h"

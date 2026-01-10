@@ -72,7 +72,7 @@ user_context_ptr:
     #ifdef DEBUG
     mrs x1, ELR_EL1
     ldr x0, =pc_string
-    bl printf
+    bl kprintf
     #endif
 
     // reload x0 and x1 to preserve the parameters passed to the kernel
@@ -154,11 +154,11 @@ error_invalid_el1t:
 
 # ERROR HANDLER FOR KERNEL MODE
 sync_invalid_el1h:
+    handle_invalid_entry SYNC_INVALID_EL1H
     mrs x10, esr_el1
     mrs x11, far_el1
     mrs x12, elr_el1
     b .   // halt here for GDB to inspect
-    # handle_invalid_entry SYNC_INVALID_EL1H
 
 # IRQ HANDLER FOR KERNEL MODE
 handle_el1_irq:
@@ -170,7 +170,7 @@ handle_el1_irq:
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     ldr x0, =my_string_3
-    bl printf
+    bl kprintf
     #endif
 
     mrs x1, SPSR_EL1
@@ -207,7 +207,7 @@ handle_el0_svc:
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     ldr x0, =my_string_2
-    bl printf
+    bl kprintf
     #endif
 
     // prepare arguments for the system call
@@ -242,7 +242,7 @@ handle_el0_irq:
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     ldr x0, =my_string_3
-    bl printf
+    bl kprintf
     #endif
 
     // put the register file pointer into x0

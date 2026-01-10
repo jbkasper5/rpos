@@ -1,5 +1,5 @@
 #include "macros.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 #include "io/gpio.h"
 #include "emmc/emmc.h"
 #include "emmc/emmc_clock.h"
@@ -487,14 +487,14 @@ bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) 
     }
 
     if (bsize < device.block_size) {
-        printf("EMMC_ERR: INVALID BLOCK SIZE: \n", bsize, device.block_size);
+        kprintf("EMMC_ERR: INVALID BLOCK SIZE: \n", bsize, device.block_size);
         return FALSE;
     }
 
     device.transfer_blocks = bsize / device.block_size;
 
     if (bsize % device.block_size) {
-        printf("EMMC_ERR: BAD BLOCK SIZE\n");
+        kprintf("EMMC_ERR: BAD BLOCK SIZE\n");
         return FALSE;
     }
 
@@ -513,7 +513,7 @@ bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) 
     int retry_count = 0;
     int max_retries = 3;
 
-    if (EMMC_DEBUG) printf("EMMC_DEBUG: Sending command: %d\n", command);
+    if (EMMC_DEBUG) kprintf("EMMC_DEBUG: Sending command: %d\n", command);
 
     while(retry_count < max_retries) {
         if (emmc_command( command, block_no, 5000)) {
@@ -521,9 +521,9 @@ bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) 
         }
 
         if (++retry_count < max_retries) {
-            printf("EMMC_WARN: Retrying data command\n");
+            kprintf("EMMC_WARN: Retrying data command\n");
         } else {
-            printf("EMMC_ERR: Giving up data command\n");
+            kprintf("EMMC_ERR: Giving up data command\n");
             return FALSE;
         }
     }
@@ -535,7 +535,7 @@ int do_read(uint8_t *b, uint32_t bsize, uint32_t block_no) {
     //TODO ENSURE DATA MODE...
 
     if (!do_data_command( FALSE, b, bsize, block_no)) {
-        printf("EMMC_ERR: do_data_command failed\n");
+        kprintf("EMMC_ERR: do_data_command failed\n");
         return -1;
     }
 
@@ -545,7 +545,7 @@ int do_read(uint8_t *b, uint32_t bsize, uint32_t block_no) {
 
 int emmc_read(uint8_t *buffer, uint32_t size) {
     if (device.offset % 512 != 0) {
-        printf("EMMC_ERR: INVALID OFFSET: %d\n", device.offset);
+        kprintf("EMMC_ERR: INVALID OFFSET: %d\n", device.offset);
         return -1;
     }
 
@@ -554,7 +554,7 @@ int emmc_read(uint8_t *buffer, uint32_t size) {
     int r = do_read( buffer, size, block);
 
     if (r != size) {
-        printf("EMMC_ERR: READ FAILED: %d\n", r);
+        kprintf("EMMC_ERR: READ FAILED: %d\n", r);
         return -1;
     }
 

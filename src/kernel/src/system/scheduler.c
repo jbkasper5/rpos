@@ -1,6 +1,6 @@
 #include "system/scheduler.h"
 #include "utils/timer.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 #include "peripherals/gpio.h"
 #include "io/gpio.h"
 #include "user.h"
@@ -53,13 +53,13 @@ void scheduler_init(){
 }
 
 void print_reg_file(reglist_t* regfile){
-    printf("Register file at: 0x%x\n", regfile);
+    kprintf("Register file at: 0x%x\n", regfile);
     for(int i = 0; i < 31; i++){
-        printf("\tx%d: 0x%x\n", i, regfile->regs[i]);
+        kprintf("\tx%d: 0x%x\n", i, regfile->regs[i]);
     }
-    printf("\tsp: 0x%x\n", regfile->sp);
-    printf("\tpc: 0x%x\n", regfile->pc);
-    printf("\tspsr: 0x%x\n\n", regfile->spsr);
+    kprintf("\tsp: 0x%x\n", regfile->sp);
+    kprintf("\tpc: 0x%x\n", regfile->pc);
+    kprintf("\tspsr: 0x%x\n\n", regfile->spsr);
 }
 
 void scheduler(reglist_t* reg_addr){

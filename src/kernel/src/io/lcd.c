@@ -1,6 +1,6 @@
 #include "mailbox/mailbox.h"
 #include "io/lcd.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 #include "memory/mem.h"
 #include "macros.h"
 #include "memory/mmap.h"
@@ -9,7 +9,6 @@
 #define LINE_WIDTH 100
 
 frame_t frame;
-
 bool LCD_READY = FALSE;
 
 static uint32_t mb[1024] __attribute__((aligned(16)));
@@ -76,30 +75,8 @@ static void _init_framebuffer(uint32_t* mb, uint32_t width, uint32_t height, uin
     frame.pitch = pitch;
 }
 
-static void fill_screen(frame_t* frame, uint32_t argb){
-    // frame width = 800
-    // frame hieght = 480
-    // sizeof(argb) = 4
-    memset(frame->fb, argb, frame->width * frame->height, sizeof(argb));
-}
-
 void write_pixel(uint64_t idx, uint32_t argb){
     frame.fb[idx] = argb;
-}
-
-void scroll(){
-    // get number of consecutive bytes that make up one line on the screen
-    // 800 pixels * size per pixel for 1 row
-    // multiply by 20 since thats the height of 1 glyph
-    uint32_t line_idxs = 800 * 20;
-    uint64_t line_bytes = line_idxs * 4;
-
-    // BUG: This extra * 4 shouldn't be here
-    memcpy(frame.fb, UNSCALED_POINTER_ADD(frame.fb, line_bytes), line_bytes * (NUM_LINES - 1));
-
-    uint32_t* last_line = UNSCALED_POINTER_ADD(frame.fb, (line_bytes * (NUM_LINES - 1)));
-
-    memset(last_line, 0xFF000000, line_idxs, sizeof(uint32_t));
 }
 
 int panel_ready(){
@@ -108,15 +85,7 @@ int panel_ready(){
 
 int init_framebuffer(){
     _init_framebuffer(mb, 800, 480, 32);
-
     PDEBUG("Frame buffer address: 0x%x\n", frame.fb);
-
-    // green fill
-    // fill_screen(frame, 0xFF00c648);
-
-    fill_screen(&frame, 0xFF000000);
-    // PDEBUG("Panel initialization result: %d\n", ok);
-
     LCD_READY = TRUE;
     return 0;
 }

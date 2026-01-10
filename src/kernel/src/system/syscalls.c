@@ -1,5 +1,5 @@
 #include "system/syscalls.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 #include "io/gpio.h"
 #include "utils/timer.h"
 #include "macros.h"
@@ -15,7 +15,7 @@ uint64_t handle_syscall(uint64_t x0, uint64_t x1, uint64_t x2, uint64_t x3, uint
 
 uint64_t sys_write(uint64_t fd, uint64_t buf, uint64_t count, uint64_t unused1, uint64_t unused2, uint64_t unused3){
     // write a buffer to a file descriptor
-    printf((char*) buf);
+    kprintf((char*) buf);
     return 0;
 }
 

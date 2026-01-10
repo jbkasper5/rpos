@@ -4,7 +4,7 @@
 #include "macros.h"
 #include "peripherals/base.h"
 #include "memory/mem.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 
 #define MAILBOX_BASE   (PBASE + 0xB880)
 #define MAILBOX_READ   ((volatile uint32_t *)(MAILBOX_BASE + 0x00))

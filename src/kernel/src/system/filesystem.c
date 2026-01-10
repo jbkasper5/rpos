@@ -1,21 +1,21 @@
 #include "system/filesystem.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 #include "macros.h"
 
 void print_partitions(mbr* mbr){
-    printf("Parsed MBR: \n");
+    kprintf("Parsed MBR: \n");
     for(int i = 0; i < 4; i++){
-        printf("  Partition %d: \n", i);
+        kprintf("  Partition %d: \n", i);
         if(mbr->partitions[i].type){
-            printf("    Status:  0x%x\n", mbr->partitions[i].status);
-            printf("    Type:    0x%x\n", mbr->partitions[i].type);
-            printf("    LBA:     0x%x\n", mbr->partitions[i].first_lba_sector);
-            printf("    Sectors: 0x%x\n", mbr->partitions[i].num_sectors);
+            kprintf("    Status:  0x%x\n", mbr->partitions[i].status);
+            kprintf("    Type:    0x%x\n", mbr->partitions[i].type);
+            kprintf("    LBA:     0x%x\n", mbr->partitions[i].first_lba_sector);
+            kprintf("    Sectors: 0x%x\n", mbr->partitions[i].num_sectors);
         }else{
-            printf("    EMPTY/UNUSED\n");
+            kprintf("    EMPTY/UNUSED\n");
         }
     }
-    printf("END MBR.\n");
+    kprintf("END MBR.\n");
 }
 
 void print_fat32_directory(sector* s){
@@ -29,14 +29,14 @@ void print_fat32_directory(sector* s){
             dir++;
             continue;
         }
-        for(int i = 0; i < 8; i++) printf("%c", dir->filename[i]);
-        printf(" | ");
-        for(int i = 0; i < 3; i++) printf("%c", dir->extension[i]);
-        printf(" | ");
+        for(int i = 0; i < 8; i++) kprintf("%c", dir->filename[i]);
+        kprintf(" | ");
+        for(int i = 0; i < 3; i++) kprintf("%c", dir->extension[i]);
+        kprintf(" | ");
         if(dir->attributes & 0x08){
-            printf("VOLUME LABEL\n");
+            kprintf("VOLUME LABEL\n");
         }else{
-            printf("ATTRIBUTES: 0x%x\n", dir->attributes);
+            kprintf("ATTRIBUTES: 0x%x\n", dir->attributes);
         }
         dir++;
     }

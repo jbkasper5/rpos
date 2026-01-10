@@ -3,7 +3,7 @@
 
 #include "utils/datastructures.h"
 #include "macros.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 
 typedef enum page_mutability_s{
     IMMUTABLE = 0,

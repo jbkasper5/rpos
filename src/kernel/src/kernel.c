@@ -1,5 +1,5 @@
 #include "macros.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 #include "system/irq.h"
 #include "utils/utils.h"
 #include "utils/timer.h"
@@ -9,9 +9,10 @@
 #include "memory/mmu.h"
 #include "mailbox/mailbox.h"
 #include "io/lcd.h"
-#include "io/fonttest.h"
+#include "io/cli.h"
 #include "emmc/emmc.h"
 #include "system/filesystem.h"
+#include "memory/kmalloc.h"
 
 void debug_init(){
 
@@ -41,44 +42,49 @@ void debug_init(){
 
 void hardware_init(){
 
-    test_font();
+    // load the font for the CLI
+    load_font();
 
-    printf("Enabling LCD panel...\n");
+    INFO("Enabling LCD panel...\n");
     init_framebuffer();
 
-    printf("Enabling interrupt controller...\n");
+    INFO("Enabling interrupt controller...\n");
     enable_interrupt_controller();
 
-    printf("Enabling system timers...\n");
+    INFO("Enabling system timers...\n");
     timer_init();
 
-    // printf("Enabling physical timer...\n");
+    // INFO("Enabling physical timer...\n");
     // physical_timer_enable();
 
-    printf("Enabling virtual timer...\n");
+    INFO("Enabling virtual timer...\n");
     virtual_timer_enable();
 
-    printf("Priming physical timer...\n");
+    INFO("Priming physical timer...\n");
     prime_physical_timer();
 
-    printf("Enabling IRQ interrupts...\n");
+    INFO("Enabling IRQ interrupts...\n");
     irq_enable();
 
     // TODO: need to set up VM for the framebuffer
-    printf("Initializing MMU...\n");
+    INFO("Initializing MMU...\n");
     mmu_init();
 
-    printf("Enabling system scheduler...\n");
+    INFO("Enabling system scheduler...\n");
     scheduler_init();
 
-    printf("Enabling SD...\n");
+    INFO("Initializing kernel heap...");
+    kheap_init();
+
+
+    INFO("Enabling SD...\n");
     if(!emmc_init()){
-        printf("ERROR: SD card initialization failed.\n");
-        while(1) uart_putc(uart_getc());
+        ERROR("SD card initialization failed.\n");
+        while(1);
     }
 
     // enable the font
-    printf("Hardware initialization complete.\n\n");
+    INFO("Hardware initialization complete.\n\n");
 }
 
 
@@ -100,22 +106,22 @@ int kernel_main(){
     emmc_seek_sector(0x4000);
 
     sector s;
-    printf("Parsing sector 0x4000...\n");
+    kprintf("Parsing sector 0x4000...\n");
     int result = emmc_read((uint8_t*) &s.data, sizeof(s));
     if(result){
-        printf("Sector parsed.\n");
+        kprintf("Sector parsed.\n");
     }else{
-        printf("ERROR: Error parsing sector.\n");
+        kprintf("ERROR: Error parsing sector.\n");
     }
 
     // should be where the boot filesystem is written
     emmc_seek_sector(18460);
-    printf("Parsing sector 18460...\n");
+    kprintf("Parsing sector 18460...\n");
     result = emmc_read((uint8_t*) &s.data, sizeof(s));
     if(result){
-        printf("Sector parsed.\n");
+        kprintf("Sector parsed.\n");
     }else{
-        printf("ERROR: Error parsing sector.\n");
+        kprintf("ERROR: Error parsing sector.\n");
     }
 
     print_fat32_directory(&s);
@@ -132,12 +138,12 @@ int kernel_main(){
     // read the sectors as a superblock
     ext_superblock* sb = (ext_superblock*) s2;
 
-    printf("\nParsing ext4 filesystem...\n");
-    printf("SUPERBLOCK VOLUME: %s\n", sb->s_volume_name);
-    printf("SUPERBLOCK MAGIC: 0x%x\n", sb->s_magic);
-    printf("BLOCK SIZE: 0x%x\n", 1024 << sb->s_log_block_size);
-    printf("INODE SIZE: 0x%x\n", sb->s_inode_size);
-    printf("INODES PER BLOCK: %d\n", (1024 << sb->s_log_block_size) / sb->s_inode_size);
+    kprintf("\nParsing ext4 filesystem...\n");
+    kprintf("SUPERBLOCK VOLUME: %s\n", sb->s_volume_name);
+    kprintf("SUPERBLOCK MAGIC: 0x%x\n", sb->s_magic);
+    kprintf("BLOCK SIZE: 0x%x\n", 1024 << sb->s_log_block_size);
+    kprintf("INODE SIZE: 0x%x\n", sb->s_inode_size);
+    kprintf("INODES PER BLOCK: %d\n", (1024 << sb->s_log_block_size) / sb->s_inode_size);
     
     // each block is 8 sectors, so this should be block 1
     emmc_seek_sector(0x104008);
@@ -162,7 +168,7 @@ int kernel_main(){
     memcpy(fname, dir->name, dir->name_len);
     fname[dir->name_len] = '\0';
 
-    printf("\n\n> ls\n");
+    kprintf("\n\n> ls\n");
 
     uint32_t offset = 0;
     while (offset < 4096) {
@@ -186,13 +192,13 @@ int kernel_main(){
         }
 
         // process the entry
-        printf("%s\n", name);
+        kprintf("%s\n", name);
 
         // move to next entry
         offset += entry->rec_len;
     }
 
-    printf("\n> cat test1.txt\n");
+    kprintf("\n> cat test1.txt\n");
 
     const char *target = "test1.txt";
 
@@ -223,7 +229,7 @@ int kernel_main(){
         emmc_read((uint8_t*) &b, sizeof(ext4_block));
         memcpy(contents, &b, 255);
         contents[255] = '\0';
-        printf("%s\n", contents);
+        kprintf("%s\n", contents);
     }
 
     while(TRUE){
@@ -262,3 +268,5 @@ start of frame buffer: 0x3ea83000
 end of frame buffer:   0x3eae0bff
 
 */
+
+// 0x69bcb8

@@ -1,5 +1,5 @@
 #include "io/gpio.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 
 void gpio_pin_set_func(uint8_t pinNumber, GpioFunc_t func){
     uint8_t bit_start = (pinNumber * 3) % 30;
