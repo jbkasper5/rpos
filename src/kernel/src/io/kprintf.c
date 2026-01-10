@@ -3,12 +3,70 @@
 #include "macros.h"
 #include "io/cli.h"
 
+typedef enum{
+    ANSI_ESCAPE,
+    ANSI_NORMAL,
+    ANSI_PARSING,
+    ANSI_END_PARSING
+} ANSI_STATE;
 
-#define BUFSIZE         128
-char conversion_buffer[BUFSIZE];
+typedef struct{
+    ANSI_STATE state;
+    char params[16];
+    int param_len;
+} ansi_state;
 
-static void parse_ansi_escape(char* s){
+static ansi_state state = {
+    .state = ANSI_NORMAL,
+    .param_len = 0
+};
 
+static ANSI_STATE ansi_normal(char c){
+    if(c == '\e') return ANSI_ESCAPE;
+    else uart_putc(c);
+    return ANSI_NORMAL;
+}
+
+static ANSI_STATE ansi_escape(char c){
+    state.param_len = 0;
+    return ANSI_PARSING;
+}
+
+static ANSI_STATE ansi_parsing(char c){
+    if(c == 'm'){
+        state.params[state.param_len] = '\0';
+        return ANSI_END_PARSING;
+    }
+    switch(c){
+        case '0' ... '9':
+        case ';':
+            if(state.param_len < sizeof(state.params) - 1) {
+                state.params[state.param_len++] = c;
+                return ANSI_PARSING;
+            }
+        default:
+            // reset the param buffer and return
+            state.param_len = 0;
+            return ANSI_NORMAL;
+    }
+}
+
+static ANSI_STATE ansi_end_escape(char c){
+    // begin parsing the intent of the escape sequence
+    return ANSI_NORMAL;
+}
+
+static void ansi_decoder(char c){
+    switch(state.state){
+        case ANSI_ESCAPE:
+            state.state = ansi_escape(c);
+        case ANSI_PARSING:
+            state.state = ansi_parsing(c);
+        case ANSI_END_PARSING:
+            state.state = ansi_end_escape(c);
+        default:
+            state.state = ansi_normal(c);
+    }
 }
 
 static char _nibble_to_char(char nibble){
@@ -17,103 +75,92 @@ static char _nibble_to_char(char nibble){
             return '0' + nibble;
         case 10 ... 15:
             return 'A' + (nibble - 10);
+        default:
+            return 0;
     }
-    return 0;
 }
 
-static char* _int_to_str(int num, char is_long){
-    char IS_NEGATIVE = FALSE;
-    if(num < 0){
-        IS_NEGATIVE = TRUE;
-        num = (~num) + 1;
-    }
-
-    char* str = conversion_buffer;
-    str[BUFSIZE - 1] = '\0';
-    int loc = BUFSIZE - 2;
-
+static void parse_and_emit_int(int num){
     if(num == 0){
-        str[loc--] = '0';
+        ansi_decoder('0');
+        return;
     }
+
+    // Handle negative numbers
+    if(num < 0){
+        ansi_decoder('-');
+        num = -num;
+    }
+
+    char buf[20]; // enough for 64-bit numbers
+    int i = 0;
 
     while(num){
-        str[loc--] = '0' + num % 10;
+        buf[i++] = '0' + (num % 10);
         num /= 10;
     }
 
-    if (IS_NEGATIVE) str[loc--] = '-';
-    return (str + loc + 1);
+    // Emit digits most-significant first
+    for(int j = i-1; j >= 0; j--){
+        ansi_decoder(buf[j]);
+    }
 }
 
-static char* _to_hex_str(unsigned long num){
-    char* str = conversion_buffer;
-    str[BUFSIZE - 1] = '\0';
-    int loc = BUFSIZE - 2;
+static void parse_and_emit_hex(unsigned long num){
+    char buf[sizeof(unsigned long) * 2]; // max hex digits
+    int i = 0;
 
-    if(num == 0){
-        str[loc--] = '0';
-    }
-
-    while(num){
-        str[loc--] = _nibble_to_char(num & 0xF);
+    do {
+        buf[i++] = _nibble_to_char(num & 0xF);
         num >>= 4;
+    } while(num);
+
+    for(int j = i - 1; j >= 0; j--){
+        ansi_decoder(buf[j]);
     }
-    return (str + loc + 1);
+}
+
+static void emit_string(char* s){
+    while(*s){
+        ansi_decoder(*s);
+        s++;
+    }
+}
+
+static int expand(char* s, va_list* args){
+    uint32_t consumed_chars = 1;
+    switch(*s){
+        case 'd':
+            parse_and_emit_int(va_arg(*args, int)); break;
+        case 's':
+            emit_string(va_arg(*args, char*)); break;
+        case 'c':
+            ansi_decoder(va_arg(*args, int)); break;
+        case 'l':
+            parse_and_emit_int(va_arg(*args, int)); break;
+        case 'f':
+            break;
+        case 'x':
+            parse_and_emit_hex(va_arg(*args, unsigned long)); break;
+        case '%':
+            ansi_decoder(*s); break;
+    }
+    return consumed_chars;
 }
 
 void kprintf(char* format_str, ...){
     char* ptr = format_str;
-    int nargs = 1;
-    while(*ptr){
-        if(*ptr == '%' && *(ptr + 1) != '%' && *(ptr + 1) != '\0') nargs++;
-        ptr++;
-    }
-
-    // if no formats were specified, just print the string as normal
-    if(nargs == 1){
-        uart_puts(format_str);
-        return;
-    }
 
     va_list list;
     va_start(list, format_str);
 
-    ptr = format_str;
     while(*ptr){
-        if(*ptr == '%' && *(ptr + 1) != '%' && *(ptr + 1) != '\0'){
-            char* str_conversion = NULL;
-            switch (*(ptr + 1)){
-                case 'd': 
-                    str_conversion = _int_to_str(va_arg(list, int), FALSE); break;
-                case 's':
-                    str_conversion = va_arg(list, char*);
-                    uart_puts(str_conversion);
-                    ptr += 2;
-                    continue;
-                case 'c':
-                    char c = va_arg(list, int) & 0xFF;
-                    uart_putc(c); 
-                    ptr += 2;
-                    continue;
-                case 'x':
-                    str_conversion = _to_hex_str(va_arg(list, unsigned long)); break;
-                case 'l':
-                    str_conversion = _int_to_str(va_arg(list, long), TRUE); break;
-                default:
-                    break;
-            }
-
-            if(str_conversion){
-                uart_puts(str_conversion);
-            }
+        if(*ptr == '%'){
             ptr++;
-        }else if(*ptr == '\e'){
-            parse_ansi_escape(ptr);
-        }else{
-            uart_putc(*ptr);
-        }
-        ptr++;
+            ptr += expand(ptr, &list);
+        }else ansi_decoder(*ptr++);
     }
+
     va_end(list);
     return;
 }
