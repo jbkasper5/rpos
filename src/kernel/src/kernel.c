@@ -66,16 +66,14 @@ void hardware_init(){
     INFO("Enabling IRQ interrupts...\n");
     irq_enable();
 
-    // TODO: need to set up VM for the framebuffer
     INFO("Initializing MMU...\n");
     mmu_init();
 
     INFO("Enabling system scheduler...\n");
     scheduler_init();
 
-    INFO("Initializing kernel heap...");
+    INFO("Initializing kernel heap...\n");
     kheap_init();
-
 
     INFO("Enabling SD...\n");
     if(!emmc_init()){

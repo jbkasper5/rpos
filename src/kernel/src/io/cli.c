@@ -14,7 +14,6 @@ unsigned char* font = _binary_src_kernel_fonts_tamzen10x20_psf_start;
 unsigned long font_size = (unsigned long)_binary_src_kernel_fonts_tamzen10x20_psf_size;
 uint64_t line = 0;
 uint64_t cursor = 0;
-uint64_t lines_written = 0;
 
 uint32_t BACKGROUND_COLOR = COLOR_BLACK;
 uint32_t DEFAULT_BACKGROUND_COLOR = COLOR_BLACK;
@@ -32,10 +31,6 @@ static void fill_screen(frame_t* frame, uint32_t argb){
 static void newline(){
     line += 1;
     cursor = 0;
-    lines_written += 1;
-
-    TEXT_COLOR = (lines_written % 2) ? ANSI_GREEN : ANSI_CYAN;
-    BACKGROUND_COLOR = (lines_written % 5) ? ANSI_BLACK : ANSI_RED;
 
     // if we are about to overflow the screen, slide everything up
     if (line == 24){
@@ -121,7 +116,7 @@ void load_font(){
 }
 
 void set_text_background_color(uint32_t new_color){
-    BACKGROUND_COLOR = 0xFF000000 & new_color;
+    BACKGROUND_COLOR = 0xFF000000 | new_color;
 }
 
 void unset_text_background_color(){
@@ -129,7 +124,7 @@ void unset_text_background_color(){
 }
 
 void set_text_color(uint32_t new_color){
-    TEXT_COLOR = 0xFF000000 & new_color;
+    TEXT_COLOR = 0xFF000000 | new_color;
 }
 
 void unset_text_color(){

@@ -10,14 +10,14 @@ typedef uint8_t bool;
 typedef uint16_t pid_t;
 
 #ifdef DEBUG
-#define PDEBUG(...) kprintf("[DEBUG] "); kprintf(__VA_ARGS__);
+#define PDEBUG(...) kprintf("[\e[35mDEBUG\e[0m] "); kprintf(__VA_ARGS__);
 #else
 #define PDEBUG(...)
 #endif
 
-#define INFO(...) kprintf("[INFO] "); kprintf(__VA_ARGS__);
-#define WARNING(...) kprintf("[WARNING] "); kprintf(__VA_ARGS__);
-#define ERROR(...) kprintf("[ERROR] "); kprintf(__VA_ARGS__);
+#define INFO(...) kprintf("[\e[36mINFO\e[0m] "); kprintf(__VA_ARGS__);
+#define WARNING(...) kprintf("[\e[33mWARNING\e[0m] "); kprintf(__VA_ARGS__);
+#define ERROR(...) kprintf("[\e[31mERROR\e[0m] "); kprintf(__VA_ARGS__);
 
 #ifdef NULL
 #undef NULL
