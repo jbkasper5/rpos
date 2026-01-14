@@ -113,7 +113,7 @@ void scheduler(reglist_t* reg_addr){
         proclist.proclist[active_process].state = PROCESS_RUNNING;
     }
 
-    PDEBUG("Scheduled %d\n", active_process);
+    DEBUG("Scheduled %d\n", active_process);
 
     // prime the scheduler timer for another quantum
     prime_physical_timer();
@@ -135,9 +135,9 @@ void deschedule(){
     // move the current running process to the waiting queue
     proclist.proclist[active_process].state = PROCESS_BLOCKED;
 
-    PDEBUG("Descheduling %d\n", active_process);
+    DEBUG("Descheduling %d\n", active_process);
 
-    // PDEBUG("Context file saved for process %d: \n", active_process);
+    // DEBUG("Context file saved for process %d: \n", active_process);
     // print_reg_file(user_context_ptr);
 
     // reschedule now that we changed the state of things
@@ -145,7 +145,7 @@ void deschedule(){
 }
 
 void reschedule(uint64_t procnum){
-    PDEBUG("Rescheduling %d\n", procnum);
+    DEBUG("Rescheduling %d\n", procnum);
     proclist.proclist[procnum].state = PROCESS_READY;
     scheduler(user_context_ptr);
 }

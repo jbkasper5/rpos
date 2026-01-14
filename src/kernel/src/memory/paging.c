@@ -23,8 +23,8 @@ uintptr_t _split_down(uint8_t req_order, uint8_t curr_order){
     }
     uint32_t pfn = og_frame - frame_metadata;
     uint32_t buddy_pfn = pfn + (1UL << (curr_order - 1));
-    PDEBUG("PFN: %d\n", pfn);
-    PDEBUG("Buddy PFN: %d\n", buddy_pfn);
+    DEBUG("PFN: %d\n", pfn);
+    DEBUG("Buddy PFN: %d\n", buddy_pfn);
 
 
     // TODO: at some point, verify if any coalescing is required as we split blocks downward
@@ -100,7 +100,7 @@ uintptr_t buddy_alloc_pt(){
 
 
 static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t available_pages){
-    PDEBUG("Initializing buddy allocator for 0x%x available pages...\n", available_pages)
+    DEBUG("Initializing buddy allocator for 0x%x available pages...\n", available_pages)
     uint64_t curr_pfn = start_page_addr >> 12;
     for(int64_t i = MAX_ORDER; i >= 0; i--){
         if(available_pages & (1ULL << i)){

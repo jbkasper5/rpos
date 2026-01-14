@@ -33,7 +33,7 @@ void handle_timer_1(){
     REGS_TIMER->compare[1] = curr_val_1;
     REGS_TIMER->control_status |= SYS_TIMER_IRQ_1;
 
-    PDEBUG("Timer 1 received.\n");
+    DEBUG("Timer 1 received.\n");
 }
 
 void handle_timer_3(){
@@ -41,12 +41,12 @@ void handle_timer_3(){
     REGS_TIMER->compare[3] = curr_val_3;
     REGS_TIMER->control_status |= SYS_TIMER_IRQ_3;
 
-    PDEBUG("Timer 3 received.\n");
+    DEBUG("Timer 3 received.\n");
 }
 
 void handle_physical_timer(){
     prime_physical_timer();
-    PDEBUG("Physical timer received.\n");
+    DEBUG("Physical timer received.\n");
 }
 
 void handle_virtual_timer(){
@@ -58,12 +58,12 @@ void handle_virtual_timer(){
     reschedule((uint64_t) node.element);
 
     if(sleep_timer_queue.items){
-        PDEBUG("Items remaining in queue: %d\n", sleep_timer_queue.items);
+        DEBUG("Items remaining in queue: %d\n", sleep_timer_queue.items);
         // prime the next request, if there is one
         prime_virtual_timer(pq_peek(&sleep_timer_queue).priority);
     }else{
         // otherwise, disable the timer until someone else makes the nanosleep syscall
-        PDEBUG("No more sleep requests, clearing virtual timer. \n");
+        DEBUG("No more sleep requests, clearing virtual timer. \n");
         clear_virtual_timer();
     }
 }
@@ -96,7 +96,7 @@ void timer_nanosleep(uint64_t nanoseconds){
     // the timer, since the queue always has the earliest deadline first
 
     timer_request = pq_peek(&sleep_timer_queue).priority;
-    PDEBUG("Timer request value: 0x%x\n", timer_request);
+    DEBUG("Timer request value: 0x%x\n", timer_request);
     prime_virtual_timer(timer_request);
     deschedule();
 }

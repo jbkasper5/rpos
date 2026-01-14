@@ -85,7 +85,7 @@ int panel_ready(){
 
 int init_framebuffer(){
     _init_framebuffer(mb, 800, 480, 32);
-    PDEBUG("Frame buffer address: 0x%x\n", frame.fb);
+    DEBUG("Frame buffer address: 0x%x\n", frame.fb);
     LCD_READY = TRUE;
     return 0;
 }

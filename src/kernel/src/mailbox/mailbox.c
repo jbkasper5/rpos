@@ -55,7 +55,7 @@ bool mailbox_generic_command(uint32_t tag_id, uint32_t id, uint32_t *value) {
     mbx.value = *value;
 
     if (!mailbox_process((mailbox_tag *)&mbx, sizeof(mbx))) {
-        PDEBUG("FAILED TO PROCESS: %X\n", tag_id);
+        DEBUG("FAILED TO PROCESS: %X\n", tag_id);
         return FALSE;
     }
 

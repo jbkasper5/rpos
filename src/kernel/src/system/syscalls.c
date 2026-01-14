@@ -5,7 +5,7 @@
 #include "macros.h"
 
 uint64_t handle_syscall(uint64_t x0, uint64_t x1, uint64_t x2, uint64_t x3, uint64_t x4, uint64_t x5, uint64_t syscall_number){
-    PDEBUG("Syscall Number: %d\n", syscall_number);
+    DEBUG("Syscall Number: %d\n", syscall_number);
     if(syscall_table[syscall_number]){
         return syscall_table[syscall_number](x0, x1, x2, x3, x4, x5);
     }else{

@@ -99,7 +99,7 @@ bool emmc_setup_clock() {
     EMMC->control[1] = n;
 
     if (!wait_reg_mask(&EMMC->control[1], EMMC_CTRL1_CLK_STABLE, TRUE, 2000)) {
-        PDEBUG("EMMC_ERR: SD CLOCK NOT STABLE\n");
+        DEBUG("EMMC_ERR: SD CLOCK NOT STABLE\n");
         return FALSE;
     }
 

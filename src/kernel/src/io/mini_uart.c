@@ -34,7 +34,7 @@ void uart_init(){
     // uart_putc('\n');
     // uart_putc('\n');
 
-    // PDEBUG("UART Initialized.\n");
+    // DEBUG("UART Initialized.\n");
 }
 
 void uart_putc(char c){
