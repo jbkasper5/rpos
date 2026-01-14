@@ -44,6 +44,7 @@ SECTIONS {
   .bss : {
     bss_begin = .;
     *(.bss*)
+    *(COMMON)
     bss_end = .;
   } > KRAM : bss
 
@@ -56,7 +57,8 @@ SECTIONS {
 
   __kernel_end = .;
 
-  . = ALIGN(0x10);
+  /* Align the PFA to a page boundary */
+  . = ALIGN(0x1000);
   /*
     If uisng 1 GiB RAM: PFE = 24 bytes, 2^12 page size, 2^30 pages => 2^21 * 3 bytes
     If using 4 GiB RAM: PFE = 24 bytes, 2^12 page size, 2^32 pages => 2^23 * 3 bytes

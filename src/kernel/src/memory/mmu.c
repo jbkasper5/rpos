@@ -86,11 +86,47 @@ uint64_t* create_kernel_identity_mapping(uint64_t allocated_pages){
     return (uint64_t*) kernel_l0_pt;
 }
 
+static void map_page_frame_array(){
+    uint64_t start_addr = ALIGN_DOWN(page_frame_array_start(), PAGE_SIZE);
+    uint64_t end_addr = ALIGN_UP(page_frame_array_end(), PAGE_SIZE);
+
+    uint64_t pages_to_map = (end_addr - start_addr) >> 12;
+
+    uint64_t next_block_addr = ALIGN_UP(start_addr, BLOCK_SIZE);
+
+    uint64_t frontside_pages = (next_block_addr - start_addr) >> 12;
+    
+    INFO("Mapping %d frontside pages at address 0x%x\n", frontside_pages, start_addr);
+
+    map_pages(start_addr, start_addr, frontside_pages, MAP_KERNEL, L0_TABLE);
+
+    uint64_t n_blocks = (pages_to_map - frontside_pages) / 512;
+
+    start_addr += (frontside_pages << PAGE_SHIFT);
+
+    INFO("Mapping %d blocks at address 0x%x\n", n_blocks, start_addr);
+
+    map_blocks(start_addr, start_addr, n_blocks, MAP_KERNEL, L0_TABLE);
+
+    uint64_t backside_pages = pages_to_map - frontside_pages - (512 * n_blocks);
+
+    start_addr += (n_blocks << BLOCK_BITS);
+
+    INFO("Mapping %d backside pages at address 0x%x\n", backside_pages, start_addr);
+
+    map_pages(start_addr, start_addr, backside_pages, MAP_KERNEL, L0_TABLE);
+}
+
 
 uint64_t* initialize_page_tables(){
     uint64_t allocated_pages = initialize_page_frame_array();
     uint64_t* l0_pt = create_kernel_identity_mapping(allocated_pages);
+
+    // map the frame buffer
     map_pages(frame.fb, frame.fb, 376, MAP_KERNEL, (uint64_t) L0_TABLE);
+
+    // map the page frame array metadata detailing RAM
+    map_page_frame_array();
 
     INFO("Translated PBASE: 0x%x\n", translate_va(PBASE, L0_TABLE));
     INFO("Translated AUX: 0x%x\n", translate_va(REGS_AUX, L0_TABLE));

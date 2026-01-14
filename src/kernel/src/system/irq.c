@@ -31,8 +31,11 @@ const char entry_error_messages[16][32] = {
 	"ERROR_INVALID_EL0_32"	
 };
 
-void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t address){
-    ERROR("CAUGHT: %s - %d, ESR_EL1: %x, ELR_EL1: %x\n", entry_error_messages[type], type, esr, address);
+void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t instruction, uint64_t address){
+    ERROR("%s\n", entry_error_messages[type]);
+	ERROR("\tException: 0x%x\n", esr);
+	ERROR("\tFaulting instruction: 0x%x\n", instruction);
+	ERROR("\tAddress causing fault: 0x%x\n", address);
 }
 
 void enable_interrupt_controller() {

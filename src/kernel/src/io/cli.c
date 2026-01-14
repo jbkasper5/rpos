@@ -70,6 +70,9 @@ static void _print_glyph(unsigned char* glyph_location){
 void print_glyph(char c){
     if(c == '\n' || c == '\r'){
         newline();
+    }else if(c == '\t'){
+        // skip 4 spaces for tab
+        cursor += 40;
     }else if(c == 127){
         // delete key
         if(cursor > 0){

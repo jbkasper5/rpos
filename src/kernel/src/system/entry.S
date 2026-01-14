@@ -27,8 +27,8 @@ user_context_ptr:
     mov x0, #\type
     mrs x1, esr_el1
     mrs x2, elr_el1
+    mrs x3, far_el1
     bl show_invalid_entry_message
-    b err_hang
 .endm
 
 .macro store_context
@@ -142,15 +142,19 @@ vectors:
 
 sync_invalid_el1t:
     handle_invalid_entry SYNC_INVALID_EL1T
+    b err_hang
 
 irq_invalid_el1t:
     handle_invalid_entry IRQ_INVALID_EL1T
+    b err_hang
 
 fiq_invalid_el1t:
     handle_invalid_entry FIQ_INVALUD_EL1T
+    b err_hang
 
 error_invalid_el1t:
     handle_invalid_entry ERROR_INVALID_EL1T
+    b err_hang
 
 # ERROR HANDLER FOR KERNEL MODE
 sync_invalid_el1h:
@@ -186,9 +190,11 @@ handle_el1_irq:
 
 fiq_invalid_el1h:
     handle_invalid_entry FIQ_INVALUD_EL1H
+    b err_hang
 
 error_invalid_el1h:
     handle_invalid_entry ERROR_INVALID_EL1H
+    b err_hang
 
 # SYSTEM CALL HANDLER FOR USER MODE
 handle_el0_svc:
@@ -261,21 +267,28 @@ handle_el0_irq:
 
 fiq_invalid_el0_64:
     handle_invalid_entry FIQ_INVALUD_EL0_64
+    b err_hang
 
 error_invalid_el0_64:
     handle_invalid_entry ERROR_INVALID_EL0_64
+    b err_hang
 
 sync_invalid_el0_32:
     handle_invalid_entry SYNC_INVALID_EL0_32
+    b err_hang
 
 irq_invalid_el0_32:
     handle_invalid_entry IRQ_INVALID_EL0_32
+    b err_hang
+
 
 fiq_invalid_el0_32:
     handle_invalid_entry FIQ_INVALUD_EL0_32
+    b err_hang
 
 error_invalid_el0_32:
     handle_invalid_entry ERROR_INVALID_EL0_32
+    b err_hang
 
 
 .globl err_hang
