@@ -32,10 +32,13 @@ const char entry_error_messages[16][32] = {
 };
 
 void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t instruction, uint64_t address){
-    ERROR("%s\n", entry_error_messages[type]);
+	ERROR("%s\n", entry_error_messages[type]);
 	ERROR("\tException: 0x%x\n", esr);
 	ERROR("\tFaulting instruction: 0x%x\n", instruction);
 	ERROR("\tAddress causing fault: 0x%x\n", address);
+	if ((esr >> 26) == 0x3C && (esr & 0xFFFF) == 0xBEEF) {
+		ERROR("PANIC!\n");
+	}
 }
 
 void enable_interrupt_controller() {

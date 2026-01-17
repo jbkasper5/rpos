@@ -21,5 +21,6 @@
 bool map(uint64_t virt_block, uint64_t phys_block, uint8_t block_order, uint64_t flags, uint64_t pt_base);
 bool map_pages(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint64_t flags, uint64_t pt_base);
 bool map_blocks(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint64_t flags, uint64_t pt_base);
+uintptr_t alloc_page_table();
 
 #endif

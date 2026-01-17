@@ -1,11 +1,28 @@
 #include "memory/mmap.h"
 
+static uint64_t allocated_pages = 0;
+extern uint32_t static_page_region_pages();
+extern uintptr_t static_page_region_start();
+
 /**
  * @brief Rolls back a partial memory mapping made by the mapper functions on error.
  */
 // static void invalidate(){
 
 // }
+
+
+uintptr_t alloc_page_table(){
+    if(allocated_pages >= static_page_region_pages()){
+        panic();
+    }
+
+    uintptr_t page_addr = static_page_region_start() + (PAGE_SIZE * allocated_pages);
+    allocated_pages++;
+    memset(page_addr, 0, PAGE_SIZE / 16, 16);
+
+    return page_addr;
+}
 
 
 /**
@@ -112,18 +129,18 @@ bool map_pages(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint64
         idx3 = (va >> 12) & 0x1FF;
 
         if(!l0_table[idx0].bits.valid){
-            ptte.bits.address = ((uintptr_t) buddy_alloc_pt()) >> PAGE_SHIFT;
+            ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
         }
         l1_table = (table_descriptor_t*) ((uint64_t) l0_table[idx0].bits.address << PAGE_SHIFT);
         if (!l1_table[idx1].bits.valid) {
-            ptte.bits.address = ((uintptr_t) buddy_alloc_pt()) >> PAGE_SHIFT;
+            ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
         }
 
         l2_table = (table_descriptor_t*) ((uint64_t) l1_table[idx1].bits.address << PAGE_SHIFT);
         if (!l2_table[idx2].bits.valid) {
-            ptte.bits.address = ((uintptr_t) buddy_alloc_pt()) >> PAGE_SHIFT;
+            ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l2_table[idx2] = ptte;
         }
 
@@ -172,12 +189,12 @@ bool map_blocks(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint6
         idx2 = (va >> 21) & 0x1FF;
 
         if(!l0_table[idx0].bits.valid){
-            ptte.bits.address = ((uintptr_t) buddy_alloc_pt()) >> PAGE_SHIFT;
+            ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
         }
         l1_table = (table_descriptor_t*) ((uint64_t) l0_table[idx0].bits.address << PAGE_SHIFT);
         if (!l1_table[idx1].bits.valid) {
-            ptte.bits.address = ((uintptr_t) buddy_alloc_pt()) >> PAGE_SHIFT;
+            ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
         }
 

@@ -49,6 +49,22 @@ page_frame_array_end:
     adrp x0, __page_frame_array_end
     ret
 
+.globl static_page_region_start
+static_page_region_start:
+    adrp x0, __static_page_region_start
+    ret
+
+.globl static_page_region_end
+static_page_region_end:
+    adrp x0, __static_page_region_end
+    ret
+
+.globl static_page_region_pages
+static_page_region_pages:
+    # adrp x0, #100
+    mov x0, #100
+    ret
+
 .globl kernel_start
 kernel_start:
     adrp x0, __kernel_start
@@ -58,3 +74,7 @@ kernel_start:
 kernel_end:
     adrp x0, __kernel_end
     ret
+
+.globl panic
+panic:
+    brk #0xBEEF

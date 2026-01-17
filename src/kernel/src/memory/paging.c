@@ -2,6 +2,8 @@
 #include "memory/virtual_memory.h"
 #include "memory/mem.h"
 
+void* static_page_region_start();
+void* static_page_region_end();
 void* page_frame_array_start();
 void* page_frame_array_end();
 void* kernel_start();
@@ -123,7 +125,7 @@ uint8_t get_block_order(uint64_t addr){
 uint64_t initialize_page_frame_array(){
     for(int i = 0; i <= MAX_ORDER; i++) INIT_LIST_HEAD(&buddy_lists[i]);
     frame_metadata = (page_frame_t*) page_frame_array_start();
-    uint64_t reserved_memory = (uint64_t) page_frame_array_end();
+    uint64_t reserved_memory = (uint64_t) static_page_region_end();
     uint64_t reserved_pages = (reserved_memory + 0xFFF) >> 12;
     uint64_t start_page_addr = (reserved_memory + 0xFFF) & (~0xFFF);
 

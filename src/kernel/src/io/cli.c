@@ -102,7 +102,7 @@ void print_string(char* s){
 }
 
 void load_font(){
-    fill_screen(&frame, BACKGROUND_COLOR);
+    fill_screen(&frame, DEFAULT_BACKGROUND_COLOR);
 
     DEBUG("_binary_font_psf_start: 0x%x\n", _binary_src_kernel_fonts_tamzen10x20_psf_start);
     DEBUG("_binary_font_psf_end: 0x%x\n", _binary_src_kernel_fonts_tamzen10x20_psf_end);

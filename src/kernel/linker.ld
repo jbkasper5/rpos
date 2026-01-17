@@ -13,6 +13,8 @@ PHDRS {
   bss  PT_LOAD FLAGS(0x6);  /* R | W */
 }
 
+__STATIC_PAGES = 100;
+
 SECTIONS {
   . = 0x8000;
 
@@ -51,23 +53,27 @@ SECTIONS {
   . = ALIGN(0x10);
   .kstack_top (NOLOAD) : {
     __kstack_bottom = .;
-    . = . + 0x2000;
+    . += 0x2000;
     __kstack_top = .;
   }
 
   __kernel_end = .;
-
-  /* Align the PFA to a page boundary */
-  . = ALIGN(0x1000);
   /*
     If uisng 1 GiB RAM: PFE = 24 bytes, 2^12 page size, 2^30 pages => 2^21 * 3 bytes
     If using 4 GiB RAM: PFE = 24 bytes, 2^12 page size, 2^32 pages => 2^23 * 3 bytes
   */
-  .page_frame_array (NOLOAD) : {
+  .page_frame_array (NOLOAD) : ALIGN(0x1000) {
     __page_frame_array_start = .;
-    . = . + 0x600000; /* 2^21 x 3 bytes, only maps 1GiB */
+    . += 0x600000; /* 2^21 x 3 bytes, only maps 1GiB */
     __page_frame_array_end = .;
   } > KRAM : data
+
+  .static_page_region (NOLOAD) : ALIGN(0x1000) {
+    __static_page_region_start = .;
+    . += (0x1000 * __STATIC_PAGES);
+    __static_page_region_end = .;
+  } > KRAM : data
+
 
   .uram.text : {
     *(.uram.text)

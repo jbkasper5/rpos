@@ -5,7 +5,7 @@
 #include "memory/paging.h"
 #include "memory/virtual_memory.h"
 
-extern void* kheap_start;
+extern uintptr_t kheap_start;
 
 void kheap_init();
 void* kmalloc(size_t bytes);

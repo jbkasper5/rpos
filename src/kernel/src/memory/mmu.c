@@ -9,7 +9,9 @@
 
 #include "io/kprintf.h"
 
-extern uint64_t walk();
+extern uintptr_t static_page_region_start();
+extern uint32_t static_page_region_pages();
+extern uint64_t walk(uint64_t addr);
 
 uint64_t* L0_TABLE;
 
@@ -70,7 +72,7 @@ uint64_t* create_kernel_identity_mapping(uint64_t allocated_pages){
     */
 
     // allocate 4 pages for the kernels initial page table structure
-    table_descriptor_t* kernel_l0_pt = (table_descriptor_t*) buddy_alloc_pt();
+    table_descriptor_t* kernel_l0_pt = (table_descriptor_t*) alloc_page_table();
 
     L0_TABLE = (uint64_t*) kernel_l0_pt;
 
@@ -118,6 +120,11 @@ static void map_page_frame_array(){
 }
 
 
+static void map_static_page_region(){
+    uintptr_t start_addr = static_page_region_start();
+    map_pages(start_addr, start_addr, static_page_region_pages(), MAP_KERNEL, L0_TABLE);
+}
+
 uint64_t* initialize_page_tables(){
     uint64_t allocated_pages = initialize_page_frame_array();
     uint64_t* l0_pt = create_kernel_identity_mapping(allocated_pages);
@@ -128,10 +135,9 @@ uint64_t* initialize_page_tables(){
     // map the page frame array metadata detailing RAM
     map_page_frame_array();
 
-    INFO("Translated PBASE: 0x%x\n", translate_va(PBASE, L0_TABLE));
-    INFO("Translated AUX: 0x%x\n", translate_va(REGS_AUX, L0_TABLE));
-    INFO("Translated AUX: 0x%x\n", translate_va(0x69bcb8, L0_TABLE));
-    INFO("Walk result: 0x%x\n", walk(PBASE));
-    INFO("Walk result: 0x%x\n", walk(REGS_AUX));
-    return l0_pt;
+    // map the page tables themselves
+    map_static_page_region();
+
+    // return the L0 table to be stored in TTBR_EL1
+    return L0_TABLE;
 }
