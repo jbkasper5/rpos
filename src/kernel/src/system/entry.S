@@ -69,11 +69,11 @@ user_context_ptr:
     mrs x0, TTBR0_EL1
     str x0, [sp, 16 * 17]
 
-    #ifdef DEBUG
-    mrs x1, ELR_EL1
-    ldr x0, =pc_string
-    bl kprintf
-    #endif
+    # #ifdef DEBUG
+    # mrs x1, ELR_EL1
+    # ldr x0, =pc_string
+    # bl kprintf
+    # #endif
 
     // reload x0 and x1 to preserve the parameters passed to the kernel
     ldp x0, x1, [sp, #16 * 0]

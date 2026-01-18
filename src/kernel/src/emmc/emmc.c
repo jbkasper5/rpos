@@ -94,11 +94,11 @@ static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
 
     if ((intr_val & 0xFFFF0001) != 1) {
 
-        DEBUG("EMMC_DEBUG: Error waiting for command interrupt complete: %d\n", cmd.index);
+        // DEBUG("EMMC_DEBUG: Error waiting for command interrupt complete: %d\n", cmd.index);
 
         set_last_error(intr_val);
 
-        DEBUG("EMMC_DEBUG: IRQFLAGS: 0x%x - 0x%x - 0x%x\n", EMMC->int_flags, EMMC->status, intr_val);
+        // DEBUG("EMMC_DEBUG: IRQFLAGS: 0x%x - 0x%x - 0x%x\n", EMMC->int_flags, EMMC->status, intr_val);
 
         device.last_success = FALSE;
         return FALSE;
@@ -291,7 +291,7 @@ static bool check_rca() {
         return FALSE;
     }
 
-    DEBUG("EMMC_DEBUG: CARD ID: 0x%x.0x%x.0x%x.0x%x\n", device.last_response[0], device.last_response[1], device.last_response[2], device.last_response[3]);
+    // DEBUG("EMMC_DEBUG: CARD ID: 0x%x.0x%x.0x%x.0x%x\n", device.last_response[0], device.last_response[1], device.last_response[2], device.last_response[3]);
 
     if (!emmc_command( CTSendRelativeAddr, 0, 2000)) {
         DEBUG("EMMC_ERR: Failed to send Relative Addr\n");
@@ -301,13 +301,13 @@ static bool check_rca() {
 
     device.rca = (device.last_response[0] >> 16) & 0xFFFF;
     
-    DEBUG("EMMC_DEBUG: RCA: 0x%x\n", device.rca);
+    // DEBUG("EMMC_DEBUG: RCA: 0x%x\n", device.rca);
 
-    DEBUG("EMMC_DEBUG: CRC_ERR: %d\n", (device.last_response[0] >> 15) & 1);
-    DEBUG("EMMC_DEBUG: CMD_ERR: %d\n", (device.last_response[0] >> 14) & 1);
-    DEBUG("EMMC_DEBUG: GEN_ERR: %d\n", (device.last_response[0] >> 13) & 1);
-    DEBUG("EMMC_DEBUG: STS_ERR: %d\n", (device.last_response[0] >> 9) & 1);
-    DEBUG("EMMC_DEBUG: READY  : %d\n", (device.last_response[0] >> 8) & 1);
+    // DEBUG("EMMC_DEBUG: CRC_ERR: %d\n", (device.last_response[0] >> 15) & 1);
+    // DEBUG("EMMC_DEBUG: CMD_ERR: %d\n", (device.last_response[0] >> 14) & 1);
+    // DEBUG("EMMC_DEBUG: GEN_ERR: %d\n", (device.last_response[0] >> 13) & 1);
+    // DEBUG("EMMC_DEBUG: STS_ERR: %d\n", (device.last_response[0] >> 9) & 1);
+    // DEBUG("EMMC_DEBUG: READY  : %d\n", (device.last_response[0] >> 8) & 1);
 
     if (!((device.last_response[0] >> 8) & 1)) {
         DEBUG("EMMC_ERR: Failed to read RCA\n");
@@ -339,7 +339,7 @@ static bool set_scr() {
         return FALSE;
     }
 
-    DEBUG("EMMC_DEBUG: GOT SRC: SCR0: 0x%x SCR1: 0x%x BWID: 0x%x\n", device.scr.scr[0], device.scr.scr[1], device.scr.bus_widths);
+    // DEBUG("EMMC_DEBUG: GOT SRC: SCR0: 0x%x SCR1: 0x%x BWID: 0x%x\n", device.scr.scr[0], device.scr.scr[1], device.scr.bus_widths);
 
     device.block_size = 512;
 
@@ -367,7 +367,7 @@ static bool set_scr() {
         }
     }
 
-    DEBUG("EMMC_DEBUG: SCR Version: %d\n", device.scr.version);
+    // DEBUG("EMMC_DEBUG: SCR Version: %d\n", device.scr.version);
 
     return TRUE;
 }
@@ -378,7 +378,7 @@ static bool select_card() {
         return FALSE;
     }
 
-    DEBUG("EMMC_DEBUG: Selected Card\n");
+    // DEBUG("EMMC_DEBUG: Selected Card\n");
 
     uint32_t status = (device.last_response[0] >> 9) & 0xF;
 
@@ -387,7 +387,7 @@ static bool select_card() {
         return FALSE;
     }
 
-    DEBUG("EMMC_DEBUG: Status: %d\n", status);
+    // DEBUG("EMMC_DEBUG: Status: %d\n", status);
 
     return TRUE;
 }
@@ -513,7 +513,7 @@ bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) 
     int retry_count = 0;
     int max_retries = 3;
 
-    if (EMMC_DEBUG) kprintf("EMMC_DEBUG: Sending command: %d\n", command);
+    // if (EMMC_DEBUG) kprintf("EMMC_DEBUG: Sending command: %d\n", command);
 
     while(retry_count < max_retries) {
         if (emmc_command( command, block_no, 5000)) {
@@ -532,7 +532,7 @@ bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) 
 }
 
 int do_read(uint8_t *b, uint32_t bsize, uint32_t block_no) {
-    //TODO ENSURE DATA MODE...
+    //TODO: ENSURE DATA MODE...
 
     if (!do_data_command( FALSE, b, bsize, block_no)) {
         kprintf("EMMC_ERR: do_data_command failed\n");

@@ -76,6 +76,8 @@ uint64_t* create_kernel_identity_mapping(uint64_t allocated_pages){
 
     L0_TABLE = (uint64_t*) kernel_l0_pt;
 
+
+    // BUG: Setting this above page 0 breaks apparently 
     uint64_t order = log2_pow2(allocated_pages);
     uint64_t flags = MAP_KERNEL | MAP_EXEC;
     map(0x0, 0x0, order, flags, (uint64_t) L0_TABLE);

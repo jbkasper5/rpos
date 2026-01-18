@@ -42,6 +42,9 @@ typedef uint16_t pid_t;
 
 #define PACKED      __attribute__((packed))
 
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
 #define ALIGN(x, a) (((x) + ((a) - 1)) & ~((a) - 1))
 #define ALIGN_DOWN(addr, align) ((addr) & ~((align) - 1))
 #define ALIGN_UP(addr, align)   (((addr) + ((align) - 1)) & ~((align) - 1))

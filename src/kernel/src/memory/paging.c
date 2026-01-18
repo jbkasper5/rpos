@@ -66,6 +66,8 @@ void buddy_free(page_frame_t* frame){
     // if the list contains a free buddy of the same size, check for coalescing
     // if coalescing is possible, remove existing buddy from the list, merge blocks, and promote order
     // then add the new block to the higher order buddy list
+
+    // TODO: Actually implement this shit
 }
 
 // page allocator - uses buddy allocation

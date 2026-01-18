@@ -4,33 +4,109 @@
 uintptr_t kheap_start = 0xFFFF0000;
 uint64_t kheap_size = 0;
 
-void sbrk(){
+cache kcaches[CACHES];
+
+#define MIN_SLAB_ORDER      5
+
+static void* _slab_alloc(uint32_t order){
     // get new physical page from buddy allocator
-    uint64_t phys_page = buddy_alloc(PAGE_SIZE);
+    uint64_t phys_page = buddy_alloc(PAGE_SIZE * order);
 
-    // find the next continuous page in the virtual heap
-    uint64_t virt_mapping = ALIGN_UP(kheap_start + kheap_size, PAGE_SIZE);
+    // if no more pages are available in RAM, PANIC
+    if(!phys_page) panic();
 
-    // map new allocated page to virtual heap extension
-    map_pages(virt_mapping, phys_page, 1, MAP_KERNEL, L0_TABLE);
+    // map the page into memory
+    map(phys_page, phys_page, 0, MAP_KERNEL, L0_TABLE);
+
+    // for now, convert this to virtual later
+    return phys_page;
 }
 
 void kheap_init(){
-    uint64_t phys_page = buddy_alloc(PAGE_SIZE);
-    INFO("Allocated kernel heap at physical page: 0x%x\n", phys_page);
+    // zero out all the slab pointers to start
+    memset(kcaches, 0, CACHES, sizeof(cache));
 
-    map_pages(kheap_start, phys_page, 1, MAP_KERNEL, L0_TABLE);
-    INFO("Mapped physical page to virtual address: 0x%x\n", kheap_start);
+    for(int i = 0; i <= CACHES; i++){
+        INIT_LIST_HEAD(&kcaches[i].full_slabs);
+        INIT_LIST_HEAD(&kcaches[i].partial_slabs);
+    }
+}
 
-    kheap_size += PAGE_SIZE;
+static void* _addr_from_slab(slab* s){
+    // once we have a slab, we need to read the bitfield to get the item offset from the slab
+    // we also need to check if 
+
+    for(int i = 0; i < s->total; i++){
+        uint8_t byte = i / 8;
+        uint8_t offset = i % 8;
+        if(!(s->bitmap[byte] & (1 << offset))){
+            INFO("Found free block at index %d\n", i);
+            s->bitmap[byte] |= (1 << offset);
+            s->inuse++;
+
+            // skip past metadata for the slab, then get the offset based on the bitfield
+            return ((uintptr_t) s) + ALIGN_UP(sizeof(slab), (1 << s->slab_order)) + (i * (1 << s->slab_order));
+        }
+    }
 }
 
 void* kmalloc(size_t bytes){
-    size_t aligned_bytes = ALIGN(bytes, 8);
-    INFO("Allocating %d bytes...\n", aligned_bytes);
-    return NULL;
+    size_t aligned_bytes = 1;
+    uint32_t shift = 1;
+
+    // align the requested number of bytes to the nearest slab_order
+    while (aligned_bytes < bytes) aligned_bytes <<= 1;
+    aligned_bytes = MAX(aligned_bytes, (1 << MIN_SLAB_ORDER));
+    DEBUG("Allocating %d bytes...\n", aligned_bytes);
+
+    uint32_t log2 = log2_pow2(aligned_bytes);
+    uint32_t cache_idx = log2 - MIN_SLAB_ORDER;
+
+
+    // no slabs yet
+    if(list_empty(&kcaches[cache_idx].partial_slabs)){
+        // allocate new slab
+        slab* new_slab = (slab*) _slab_alloc(PAGE_SIZE);
+
+        // zero the slab bitmap
+        for(int i = 0; i < 8; i++) new_slab->bitmap[i] = 0;
+        new_slab->inuse = 0;
+        new_slab->total = (PAGE_SIZE - ALIGN_UP(sizeof(slab), aligned_bytes)) / aligned_bytes;
+        new_slab->slab_order = log2;
+
+        // add it to kcache partial slab list
+        list_add(&new_slab->list, &kcaches[cache_idx].partial_slabs);
+    }else{
+        slab* partial_slab = list_entry(kcaches[cache_idx].partial_slabs.next, slab, list);
+        
+    }
+
+    // once we have the partial slab, we need to "traverse" the bitfield
+    // to find the first open allocation
+    slab* s = list_entry(kcaches[cache_idx].partial_slabs.next, slab, list);
+    uintptr_t addr = (uintptr_t) _addr_from_slab(s);
+    INFO("Allocated address 0x%x\n", addr);
+    return addr;
 }
 
 void kfree(void* ptr){
-    if(!ptr) return;
+    // find the slab
+    slab* slab_base = (uintptr_t) ptr & ~(PAGE_SIZE - 1);
+
+    cache c = kcaches[slab_base->slab_order];
+
+    // if it's in the full list, remove from full list and add to partial list
+    if(slab_base->inuse == slab_base->total){
+        // remove from c->full_list
+        list_remove(&slab_base->list);
+
+        // add to c->partial_list
+        list_add(&slab_base->list, &c.partial_slabs);
+    }
+
+    slab_base->inuse--;
+
+    if(!slab_base->inuse){
+        // buddy free
+    }
 }

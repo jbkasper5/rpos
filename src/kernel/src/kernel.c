@@ -91,7 +91,16 @@ int kernel_main(){
     DEBUG("\nRaspberry PI Baremetal OS Initializing...\n");
     hardware_init();
 
-    sector* s = kmalloc(sizeof(sector) * 2);
+    char* buf = (char*) kmalloc(32);
+    void* ptr = kmalloc(28);
+    ptr = kmalloc(48);
+    ptr = kmalloc(64);
+    ptr = kmalloc(159);
+    memcpy(buf, "Test!\n", 6);
+    buf[6] = '\0';
+    INFO("%s", buf);
+
+    // sector* s = kmalloc(sizeof(sector) * 2);
 
     sector s2[2];
     // seek to the user ext superblock
