@@ -100,7 +100,6 @@ int kernel_main(){
     buf[6] = '\0';
     INFO("%s", buf);
 
-
     // sector* s = kmalloc(sizeof(sector) * 2);
 
     sector s2[2];

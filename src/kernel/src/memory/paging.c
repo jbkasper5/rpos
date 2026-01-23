@@ -57,6 +57,11 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
     return pfn << 12;
 }
 
+
+/**
+ * @brief Frees a block allocated by the buddy allocator
+ * @param frame     Address of the block to free
+ */
 void buddy_free(page_frame_t* frame){
     // mark the frame as free
     // look in the buddy list for any free buddies of the same size
@@ -67,7 +72,11 @@ void buddy_free(page_frame_t* frame){
     // TODO: Actually implement this shit
 }
 
-// page allocator - uses buddy allocation
+/**
+ * @brief Buddy allocator for allocating physical pages in powers of 2
+ * @param bytes     Number of bytes to allocate 
+ * @return          Address of the header page   
+ */
 uintptr_t buddy_alloc(uint64_t bytes){
     // round bytes up to the nearest page granule
     uint32_t n_pages = (bytes + 4095) >> 12;  // For 4 KiB pages

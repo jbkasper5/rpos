@@ -27,11 +27,11 @@ uint64_t translate_va(uint64_t va, uint64_t ttbr1_base) {
     int page_off = va & 0xFFF;
 
     table_descriptor_t d0 = (table_descriptor_t) l0[idx0];
-    if (!(d0.bits.valid)) return 0; // Fault
+    if (!(d0.bits.valid)) return -1; // Fault
     uint64_t* l1 = (uint64_t*)(d0.bits.address << 12);
 
     table_descriptor_t d1 = (table_descriptor_t) l1[idx1];
-    if (!(d1.bits.valid)) return 0;
+    if (!(d1.bits.valid)) return -1;
     if (d1.bits.type == 0) {
         // 1GB block
         uint64_t pa = (d1.bits.address << 30) + (va & 0x3FFFFFFF);
@@ -40,7 +40,7 @@ uint64_t translate_va(uint64_t va, uint64_t ttbr1_base) {
     uint64_t *l2 = (uint64_t *)(d1.bits.address << 12);
 
     table_descriptor_t d2 = (table_descriptor_t) l2[idx2];
-    if (!(d2.bits.valid)) return 0;
+    if (!(d2.bits.valid)) return -1;
     if (d2.bits.type == 0) {
         // 2MB block
         uint64_t pa = (d2.bits.address << 12) + (va & 0x1FFFFF);
@@ -49,7 +49,7 @@ uint64_t translate_va(uint64_t va, uint64_t ttbr1_base) {
     uint64_t *l3 = (uint64_t *)(d2.bits.address << 12);
 
     mem_descriptor_t d3 = (mem_descriptor_t) l3[idx3];
-    if (!(d3.bits.valid)) return 0;
+    if (!(d3.bits.valid)) return -1;
 
     uint64_t raw_pa = (d3.bits.address << 12) | page_off;
     return raw_pa & ((1ULL << 36) - 1);   // Pi4 36-bit PA mask
@@ -75,12 +75,8 @@ uint64_t* create_kernel_identity_mapping(uint64_t allocated_pages){
 
     L0_TABLE = (uint64_t*) kernel_l0_pt;
 
-
-    // BUG: Setting this above page 0 breaks apparently 
-    uint64_t order = log2_pow2(allocated_pages);
     uint64_t flags = MAP_KERNEL | MAP_EXEC;
-    map(0x0, 0x0, order, flags, (uint64_t) L0_TABLE);
-
+    map_pages(PAGE_SIZE, PAGE_SIZE, allocated_pages - 1, flags, (uint64_t) L0_TABLE);
 
     // peripheral addresses occupy a total of 16MiB, or 8 L2-blocks (each 2MiB)
     flags = MAP_DEVICE | MAP_KERNEL;
@@ -138,6 +134,9 @@ uint64_t* initialize_page_tables(){
 
     // map the page tables themselves
     map_static_page_region();
+    
+    // test to see if the 0th page is properly mapped (should return -1, or 0xFFFFFFFF)
+    DEBUG("MMU Test 0x0: 0x%x\n", translate_va(0x0, L0_TABLE));
 
     // return the L0 table to be stored in TTBR_EL1
     return L0_TABLE;
