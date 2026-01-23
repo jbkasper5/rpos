@@ -100,6 +100,7 @@ int kernel_main(){
     buf[6] = '\0';
     INFO("%s", buf);
 
+
     // sector* s = kmalloc(sizeof(sector) * 2);
 
     sector s2[2];
@@ -126,3 +127,14 @@ int kernel_main(){
 
     return 0;
 }
+
+/*
+TODO:
+    - Restructure flags for the page_frame_t struct
+        - Must include the owner/which allocator it came from
+    - Have allocators request changes to the metadata
+        - Such that the owner of the page can change hands
+    - Maintain the reference counter
+        - To know when pages can be delivered back to the buddy allocator
+    - Freeing buddy-allocated pages
+*/

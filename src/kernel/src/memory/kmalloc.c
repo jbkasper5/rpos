@@ -90,23 +90,5 @@ void* kmalloc(size_t bytes){
 }
 
 void kfree(void* ptr){
-    // find the slab
-    slab* slab_base = (uintptr_t) ptr & ~(PAGE_SIZE - 1);
-
-    cache c = kcaches[slab_base->slab_order];
-
-    // if it's in the full list, remove from full list and add to partial list
-    if(slab_base->inuse == slab_base->total){
-        // remove from c->full_list
-        list_remove(&slab_base->list);
-
-        // add to c->partial_list
-        list_add(&slab_base->list, &c.partial_slabs);
-    }
-
-    slab_base->inuse--;
-
-    if(!slab_base->inuse){
-        // buddy free
-    }
+    
 }

@@ -15,7 +15,6 @@ extern uint64_t walk(uint64_t addr);
 
 uint64_t* L0_TABLE;
 
-
 uint64_t mmutest(uint64_t);
 
 uint64_t translate_va(uint64_t va, uint64_t ttbr1_base) {

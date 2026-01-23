@@ -47,9 +47,6 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
     // remove the frame from the buddy list since it's now allocated
     list_remove(&block->list);
 
-    // mark the block as allocated
-    block->flags.bits.allocated = TRUE;
-
     // set the reference count to 1, since someone is requesting this page from the allocator
     block->refcount = 1;
 
@@ -106,9 +103,13 @@ uintptr_t buddy_alloc_pt(){
 static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t available_pages){
     DEBUG("Initializing buddy allocator for 0x%x available pages...\n", available_pages)
     uint64_t curr_pfn = start_page_addr >> 12;
+    page_frame_flags_t base_flags = {
+        .value = 0,
+    };
     for(int64_t i = MAX_ORDER; i >= 0; i--){
         if(available_pages & (1ULL << i)){
             frame_metadata[curr_pfn].order = i;
+            frame_metadata[curr_pfn].flags = base_flags;
             list_add(&frame_metadata[curr_pfn].list, &buddy_lists[i]);
             curr_pfn += (1ULL << i);
         }

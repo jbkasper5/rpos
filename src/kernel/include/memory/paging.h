@@ -13,10 +13,8 @@ typedef enum page_mutability_s{
 typedef union {
     uint8_t value;
     struct {
-        uint8_t owner         : 1;
-        uint8_t allocated     : 1;
-        uint8_t mutability    : 1;
-        uint8_t reserved      : 5;
+        uint8_t state : 3;
+        uint8_t flags : 5;
     } __attribute__((packed)) bits;
 } page_frame_flags_t;
 
