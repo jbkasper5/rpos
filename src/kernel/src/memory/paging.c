@@ -50,8 +50,19 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
     // set the reference count to 1, since someone is requesting this page from the allocator
     block->refcount = 1;
 
+    // declare ownership of the block to the buddy allocator
+    block->flags.bits.state = PAGE_BUDDY;
+
     // convert the relative coordinate of the block within the frame metadata to a physical page address
     uint64_t pfn = block - frame_metadata;
+
+
+    // mark the following pages as tail pages and define their offset from the head pfn
+    for(int i = 1; i < (1U << req_order); i++){
+        frame_metadata[pfn + i].flags.bits.flags = PAGE_BUDDY_TAIL;
+        frame_metadata[pfn + i].refcount = 1;
+        frame_metadata[pfn + i].order = i;
+    }
 
     // return the pointer to the start of the allocated page
     return pfn << 12;
@@ -104,17 +115,62 @@ uintptr_t buddy_alloc(uint64_t bytes){
  */
 uintptr_t buddy_alloc_pt(){
     uintptr_t pt = buddy_alloc(PAGE_SIZE);
-    memset((void*) pt, 0, PAGE_SIZE / 16, 16);
+    memset((void*) pt, 0, PAGE_SIZE);
     return pt;
 }
 
+void set_page_owner(void* page_addr, page_state new_owner){
+    uint64_t pfn = (uint64_t) page_addr >> 12;
+
+    if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
+        // if it's a tail page, get the head page first
+        pfn -= frame_metadata[pfn].order;
+    }
+
+    page_frame_t* pf = &frame_metadata[pfn];
+    pf->flags.bits.state = new_owner;
+}
+
+page_state get_page_owner(void* page_addr){
+    uint64_t pfn = (uint64_t) page_addr >> 12;
+
+    if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
+        // if it's a tail page, get the head page first
+        pfn -= frame_metadata[pfn].order;
+    }
+
+    page_frame_t* pf = &frame_metadata[pfn];
+    return pf->flags.bits.state;
+}
+
+void* head_from_page(void* page_addr){
+    uint64_t pfn = (uint64_t) page_addr >> 12;
+
+    page_frame_t* pf = &frame_metadata[pfn];
+
+    // if we don't belong to the buddy or the slab, it wasn't allocated so we can't compute the head
+    if (pf->flags.bits.state != PAGE_BUDDY && pf->flags.bits.state != PAGE_SLAB) {
+        return NULL;
+    }
+
+    // if the page is already a head, return it
+    if(pf->flags.bits.flags & PAGE_BUDDY_HEAD){
+        return page_addr;
+    }
+
+    // otherwise, use the order to compute the head address
+    size_t offset_from_head = pf->order;
+    return (void*) ((pfn - offset_from_head) << 12);
+}
 
 static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t available_pages){
     DEBUG("Initializing buddy allocator for 0x%x available pages...\n", available_pages)
     uint64_t curr_pfn = start_page_addr >> 12;
     page_frame_flags_t base_flags = {
-        .value = 0,
+        .bits.state = PAGE_FREE,
+        .bits.flags = PAGE_BUDDY_HEAD
     };
+
     for(int64_t i = MAX_ORDER; i >= 0; i--){
         if(available_pages & (1ULL << i)){
             frame_metadata[curr_pfn].order = i;
@@ -143,6 +199,11 @@ uint64_t initialize_page_frame_array(){
 
     // stay in the lower 1 GiB for now
     uint64_t available_pages = (1ULL << 18) - reserved_pages;
+
+    // zero out the page frame metadata (which internally sets the state to free and )
+    // for 1 GiB of RAM, there are 2^18 pages
+    memset(frame_metadata, 0, (1 << 18) * sizeof(page_frame_t));
+
     _initialize_buddy_allocator(start_page_addr, available_pages);   
     return reserved_pages;
 }

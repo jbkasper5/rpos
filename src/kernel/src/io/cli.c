@@ -25,7 +25,7 @@ static void fill_screen(frame_t* frame, uint32_t argb){
     // frame width = 800
     // frame hieght = 480
     // sizeof(argb) = 4
-    memset(frame->fb, argb, frame->width * frame->height, sizeof(argb));
+    memset(frame->fb, argb, frame->width * frame->height * sizeof(argb));
 }
 
 static void newline(){
@@ -145,5 +145,5 @@ void scroll(){
 
     uint32_t* last_line = UNSCALED_POINTER_ADD(frame.fb, (line_bytes * (NUM_LINES - 1)));
 
-    memset(last_line, DEFAULT_BACKGROUND_COLOR, line_idxs, sizeof(uint32_t));
+    memset(last_line, DEFAULT_BACKGROUND_COLOR, line_idxs * sizeof(uint32_t));
 }

@@ -7,10 +7,14 @@ uint64_t kheap_size = 0;
 cache kcaches[CACHES];
 
 #define MIN_SLAB_ORDER      5
+#define MAX_SLAB_ORDER      11
 
 static void* _slab_alloc(uint32_t order){
     // get new physical page from buddy allocator
-    uint64_t phys_page = buddy_alloc(PAGE_SIZE * order);
+    uint64_t phys_page = buddy_alloc(PAGE_SIZE * (order + 1));
+
+    // the ownership changed hands to the slab
+    set_page_owner(phys_page, PAGE_SLAB);
 
     // if no more pages are available in RAM, PANIC
     if(!phys_page) panic();
@@ -24,7 +28,7 @@ static void* _slab_alloc(uint32_t order){
 
 void kheap_init(){
     // zero out all the slab pointers to start
-    memset(kcaches, 0, CACHES, sizeof(cache));
+    memset(kcaches, 0, CACHES * sizeof(cache));
 
     for(int i = 0; i <= CACHES; i++){
         INIT_LIST_HEAD(&kcaches[i].full_slabs);
@@ -48,6 +52,8 @@ static void* _addr_from_slab(slab* s){
             return ((uintptr_t) s) + ALIGN_UP(sizeof(slab), (1 << s->slab_order)) + (i * (1 << s->slab_order));
         }
     }
+
+    return NULL;
 }
 
 void* kmalloc(size_t bytes){
@@ -62,11 +68,16 @@ void* kmalloc(size_t bytes){
     uint32_t log2 = log2_pow2(aligned_bytes);
     uint32_t cache_idx = log2 - MIN_SLAB_ORDER;
 
+    // if aligned_bytes >= 4096, then log2 >= 12
+    if(log2 > MAX_SLAB_ORDER){
+        return (void*) buddy_alloc(aligned_bytes);
+    }
+
 
     // no slabs yet
     if(list_empty(&kcaches[cache_idx].partial_slabs)){
         // allocate new slab
-        slab* new_slab = (slab*) _slab_alloc(PAGE_SIZE);
+        slab* new_slab = (slab*) _slab_alloc(0);
 
         // zero the slab bitmap
         for(int i = 0; i < 8; i++) new_slab->bitmap[i] = 0;
@@ -89,6 +100,48 @@ void* kmalloc(size_t bytes){
     return addr;
 }
 
+static void _slab_free(void* ptr){
+    // right now we have a pointer pointing to somewhere in the middle of a slab
+    // we need to find the head of the slab
+
+    // first, we align ptr to a page boundary 
+    // then we ask the buddy to give us the head of that page block since all slabs come from the buddy
+    slab* slab_head = (slab*) (head_from_page(ALIGN_DOWN((uintptr_t) ptr, PAGE_SIZE)));
+
+    // get the item size
+    size_t item_size = 1 << slab_head->slab_order;
+
+    // we now need to find how many items the metadata occupies
+    size_t metadata_size = ALIGN_UP(sizeof(slab), item_size) / item_size;
+
+    size_t offset = (((uintptr_t) ptr - (uintptr_t) slab_head) / item_size) - metadata_size;
+
+    // mark the bit as free (1)
+    size_t byte = offset / 8;
+    size_t bit = offset % 8;
+    slab_head->bitmap[byte] &= ~(1 << bit);
+
+    // decrement the number of items in use
+    slab_head->inuse--;
+
+    // free the entire slab back to the buddy if nothing is in use
+    if(slab_head->inuse == 0){
+
+        DEBUG("INUSE reached 0, determine if buddy_free is necessary.\n", slab_head);
+        // buddy_free((uintptr_t) slab_head);
+    }
+}
+
 void kfree(void* ptr){
-    
+    void* aligned_ptr = ALIGN_DOWN((uintptr_t) ptr, PAGE_SIZE);
+    page_state owner = get_page_owner(aligned_ptr);
+    if(owner == PAGE_BUDDY){
+        DEBUG("kmalloc freeing buddy allocation at address 0x%x\n", aligned_ptr);
+        buddy_free((uintptr_t) aligned_ptr);
+        return;
+    }else if(owner == PAGE_SLAB){
+        DEBUG("kmalloc freeing slab allocation at address 0x%x\n", aligned_ptr);
+        _slab_free(ptr);
+        return;
+    }
 }

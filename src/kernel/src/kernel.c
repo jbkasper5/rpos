@@ -92,15 +92,22 @@ int kernel_main(){
     hardware_init();
 
     char* buf = (char*) kmalloc(32);
-    void* ptr = kmalloc(28);
-    ptr = kmalloc(48);
-    ptr = kmalloc(64);
-    ptr = kmalloc(159);
     memcpy(buf, "Test!\n", 6);
+    INFO("Allocated buffer at address 0x%x\n", buf);
     buf[6] = '\0';
     INFO("%s", buf);
+    kfree(buf);
+
+    // see if free properly returned the memory
+    buf = kmalloc(32);
+    INFO("Re-allocated buffer at address 0x%x\n", buf);
 
     // sector* s = kmalloc(sizeof(sector) * 2);
+    ext4_block* b = kmalloc(sizeof(ext4_block));
+
+    INFO("Allocated ext4 block buffer at address 0x%x\n", b);
+
+    kfree(b);
 
     sector s2[2];
     // seek to the user ext superblock

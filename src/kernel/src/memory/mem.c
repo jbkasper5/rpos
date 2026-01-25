@@ -4,9 +4,6 @@
 void _neon_64_memcpy();
 void _neon_16_memcpy();
 void _neon_8_memset();
-void _neon_16_memset();
-void _neon_32_memset();
-void _neon_64_memset();
 
 void* memcpy(void* dest, const void* src, uint32_t bytes) {
     void* original_dest = dest;
@@ -33,31 +30,18 @@ void* memcpy(void* dest, const void* src, uint32_t bytes) {
     return original_dest;
 }
 
-void* memset(void* ptr, uint64_t value, uint64_t elements, size_t size){
-    uint64_t granule = 16 / size;
-    uint64_t tail = elements % granule;
-    uint64_t vectors  = elements / granule;
+void* memset(void* ptr, int value, size_t len){
+    void* orig = ptr;
+    size_t tail = len % 16;
+    size_t vectors  = len / 16;
 
-    if(vectors){
-        switch(size){
-            case 1: _neon_8_memset(ptr, value, vectors); break;
-            case 2: _neon_16_memset(ptr, value, vectors); break;
-            case 4: _neon_32_memset(ptr, value, vectors); break;
-            case 8: _neon_64_memset(ptr, value, vectors); break;
-        }
+    _neon_8_memset(ptr, (unsigned char)value, vectors);
+
+    ptr = UNSCALED_POINTER_ADD(orig, vectors * 16);
+
+    for(size_t i = 0; i < tail; i++){
+        ((unsigned char*)ptr)[i] = (unsigned char) value;
     }
 
-    if(tail){
-        uint8_t* ptr8 = (uint8_t*)ptr + vectors * 16; // advance pointer past NEON vectors
-        for(uint64_t i = 0; i < tail; i++){
-            switch(size){
-                case 1: ptr8[i] = (uint8_t)value; break;
-                case 2: ((uint16_t*)ptr8)[i] = (uint16_t)value; break;
-                case 4: ((uint32_t*)ptr8)[i] = (uint32_t)value; break;
-                case 8: ((uint64_t*)ptr8)[i] = (uint64_t)value; break;
-            }
-        }
-    }
-
-    return ptr;
+    return orig;
 }

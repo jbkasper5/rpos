@@ -5,10 +5,17 @@
 #include "macros.h"
 #include "io/kprintf.h"
 
-typedef enum page_mutability_s{
-    IMMUTABLE = 0,
-    MUTABLE = 1,
-} page_mutability_t;
+typedef enum {
+    PAGE_FREE = 0,
+    PAGE_BUDDY = 1,
+    PAGE_SLAB = 2,
+    PAGE_RESERVED = 3,
+} page_state;
+
+typedef enum {
+    PAGE_BUDDY_TAIL = (1 << 0),
+    PAGE_BUDDY_HEAD = (1 << 1),
+} page_flags;
 
 typedef union {
     uint8_t value;
@@ -35,14 +42,14 @@ typedef struct {
     // 16 bytes
     list_head_t list;
 
+    // 8 byte
+    size_t order;
+
     // 4 bytes
     uint32_t refcount;
 
     // 1 byte
     page_frame_flags_t flags;
-
-    // 1 byte
-    uint8_t order;
 
 } page_frame_t; 
 
@@ -52,5 +59,8 @@ uintptr_t buddy_alloc(uint64_t bytes);
 uintptr_t buddy_alloc_pt();
 uint64_t initialize_page_frame_array();
 uint8_t get_block_order(uint64_t addr);
+void* head_from_page(void* page_addr);
+page_state get_page_owner(void* page_addr);
+void set_page_owner(void* page_addr, page_state new_owner);
 
 #endif

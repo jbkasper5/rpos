@@ -19,7 +19,7 @@ uintptr_t alloc_page_table(){
 
     uintptr_t page_addr = static_page_region_start() + (PAGE_SIZE * allocated_pages);
     allocated_pages++;
-    memset(page_addr, 0, PAGE_SIZE / 16, 16);
+    memset(page_addr, 0, PAGE_SIZE);
 
     return page_addr;
 }
@@ -227,6 +227,9 @@ bool map(uint64_t virt_block, uint64_t phys_block, uint8_t block_order, uint64_t
     int iters = 0;
     bool (*mapping_func)(uint64_t, uint64_t, uint32_t, uint64_t, uint64_t);
 
+
+    // TODO: in case of any intermediate allocations or remappings, needs to figure out 
+    // whether a block is optimal, even if the order is >= 9
     if(block_order >= 9 && idx3 == 0){
         mapping_func = map_blocks;
         // get number of blocks to map

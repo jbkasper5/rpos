@@ -2,8 +2,8 @@ ENTRY(_start)
 
 /* Total of 512 MB of RAM, 256 for kernel, 256 for user*/
 MEMORY {
-  KRAM (rwx) : ORIGIN = 0x000000, LENGTH = 0x800000  /* 128 MiB for kernel */
-  URAM (rwx) : ORIGIN = 0x800000, LENGTH = 0x100000  /* 128 MiB for user */
+  KRAM (rwx) : ORIGIN = 0x000000, LENGTH = 0xB00000  /* 128 MiB for kernel */
+  URAM (rwx) : ORIGIN = 0xB00000, LENGTH = 0x100000  /* 128 MiB for user */
 }
 
 PHDRS {
@@ -59,12 +59,12 @@ SECTIONS {
 
   __kernel_end = .;
   /*
-    If uisng 1 GiB RAM: PFE = 24 bytes, 2^12 page size, 2^30 pages => 2^21 * 3 bytes
-    If using 4 GiB RAM: PFE = 24 bytes, 2^12 page size, 2^32 pages => 2^23 * 3 bytes
+    If uisng 1 GiB RAM: PFE = 32 bytes, 2^12 page size, 2^30 RAM bytes => 2^18 pages * 2^5 bytes = 2^23
+    If using 4 GiB RAM: PFE = 32 bytes, 2^12 page size, 2^32 RAM bytes => 2^20 pages * 2^5 bytes = 2^25
   */
   .page_frame_array (NOLOAD) : ALIGN(0x1000) {
     __page_frame_array_start = .;
-    . += 0x600000; /* 2^21 x 3 bytes, only maps 1GiB */
+    . += 0x800000; /* 2^23 bytes, only maps 1GiB */
     __page_frame_array_end = .;
   } > KRAM : data
 

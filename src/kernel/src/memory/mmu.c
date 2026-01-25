@@ -134,9 +134,6 @@ uint64_t* initialize_page_tables(){
 
     // map the page tables themselves
     map_static_page_region();
-    
-    // test to see if the 0th page is properly mapped (should return -1, or 0xFFFFFFFF)
-    DEBUG("MMU Test 0x0: 0x%x\n", translate_va(0x0, L0_TABLE));
 
     // return the L0 table to be stored in TTBR_EL1
     return L0_TABLE;
