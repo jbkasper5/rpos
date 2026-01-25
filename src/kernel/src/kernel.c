@@ -109,13 +109,15 @@ int kernel_main(){
 
     kfree(b);
 
-    sector s2[2];
+    b = kmalloc(sizeof(ext4_block));
+
+    INFO("Re-allocated ext4 block buffer at address 0x%x\n", b);
     // seek to the user ext superblock
     emmc_seek_sector(0x104002);
-    int result = emmc_read((uint8_t*)s2, sizeof(sector) * 2);
+    int result = emmc_read((uint8_t*)b, sizeof(sector) * 2);
 
     // read the sectors as a superblock
-    ext_superblock* sb = (ext_superblock*) s2;
+    ext_superblock* sb = (ext_superblock*) b;
 
     INFO("Parsing ext4 filesystem...\n");
     INFO("SUPERBLOCK VOLUME: \e[36m%s\e[0m\n", sb->s_volume_name);

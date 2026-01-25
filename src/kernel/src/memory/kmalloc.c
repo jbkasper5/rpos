@@ -70,7 +70,12 @@ void* kmalloc(size_t bytes){
 
     // if aligned_bytes >= 4096, then log2 >= 12
     if(log2 > MAX_SLAB_ORDER){
-        return (void*) buddy_alloc(aligned_bytes);
+        void* pages = (void*) buddy_alloc(aligned_bytes);
+
+        // need to map the page(s) into memory first
+        map((uintptr_t) pages, (uintptr_t) pages, log2 - PAGE_SHIFT, MAP_KERNEL, L0_TABLE);
+
+        return pages;
     }
 
 
