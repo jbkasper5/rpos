@@ -142,6 +142,10 @@ void kfree(void* ptr){
     page_state owner = get_page_owner(aligned_ptr);
     if(owner == PAGE_BUDDY){
         DEBUG("kmalloc freeing buddy allocation at address 0x%x\n", aligned_ptr);
+
+        // TODO: need to munmap the virtual memory mappings for this page
+        // munmap();
+
         buddy_free((uintptr_t) aligned_ptr);
         return;
     }else if(owner == PAGE_SLAB){
@@ -149,4 +153,6 @@ void kfree(void* ptr){
         _slab_free(ptr);
         return;
     }
+
+    panic();
 }

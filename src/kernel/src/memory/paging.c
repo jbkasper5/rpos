@@ -70,6 +70,7 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
 
 
 static void coalesce_up(page_frame_t* frame){
+    DEBUG("Trying to coalesce pfn 0x%x of order %d\n", (uintptr_t) frame >> 12, frame->order);
     size_t block_order = frame->order;
 
     // slide back to the previous frame in memory
@@ -77,6 +78,8 @@ static void coalesce_up(page_frame_t* frame){
     page_frame_t* next_frame = frame + (1 << block_order);
 
     if(prev_frame->order == block_order && prev_frame->flags.bits.state == PAGE_FREE && prev_frame->flags.bits.flags & PAGE_BUDDY_HEAD){
+        DEBUG("Coalescing pfn 0x%x with prior pfn 0x%x\n", (uintptr_t) frame >> 12, (uintptr_t) prev_frame >> 12);
+
         list_remove(&frame->list);
         list_remove(&prev_frame->list);
         prev_frame->order++;
@@ -98,12 +101,15 @@ static void coalesce_up(page_frame_t* frame){
  * @brief Frees a block allocated by the buddy allocator
  * @param frame     Address of the block to free
  */
-void buddy_free(page_frame_t* frame){
+void buddy_free(void* page){
     // mark the frame as free
     // look in the buddy list for any free buddies of the same size
     // if the list contains a free buddy of the same size, check for coalescing
     // if coalescing is possible, remove existing buddy from the list, merge blocks, and promote order
     // then add the new block to the higher order buddy list
+
+    // get the frame from the page address
+    page_frame_t* frame = &frame_metadata[(uintptr_t) page >> 12];
 
     // step 1: mark the frame as free
     frame->flags.bits.state = PAGE_FREE;
