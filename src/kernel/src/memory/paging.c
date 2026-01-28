@@ -69,6 +69,31 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
 }
 
 
+static void coalesce_up(page_frame_t* frame){
+    size_t block_order = frame->order;
+
+    // slide back to the previous frame in memory
+    page_frame_t* prev_frame = frame - (1 << block_order);
+    page_frame_t* next_frame = frame + (1 << block_order);
+
+    if(prev_frame->order == block_order && prev_frame->flags.bits.state == PAGE_FREE && prev_frame->flags.bits.flags & PAGE_BUDDY_HEAD){
+        list_remove(&frame->list);
+        list_remove(&prev_frame->list);
+        prev_frame->order++;
+
+        // since we're coalescing, the later page frame becomes a tail page
+        frame->flags.bits.state = PAGE_BUDDY_TAIL;
+
+        // add congealed block to the next buddy list
+        list_add(&prev_frame->list, &buddy_lists[block_order + 1]);
+
+        // recurse up in case prev_frame also needs coalescing
+        coalesce_up(prev_frame);
+    }else if(FALSE){
+        // check the frame ahead in case the one behind isn't suitable for coalescing
+    }
+}
+
 /**
  * @brief Frees a block allocated by the buddy allocator
  * @param frame     Address of the block to free
@@ -80,7 +105,20 @@ void buddy_free(page_frame_t* frame){
     // if coalescing is possible, remove existing buddy from the list, merge blocks, and promote order
     // then add the new block to the higher order buddy list
 
-    // TODO: Actually implement this shit
+    // step 1: mark the frame as free
+    frame->flags.bits.state = PAGE_FREE;
+
+    // step 2: add it to the buddy list of the appropriate order
+    size_t block_order = frame->order;
+
+    // quick panic if block order exceeds the buddy list
+    if(block_order > MAX_ORDER) panic();
+
+    // add the frame to the free list
+    list_add(&frame->list, &buddy_lists[block_order]);
+
+    // perform any coalescing if necessary
+    coalesce_up(frame);
 }
 
 /**
