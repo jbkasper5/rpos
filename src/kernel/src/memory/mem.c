@@ -8,14 +8,15 @@ void _neon_8_memset();
 void* memcpy(void* dest, const void* src, uint32_t bytes) {
     void* original_dest = dest;
     uint64_t copy_iters = bytes / 64;
-    _neon_64_memcpy(dest, src, copy_iters);
+
+    if(copy_iters) _neon_64_memcpy(dest, src, copy_iters);
 
     dest = UNSCALED_POINTER_ADD(dest, copy_iters * 64);
     src = UNSCALED_POINTER_ADD(src, copy_iters * 64);
 
     uint64_t remaining_bytes = bytes % 64;
     copy_iters = remaining_bytes / 16;
-    _neon_16_memcpy(dest, src, copy_iters);
+    if (copy_iters) _neon_16_memcpy(dest, src, copy_iters);
 
     dest = UNSCALED_POINTER_ADD(dest, copy_iters * 16);
     src = UNSCALED_POINTER_ADD(src, copy_iters * 16);

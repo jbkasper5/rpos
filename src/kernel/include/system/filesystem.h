@@ -84,6 +84,17 @@ typedef struct PACKED {
     char     s_volume_name[16];
     char     s_last_mounted[64];
     uint32_t s_algo_bitmap;
+    uint8_t  s_prealloc_blocks;
+    uint8_t  s_prealloc_dir_blocks;
+    uint16_t s_reserved_gdt_blocks;
+    uint8_t  s_journal_uuid[16];
+    uint32_t s_journal_inum;
+    uint32_t s_journal_dev;
+    uint32_t s_last_orphan;
+    uint32_t s_hash_seed[4];
+    uint8_t s_def_hash_version;
+    uint8_t s_jnl_backup_type;
+    uint8_t s_desc_size;
     /* ... rest can be ignored for now */
 } ext_superblock;
 
@@ -153,15 +164,34 @@ typedef struct {
     sector data[8];
 } ext4_block;
 
+typedef struct PACKED {
+    uint32_t bg_block_bitmap_lo;     // start of block bitmap
+    uint32_t bg_inode_bitmap_lo;     // start of inode bitmap
+    uint32_t bg_inode_table_lo;      // start of inode table (the one you want)
+    uint16_t bg_free_blocks_count_lo;
+    uint16_t bg_free_inodes_count_lo;
+    uint16_t bg_used_dirs_count_lo;
+    uint16_t bg_flags;
+    uint32_t bg_exclude_bitmap_lo;
+    uint16_t bg_block_bitmap_csum_lol;
+    uint16_t bg_inode_bitmap_csum_lo;
+    uint16_t bg_itable_unused_lo;
+    uint16_t bg_checksum;
+} ext4_group_desc_t;
+
+
 typedef struct {
-    uint32_t bg_block_bitmap;     // start of block bitmap
-    uint32_t bg_inode_bitmap;     // start of inode bitmap
-    uint32_t bg_inode_table;      // start of inode table (the one you want)
-    uint16_t bg_free_blocks_count;
-    uint16_t bg_free_inodes_count;
-} bgdt;
+    ext4_inode* inode;      // inode of the file
+    uint64_t pos;            // current seek position
+    uint32_t flags;          // O_RDONLY, O_RDWR, etc.
+    uint32_t refcount;       // for dup/close
+} file_t;
+
 
 void print_partitions(mbr* mbr);
 void print_fat32_directory(sector* s);
+
+size_t read_superblock();
+void test_read_ls();
 
 #endif

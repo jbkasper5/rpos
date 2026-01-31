@@ -91,40 +91,10 @@ int kernel_main(){
     DEBUG("\nRaspberry PI Baremetal OS Initializing...\n");
     hardware_init();
 
-    char* buf = (char*) kmalloc(32);
-    memcpy(buf, "Test!\n", 6);
-    INFO("Allocated buffer at address 0x%x\n", buf);
-    buf[6] = '\0';
-    INFO("%s", buf);
-    kfree(buf);
+    size_t root_sector = read_superblock();
+    read_dir(root_sector);
 
-    // see if free properly returned the memory
-    buf = kmalloc(32);
-    INFO("Re-allocated buffer at address 0x%x\n", buf);
-
-    // sector* s = kmalloc(sizeof(sector) * 2);
-    ext4_block* b = kmalloc(sizeof(ext4_block));
-
-    INFO("Allocated ext4 block buffer at address 0x%x\n", b);
-
-    kfree(b);
-
-    b = kmalloc(sizeof(ext4_block));
-
-    INFO("Re-allocated ext4 block buffer at address 0x%x\n", b);
-    // seek to the user ext superblock
-    emmc_seek_sector(0x104002);
-    int result = emmc_read((uint8_t*)b, sizeof(sector) * 2);
-
-    // read the sectors as a superblock
-    ext_superblock* sb = (ext_superblock*) b;
-
-    INFO("Parsing ext4 filesystem...\n");
-    INFO("SUPERBLOCK VOLUME: \e[36m%s\e[0m\n", sb->s_volume_name);
-    INFO("SUPERBLOCK MAGIC: 0x%x\n", sb->s_magic);
-    INFO("BLOCK SIZE: 0x%x\n", 1024 << sb->s_log_block_size);
-    INFO("INODE SIZE: 0x%x\n", sb->s_inode_size);
-    INFO("INODES PER BLOCK: %d\n", (1024 << sb->s_log_block_size) / sb->s_inode_size);
+    test_read_ls();
     
     while(TRUE){
         uart_putc(uart_getc());
@@ -138,11 +108,7 @@ int kernel_main(){
 
 /*
 TODO:
-    - Restructure flags for the page_frame_t struct
-        - Must include the owner/which allocator it came from
-    - Have allocators request changes to the metadata
-        - Such that the owner of the page can change hands
     - Maintain the reference counter
         - To know when pages can be delivered back to the buddy allocator
-    - Freeing buddy-allocated pages
+    - Finish buddy free
 */
