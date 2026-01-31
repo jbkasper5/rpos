@@ -1,5 +1,5 @@
 #include "io/gpio.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 
 void gpio_pin_set_func(uint8_t pinNumber, GpioFunc_t func){
     uint8_t bit_start = (pinNumber * 3) % 30;
@@ -35,10 +35,10 @@ void gpio_pin_enable(uint8_t pinNumber){
 
 void pulse(uint32_t pin, bool on){
     if(on){
-        PDEBUG("Turning %d off...\n", pin);
+        DEBUG("Turning %d off...\n", pin);
         gpio_set_pin_low(pin);
     }else{
-        PDEBUG("Turning %d on...\n", pin);
+        DEBUG("Turning %d on...\n", pin);
         gpio_set_pin_high(pin);
     }
 }

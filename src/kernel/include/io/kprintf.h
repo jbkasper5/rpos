@@ -5,10 +5,8 @@
 #include "io/mini_uart.h"
 #include "macros.h"
 
-char nibble_to_char(char nibble);
-void printf(char* format_str, ...);
-char* _int_to_str(int num, char is_long);
-char* _to_hex_str(unsigned long num);
+void kprintf(char* format_str, ...);
+void disable_panel();
 
 #define INT_SIZE    (sizeof(int) * 8)
 #define FLOAT_SIZE  (sizeof(float) * 8)

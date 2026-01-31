@@ -38,7 +38,7 @@ mmu_init:
 
     isb
 
-    ldr x0, =0x4400
+    ldr x0, =((0xFF << 0) | (0x04 << 8))
     msr MAIR_EL1, x0
 
     dsb ish
@@ -49,9 +49,6 @@ mmu_init:
     msr sctlr_el1, x0
 
     isb
-
-    ldr x0, =0x3fffd0
-    bl walk
 
     ldp x29, x30, [sp], #16
     ret

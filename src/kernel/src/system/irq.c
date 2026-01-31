@@ -1,4 +1,4 @@
-#include "io/printf.h"
+#include "io/kprintf.h"
 #include "system/entry.h"
 #include "peripherals/irq.h"
 #include "peripherals/aux.h"
@@ -31,8 +31,14 @@ const char entry_error_messages[16][32] = {
 	"ERROR_INVALID_EL0_32"	
 };
 
-void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t address){
-    printf("ERROR CAUGHT: %s - %d, ESR_EL1: %x, ELR_EL1: %x\n", entry_error_messages[type], type, esr, address);
+void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t instruction, uint64_t address){
+	ERROR("%s\n", entry_error_messages[type]);
+	ERROR("\tException: 0x%x\n", esr);
+	ERROR("\tFaulting instruction: 0x%x\n", instruction);
+	ERROR("\tAddress causing fault: 0x%x\n", address);
+	if ((esr >> 26) == 0x3C && (esr & 0xFFFF) == 0xBEEF) {
+		ERROR("PANIC!\n");
+	}
 }
 
 void enable_interrupt_controller() {
@@ -43,21 +49,21 @@ void enable_interrupt_controller() {
 
 
 void handle_irq(uint64_t reg_addr, uint8_t el){
-	PDEBUG("Handling IRQ from EL %d\n", el);
-	// PDEBUG("Handling IRQ (context: 0x%x)...\n", reg_addr);
+	DEBUG("Handling IRQ from EL %d\n", el);
+	// DEBUG("Handling IRQ (context: 0x%x)...\n", reg_addr);
 
     uint32_t irq = REGS_BCMIRQ->irq0_pending_0;
 	uint32_t gic_irq = REGS_GICC->gicc_iar;
 
-	PDEBUG("BCM IRQ: %d, GIC IRQ: %d\n", irq, gic_irq);
+	DEBUG("BCM IRQ: %d, GIC IRQ: %d\n", irq, gic_irq);
     while(irq){
         if(irq & AUX_IRQ){
             irq &= ~AUX_IRQ;
 
             while((REGS_AUX->mu_iir & 4) == 4){
-                PDEBUG("UART Recv: ");
+                DEBUG("UART Recv: ");
                 uart_putc(uart_getc());
-                PDEBUG("\n");
+                DEBUG("\n");
             }
         }
 
@@ -74,11 +80,11 @@ void handle_irq(uint64_t reg_addr, uint8_t el){
 		}
     }
 
-	// PDEBUG("GIC IRQ: %d\n", gic_irq);
+	// DEBUG("GIC IRQ: %d\n", gic_irq);
 
     if (gic_irq < 1020) {  // 1020 = spurious interrupt ID threshold
         if (gic_irq == 30) {
-			PDEBUG("Handling interrupt 30...\n");
+			DEBUG("Handling interrupt 30...\n");
             // Handle ARM physical timer interrupt
 			// if in EL1, just prime the timer
 			// if in EL0, actually jump to scheduler code
@@ -88,7 +94,7 @@ void handle_irq(uint64_t reg_addr, uint8_t el){
 				scheduler((reglist_t*) reg_addr);
 			}
         }else if(gic_irq == 27){
-			PDEBUG("Handling interrupt 27...\n");
+			DEBUG("Handling interrupt 27...\n");
 			
 			// handle the timer sleep stack
 			handle_virtual_timer();

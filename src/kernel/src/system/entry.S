@@ -27,8 +27,8 @@ user_context_ptr:
     mov x0, #\type
     mrs x1, esr_el1
     mrs x2, elr_el1
+    mrs x3, far_el1
     bl show_invalid_entry_message
-    b err_hang
 .endm
 
 .macro store_context
@@ -65,11 +65,15 @@ user_context_ptr:
     mrs x1, SPSR_EL1
     stp x0, x1, [sp, #16 * 16]
 
-    #ifdef DEBUG
-    mrs x1, ELR_EL1
-    ldr x0, =pc_string
-    bl printf
-    #endif
+    // store user page table base into the stack as well
+    mrs x0, TTBR0_EL1
+    str x0, [sp, 16 * 17]
+
+    # #ifdef DEBUG
+    # mrs x1, ELR_EL1
+    # ldr x0, =pc_string
+    # bl kprintf
+    # #endif
 
     // reload x0 and x1 to preserve the parameters passed to the kernel
     ldp x0, x1, [sp, #16 * 0]
@@ -98,9 +102,14 @@ user_context_ptr:
     // write value back into stack pointer
     msr SP_EL0, x0
 
+    // restore user program counter and processor state
     ldp x0, x1, [sp, #16 * 16]
     msr ELR_EL1, x0
     msr SPSR_EL1, x1
+
+    // restore user page table base from stack
+    ldr x0, [sp, #16 * 17]
+    msr TTBR0_EL1, x0
 
     ldp x0, x1, [sp, #16 * 0]
     add sp, sp, #S_FRAME_SIZE
@@ -133,23 +142,27 @@ vectors:
 
 sync_invalid_el1t:
     handle_invalid_entry SYNC_INVALID_EL1T
+    b err_hang
 
 irq_invalid_el1t:
     handle_invalid_entry IRQ_INVALID_EL1T
+    b err_hang
 
 fiq_invalid_el1t:
     handle_invalid_entry FIQ_INVALUD_EL1T
+    b err_hang
 
 error_invalid_el1t:
     handle_invalid_entry ERROR_INVALID_EL1T
+    b err_hang
 
 # ERROR HANDLER FOR KERNEL MODE
 sync_invalid_el1h:
+    handle_invalid_entry SYNC_INVALID_EL1H
     mrs x10, esr_el1
     mrs x11, far_el1
     mrs x12, elr_el1
     b .   // halt here for GDB to inspect
-    # handle_invalid_entry SYNC_INVALID_EL1H
 
 # IRQ HANDLER FOR KERNEL MODE
 handle_el1_irq:
@@ -161,7 +174,7 @@ handle_el1_irq:
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     ldr x0, =my_string_3
-    bl printf
+    bl kprintf
     #endif
 
     mrs x1, SPSR_EL1
@@ -177,9 +190,11 @@ handle_el1_irq:
 
 fiq_invalid_el1h:
     handle_invalid_entry FIQ_INVALUD_EL1H
+    b err_hang
 
 error_invalid_el1h:
     handle_invalid_entry ERROR_INVALID_EL1H
+    b err_hang
 
 # SYSTEM CALL HANDLER FOR USER MODE
 handle_el0_svc:
@@ -198,7 +213,7 @@ handle_el0_svc:
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     ldr x0, =my_string_2
-    bl printf
+    bl kprintf
     #endif
 
     // prepare arguments for the system call
@@ -233,7 +248,7 @@ handle_el0_irq:
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     ldr x0, =my_string_3
-    bl printf
+    bl kprintf
     #endif
 
     // put the register file pointer into x0
@@ -252,21 +267,28 @@ handle_el0_irq:
 
 fiq_invalid_el0_64:
     handle_invalid_entry FIQ_INVALUD_EL0_64
+    b err_hang
 
 error_invalid_el0_64:
     handle_invalid_entry ERROR_INVALID_EL0_64
+    b err_hang
 
 sync_invalid_el0_32:
     handle_invalid_entry SYNC_INVALID_EL0_32
+    b err_hang
 
 irq_invalid_el0_32:
     handle_invalid_entry IRQ_INVALID_EL0_32
+    b err_hang
+
 
 fiq_invalid_el0_32:
     handle_invalid_entry FIQ_INVALUD_EL0_32
+    b err_hang
 
 error_invalid_el0_32:
     handle_invalid_entry ERROR_INVALID_EL0_32
+    b err_hang
 
 
 .globl err_hang

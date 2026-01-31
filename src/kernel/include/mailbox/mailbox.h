@@ -4,7 +4,7 @@
 #include "macros.h"
 #include "peripherals/base.h"
 #include "memory/mem.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 
 #define MAILBOX_BASE   (PBASE + 0xB880)
 #define MAILBOX_READ   ((volatile uint32_t *)(MAILBOX_BASE + 0x00))
@@ -214,7 +214,7 @@ uint32_t mailbox_clock_rate(clock_type ct);
 bool mailbox_generic_command(uint32_t tag_id, uint32_t id, uint32_t *value);
 bool mailbox_power_check(uint32_t type);
 bool mailbox_process(mailbox_tag *tag, uint32_t tag_size);
-void mailbox_write(uint8_t channel, uint32_t data);
+void mailbox_write(uint8_t channel, uint64_t data);
 uint32_t mailbox_read(uint8_t channel);
 
 #endif

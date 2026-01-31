@@ -10,10 +10,14 @@ typedef uint8_t bool;
 typedef uint16_t pid_t;
 
 #ifdef DEBUG
-#define PDEBUG(...) printf("DEBUG | "); printf(__VA_ARGS__);
+#define DEBUG(...) kprintf("[\e[35mDEBUG\e[0m] "); kprintf(__VA_ARGS__);
 #else
-#define PDEBUG(...)
+#define DEBUG(...)
 #endif
+
+#define INFO(...) kprintf("[\e[32mINFO\e[0m] "); kprintf(__VA_ARGS__);
+#define WARNING(...) kprintf("[\e[33mWARNING\e[0m] "); kprintf(__VA_ARGS__);
+#define ERROR(...) kprintf("[\e[31mERROR\e[0m] "); kprintf(__VA_ARGS__);
 
 #ifdef NULL
 #undef NULL
@@ -37,5 +41,14 @@ typedef uint16_t pid_t;
 #define WFI()       __asm__("wfi");
 
 #define PACKED      __attribute__((packed))
+
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
+#define ALIGN(x, a) (((x) + ((a) - 1)) & ~((a) - 1))
+#define ALIGN_DOWN(addr, align) ((addr) & ~((align) - 1))
+#define ALIGN_UP(addr, align)   (((addr) + ((align) - 1)) & ~((align) - 1))
+
+extern void panic();
 
 #endif

@@ -1,5 +1,5 @@
 #include "macros.h"
-#include "io/printf.h"
+#include "io/kprintf.h"
 #include "io/gpio.h"
 #include "emmc/emmc.h"
 #include "emmc/emmc_clock.h"
@@ -58,7 +58,7 @@ static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
     reg32_t command_reg = device.last_command_value;
 
     if (device.transfer_blocks > 0xFFFF) {
-        PDEBUG("EMMC_ERR: transferBlocks too large: %d\n", device.transfer_blocks);
+        DEBUG("EMMC_ERR: transferBlocks too large: %d\n", device.transfer_blocks);
         return FALSE;
     }
 
@@ -83,7 +83,7 @@ static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
 
     if (times >= timeout) {
         //just doing a warn for this because sometimes it's ok.
-        PDEBUG("EMMC_WARN: emmc_issue_command timed out\n");
+        DEBUG("EMMC_WARN: emmc_issue_command timed out\n");
         device.last_success = FALSE;
         return FALSE;
     }
@@ -94,11 +94,11 @@ static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
 
     if ((intr_val & 0xFFFF0001) != 1) {
 
-        PDEBUG("EMMC_DEBUG: Error waiting for command interrupt complete: %d\n", cmd.index);
+        // DEBUG("EMMC_DEBUG: Error waiting for command interrupt complete: %d\n", cmd.index);
 
         set_last_error(intr_val);
 
-        PDEBUG("EMMC_DEBUG: IRQFLAGS: 0x%x - 0x%x - 0x%x\n", EMMC->int_flags, EMMC->status, intr_val);
+        // DEBUG("EMMC_DEBUG: IRQFLAGS: 0x%x - 0x%x - 0x%x\n", EMMC->int_flags, EMMC->status, intr_val);
 
         device.last_success = FALSE;
         return FALSE;
@@ -144,7 +144,7 @@ static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
 static bool emmc_app_command(uint32_t command, uint32_t arg, uint32_t timeout) {
 
     if (commands[command].index >= 60) {
-        PDEBUG("EMMC_ERR: INVALID APP COMMAND\n");
+        DEBUG("EMMC_ERR: INVALID APP COMMAND\n");
         return FALSE;
     }
 
@@ -168,14 +168,14 @@ static bool emmc_app_command(uint32_t command, uint32_t arg, uint32_t timeout) {
 static bool emmc_command(uint32_t command, uint32_t arg, uint32_t timeout){
     if (command & 0x80000000) {
         //The app command flag is set, shoudl use emmc_app_command instead.
-        PDEBUG("EMMC_ERR: COMMAND ERROR NOT APP\n");
+        DEBUG("EMMC_ERR: COMMAND ERROR NOT APP\n");
         return FALSE;
     }
 
     device.last_command = commands[command];
 
     if (TO_REG(&device.last_command) == TO_REG(&INVALID_CMD)) {
-        PDEBUG("EMMC_ERR: INVALID COMMAND!\n");
+        DEBUG("EMMC_ERR: INVALID COMMAND!\n");
         return FALSE;
     }
 
@@ -192,7 +192,7 @@ static bool reset_command() {
         timer_sleep(1);
     }
 
-    PDEBUG("EMMC_ERR: Command line failed to reset properly: 0x%x\n",  EMMC->control[1]);
+    DEBUG("EMMC_ERR: Command line failed to reset properly: 0x%x\n",  EMMC->control[1]);
     return FALSE;
 }
 
@@ -200,7 +200,7 @@ static bool check_ocr(){
     bool passed = FALSE;
     for(int i = 0; i < 5; i++){
         if(!emmc_app_command(CTOcrCheck, 0, 2000)){
-            PDEBUG("EMMC_WARNING: APP CMD OCR CHECK TRY %d FAILED.\n", i + 1);
+            DEBUG("EMMC_WARNING: APP CMD OCR CHECK TRY %d FAILED.\n", i + 1);
             passed = FALSE;
         }else{
             passed = TRUE;
@@ -210,13 +210,13 @@ static bool check_ocr(){
     }
 
     if(!passed){
-        PDEBUG("EMMC_ERR: CMD 41 FAILED\n");
+        DEBUG("EMMC_ERR: CMD 41 FAILED\n");
         return FALSE;
     }
 
     device.ocr = ((device.last_response[0] >> 8) & 0xFFFF);
 
-    PDEBUG("MEMORY OCR: %x\n", device.ocr); 
+    DEBUG("MEMORY OCR: %x\n", device.ocr); 
 
     return TRUE;
 }
@@ -224,14 +224,14 @@ static bool check_ocr(){
 static bool check_usable_card(){
     if(!emmc_command(CTIOSetOpCond, 0, 1000)){
         if(device.last_error == 0){
-            PDEBUG("EMMC_ERROR: CTIOSetOpCond timeout\n");
+            DEBUG("EMMC_ERROR: CTIOSetOpCond timeout\n");
         }else if(device.last_error & (1 << 16)){
             if(!reset_command()){
                 return FALSE;
             }
             EMMC->int_flags = sd_error_mask(SDECommandTimeout);
         }else{
-            PDEBUG("EMMC_ERROR: SDIO card not supported.\n");
+            DEBUG("EMMC_ERROR: SDIO card not supported.\n");
             return FALSE;
         }
     }
@@ -244,15 +244,15 @@ static bool check_v2_card(){
         if(device.last_error & (1 << 16)){
             if(!reset_command()) return FALSE;
             EMMC->int_flags = sd_error_mask(SDECommandTimeout);
-            PDEBUG("EMMC_ERROR: SEND_IF_COND command timeout.\n");
+            DEBUG("EMMC_ERROR: SEND_IF_COND command timeout.\n");
             return FALSE;
         }else{
-            PDEBUG("EMMC_ERROR: Failure sending SEND_IF_COND command.\n");
+            DEBUG("EMMC_ERROR: Failure sending SEND_IF_COND command.\n");
             return FALSE;
         }
     }else{
         if((device.last_response[0] & 0xFFF) != 0x1AA){
-            PDEBUG("EMMC_ERROR: Unusable SD Card: 0x%x\n", device.last_response);
+            DEBUG("EMMC_ERROR: Unusable SD Card: 0x%x\n", device.last_response);
             return FALSE;
         }
     }
@@ -267,7 +267,7 @@ static bool check_sdhc_support(bool v2_card){
         if(v2_card) v2_flags |= (1 << 30); // SDHC support
 
         if(!emmc_app_command(CTOcrCheck, 0x00FF8000 | v2_flags, 2000)){
-            PDEBUG("EMMC_ERROR: APP CMD 41 FAILED 2nd\n");
+            DEBUG("EMMC_ERROR: APP CMD 41 FAILED 2nd\n");
             return FALSE;
         }
 
@@ -276,7 +276,7 @@ static bool check_sdhc_support(bool v2_card){
             device.sdhc = ((device.last_response[0] >> 30) & 1) != 0;
             card_busy = FALSE;
         }else{
-            PDEBUG("EMMC_SLEEPING: 0x%x\n", device.last_response[0]);
+            DEBUG("EMMC_SLEEPING: 0x%x\n", device.last_response[0]);
             timer_sleep(500);
         }
     }
@@ -286,31 +286,31 @@ static bool check_sdhc_support(bool v2_card){
 
 static bool check_rca() {
     if (!emmc_command( CTSendCide, 0, 2000)) {
-        PDEBUG("EMMC_ERR: Failed to send CID\n");
+        DEBUG("EMMC_ERR: Failed to send CID\n");
 
         return FALSE;
     }
 
-    PDEBUG("EMMC_DEBUG: CARD ID: 0x%x.0x%x.0x%x.0x%x\n", device.last_response[0], device.last_response[1], device.last_response[2], device.last_response[3]);
+    // DEBUG("EMMC_DEBUG: CARD ID: 0x%x.0x%x.0x%x.0x%x\n", device.last_response[0], device.last_response[1], device.last_response[2], device.last_response[3]);
 
     if (!emmc_command( CTSendRelativeAddr, 0, 2000)) {
-        PDEBUG("EMMC_ERR: Failed to send Relative Addr\n");
+        DEBUG("EMMC_ERR: Failed to send Relative Addr\n");
 
         return FALSE;
     }
 
     device.rca = (device.last_response[0] >> 16) & 0xFFFF;
     
-    PDEBUG("EMMC_DEBUG: RCA: 0x%x\n", device.rca);
+    // DEBUG("EMMC_DEBUG: RCA: 0x%x\n", device.rca);
 
-    PDEBUG("EMMC_DEBUG: CRC_ERR: %d\n", (device.last_response[0] >> 15) & 1);
-    PDEBUG("EMMC_DEBUG: CMD_ERR: %d\n", (device.last_response[0] >> 14) & 1);
-    PDEBUG("EMMC_DEBUG: GEN_ERR: %d\n", (device.last_response[0] >> 13) & 1);
-    PDEBUG("EMMC_DEBUG: STS_ERR: %d\n", (device.last_response[0] >> 9) & 1);
-    PDEBUG("EMMC_DEBUG: READY  : %d\n", (device.last_response[0] >> 8) & 1);
+    // DEBUG("EMMC_DEBUG: CRC_ERR: %d\n", (device.last_response[0] >> 15) & 1);
+    // DEBUG("EMMC_DEBUG: CMD_ERR: %d\n", (device.last_response[0] >> 14) & 1);
+    // DEBUG("EMMC_DEBUG: GEN_ERR: %d\n", (device.last_response[0] >> 13) & 1);
+    // DEBUG("EMMC_DEBUG: STS_ERR: %d\n", (device.last_response[0] >> 9) & 1);
+    // DEBUG("EMMC_DEBUG: READY  : %d\n", (device.last_response[0] >> 8) & 1);
 
     if (!((device.last_response[0] >> 8) & 1)) {
-        PDEBUG("EMMC_ERR: Failed to read RCA\n");
+        DEBUG("EMMC_ERR: Failed to read RCA\n");
         return FALSE;
     }
 
@@ -320,7 +320,7 @@ static bool check_rca() {
 static bool set_scr() {
     if (!device.sdhc) {
         if (!emmc_command( CTSetBlockLen, 512, 2000)) {
-            PDEBUG("EMMC_ERR: Failed to set block len\n");
+            DEBUG("EMMC_ERR: Failed to set block len\n");
             return FALSE;
         }
     }
@@ -335,11 +335,11 @@ static bool set_scr() {
     device.transfer_blocks = 1;
 
     if (!emmc_app_command( CTSendSCR, 0, 30000)) {
-        PDEBUG("EMMC_ERR: Failed to send SCR\n");
+        DEBUG("EMMC_ERR: Failed to send SCR\n");
         return FALSE;
     }
 
-    PDEBUG("EMMC_DEBUG: GOT SRC: SCR0: 0x%x SCR1: 0x%x BWID: 0x%x\n", device.scr.scr[0], device.scr.scr[1], device.scr.bus_widths);
+    // DEBUG("EMMC_DEBUG: GOT SRC: SCR0: 0x%x SCR1: 0x%x BWID: 0x%x\n", device.scr.scr[0], device.scr.scr[1], device.scr.bus_widths);
 
     device.block_size = 512;
 
@@ -367,27 +367,27 @@ static bool set_scr() {
         }
     }
 
-    PDEBUG("EMMC_DEBUG: SCR Version: %d\n", device.scr.version);
+    // DEBUG("EMMC_DEBUG: SCR Version: %d\n", device.scr.version);
 
     return TRUE;
 }
 
 static bool select_card() {
     if (!emmc_command( CTSelectCard, device.rca << 16, 2000)) {
-        PDEBUG("EMMC_ERR: Failed to select card\n");
+        DEBUG("EMMC_ERR: Failed to select card\n");
         return FALSE;
     }
 
-    PDEBUG("EMMC_DEBUG: Selected Card\n");
+    // DEBUG("EMMC_DEBUG: Selected Card\n");
 
     uint32_t status = (device.last_response[0] >> 9) & 0xF;
 
     if (status != 3 && status != 4) {
-        PDEBUG("EMMC_ERR: Invalid Status: %d\n", status);
+        DEBUG("EMMC_ERR: Invalid Status: %d\n", status);
         return FALSE;
     }
 
-    PDEBUG("EMMC_DEBUG: Status: %d\n", status);
+    // DEBUG("EMMC_DEBUG: Status: %d\n", status);
 
     return TRUE;
 }
@@ -395,10 +395,10 @@ static bool select_card() {
 static bool emmc_card_reset(){
     EMMC->control[1] = EMMC_CTRL1_RESET_HOST;
     
-    PDEBUG("Resetting SD card...\n");
+    DEBUG("Resetting SD card...\n");
 
     if(!wait_reg_mask(&EMMC->control[1], EMMC_CTRL1_RESET_ALL, FALSE, 2000)){
-        PDEBUG("EMMC card reset timeout\n");
+        DEBUG("EMMC card reset timeout\n");
         return FALSE;
     }
 
@@ -421,7 +421,7 @@ static bool emmc_card_reset(){
     device.block_size = 0;
 
     if(!emmc_command(CTGoIdle, 0, 2000)){
-        PDEBUG("EMMC_ERROR: No GO_IDLE response.\n");
+        DEBUG("EMMC_ERROR: No GO_IDLE response.\n");
         return FALSE;
     }
 
@@ -441,7 +441,7 @@ static bool emmc_card_reset(){
 
     EMMC->int_flags = 0xFFFFFFFF;
 
-    PDEBUG("EMMC Card reset!\n");
+    DEBUG("EMMC Card reset!\n");
 
     return TRUE;
 }
@@ -476,7 +476,7 @@ bool emmc_init(){
         if(success) break;
 
         timer_sleep(100);
-        PDEBUG("WARNING: Failed to reset card, trying again...\n");
+        DEBUG("WARNING: Failed to reset card, trying again...\n");
     }
     return success;
 }
@@ -487,14 +487,14 @@ bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) 
     }
 
     if (bsize < device.block_size) {
-        printf("EMMC_ERR: INVALID BLOCK SIZE: \n", bsize, device.block_size);
+        kprintf("EMMC_ERR: INVALID BLOCK SIZE: \n", bsize, device.block_size);
         return FALSE;
     }
 
     device.transfer_blocks = bsize / device.block_size;
 
     if (bsize % device.block_size) {
-        printf("EMMC_ERR: BAD BLOCK SIZE\n");
+        kprintf("EMMC_ERR: BAD BLOCK SIZE\n");
         return FALSE;
     }
 
@@ -513,7 +513,7 @@ bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) 
     int retry_count = 0;
     int max_retries = 3;
 
-    if (EMMC_DEBUG) printf("EMMC_DEBUG: Sending command: %d\n", command);
+    // if (EMMC_DEBUG) kprintf("EMMC_DEBUG: Sending command: %d\n", command);
 
     while(retry_count < max_retries) {
         if (emmc_command( command, block_no, 5000)) {
@@ -521,9 +521,9 @@ bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) 
         }
 
         if (++retry_count < max_retries) {
-            printf("EMMC_WARN: Retrying data command\n");
+            kprintf("EMMC_WARN: Retrying data command\n");
         } else {
-            printf("EMMC_ERR: Giving up data command\n");
+            kprintf("EMMC_ERR: Giving up data command\n");
             return FALSE;
         }
     }
@@ -532,10 +532,10 @@ bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) 
 }
 
 int do_read(uint8_t *b, uint32_t bsize, uint32_t block_no) {
-    //TODO ENSURE DATA MODE...
+    //TODO: ENSURE DATA MODE...
 
     if (!do_data_command( FALSE, b, bsize, block_no)) {
-        printf("EMMC_ERR: do_data_command failed\n");
+        kprintf("EMMC_ERR: do_data_command failed\n");
         return -1;
     }
 
@@ -545,7 +545,7 @@ int do_read(uint8_t *b, uint32_t bsize, uint32_t block_no) {
 
 int emmc_read(uint8_t *buffer, uint32_t size) {
     if (device.offset % 512 != 0) {
-        printf("EMMC_ERR: INVALID OFFSET: %d\n", device.offset);
+        kprintf("EMMC_ERR: INVALID OFFSET: %d\n", device.offset);
         return -1;
     }
 
@@ -554,7 +554,7 @@ int emmc_read(uint8_t *buffer, uint32_t size) {
     int r = do_read( buffer, size, block);
 
     if (r != size) {
-        printf("EMMC_ERR: READ FAILED: %d\n", r);
+        kprintf("EMMC_ERR: READ FAILED: %d\n", r);
         return -1;
     }
 

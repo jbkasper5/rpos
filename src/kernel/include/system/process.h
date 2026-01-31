@@ -16,6 +16,7 @@ typedef struct reglist_s{
     uint64_t sp;            // stack pointer to use on return
     uint64_t pc;            // instruction address to return to
     uint64_t spsr;          // processor state to return to
+    uint64_t ttbr;          // page table base for the process
 }reglist_t;
 
 typedef struct PCB_S{

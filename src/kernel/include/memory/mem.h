@@ -4,6 +4,6 @@
 #include "macros.h"
 
 void* memcpy(void* dest, const void* src, uint32_t bytes);
-void* memset(void* ptr, uint64_t value, uint64_t elements, size_t size);
+void* memset(void* ptr, int value, size_t len);
 
 #endif

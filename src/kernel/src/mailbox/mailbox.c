@@ -8,7 +8,7 @@ typedef struct {
 
 static uint32_t property_data[8192] __attribute__((aligned(16)));
 
-void mailbox_write(uint8_t channel, uint32_t data) {
+void mailbox_write(uint8_t channel, uint64_t data) {
     while(MBX->status & MAILBOX_FULL);
     MBX->write = ((data & 0xFFFFFFF0) | (channel & 0xF));
 }
@@ -37,7 +37,7 @@ bool mailbox_process(mailbox_tag *tag, uint32_t tag_size) {
     buff->code = RPI_FIRMWARE_STATUS_REQUEST;
     property_data[(tag_size + 12) / 4 - 1] = RPI_FIRMWARE_PROPERTY_END;
 
-    mailbox_write(MAIL_TAGS, (uint32_t)(void *)property_data);
+    mailbox_write(MAIL_TAGS, (uint64_t)(void *)property_data);
 
     mailbox_read(MAIL_TAGS);
 
@@ -55,7 +55,7 @@ bool mailbox_generic_command(uint32_t tag_id, uint32_t id, uint32_t *value) {
     mbx.value = *value;
 
     if (!mailbox_process((mailbox_tag *)&mbx, sizeof(mbx))) {
-        PDEBUG("FAILED TO PROCESS: %X\n", tag_id);
+        DEBUG("FAILED TO PROCESS: %X\n", tag_id);
         return FALSE;
     }
 

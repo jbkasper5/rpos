@@ -1,13 +1,19 @@
 #include "io/mini_uart.h"
 #include "io/gpio.h"
-#include "io/printf.h"
-#include "io/fonttest.h"
+#include "io/kprintf.h"
+#include "io/cli.h"
 #include "io/lcd.h"
 
 #include "utils/utils.h"
 
 #define TXD 14
 #define RXD 15
+
+uint8_t USE_PANEL = TRUE;
+
+void disable_panel(){
+    USE_PANEL = FALSE;
+}
 
 void uart_init(){
     gpio_pin_set_func(TXD, GFAlt5);
@@ -25,10 +31,10 @@ void uart_init(){
     REGS_AUX->mu_baud_rate = 541;
     REGS_AUX->mu_control = 3;
 
-    uart_putc('\n');
-    uart_putc('\n');
+    // uart_putc('\n');
+    // uart_putc('\n');
 
-    PDEBUG("UART Initialized.\n");
+    // DEBUG("UART Initialized.\n");
 }
 
 void uart_putc(char c){
@@ -39,7 +45,7 @@ void uart_putc(char c){
     while(!(REGS_AUX->mu_lsr & 0x20));
     REGS_AUX->mu_io = c;
 
-    if(panel_ready()) print_glyph(c);
+    if(panel_ready() && USE_PANEL) print_glyph(c);
 }
 
 char uart_getc(){
