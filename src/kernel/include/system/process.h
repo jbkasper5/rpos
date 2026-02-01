@@ -2,8 +2,10 @@
 #define __PROCESS_H__
 
 #include "macros.h"
+#include "filesystem/filesystem.h"
 
 #define MAX_PROCESSES 64
+#define MAX_OPEN_FILES 32
 
 enum PROC_STATE{
     PROCESS_RUNNING,
@@ -23,10 +25,10 @@ typedef struct PCB_S{
     enum PROC_STATE state;
     uint32_t pid;
     reglist_t registers;
+    file_t fds[MAX_OPEN_FILES];
     // memory information
         // page tables
     // file structure information
-    // file descriptor information
     // thread information
     // signal information
     // timer information

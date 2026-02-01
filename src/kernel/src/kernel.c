@@ -11,7 +11,8 @@
 #include "io/lcd.h"
 #include "io/cli.h"
 #include "emmc/emmc.h"
-#include "system/filesystem.h"
+#include "filesystem/disk.h"
+#include "filesystem/filesystem.h"
 #include "memory/kmalloc.h"
 
 void debug_init(){
@@ -81,6 +82,9 @@ void hardware_init(){
     INFO("Initializing kernel heap...\n");
     kheap_init();
 
+    INFO("Initializing filesystem...\n");
+    filesystem_init();
+
     INFO("Hardware initialization complete.\n\n");
 }
 
@@ -95,6 +99,8 @@ int kernel_main(){
     read_dir(root_sector);
 
     test_read_ls();
+
+    open("/bin/ls", 0);
     
     while(TRUE){
         uart_putc(uart_getc());

@@ -1,7 +1,10 @@
-#include "system/filesystem.h"
+#include "filesystem/disk.h"
 #include "io/kprintf.h"
 #include "macros.h"
 #include "memory/mem.h"
+
+fs rootfs;
+
 
 void print_partitions(mbr* mbr){
     kprintf("Parsed MBR: \n");
@@ -53,7 +56,6 @@ static size_t inodes_per_group;
 static size_t gc_descriptor_size;
 
 static ext4_group_desc_t* group_descriptor_table;
-static ext4_block* block_buf;
 
 static void print_dir(ext4_dir_entry* dir){
     uint32_t offset = 0;
@@ -115,16 +117,15 @@ static size_t inode_to_sector(size_t inode_num, size_t* offset){
  * @brief Reads the superblock and returns the sector of the inode table
  * @return Sector of the inode table
  */
-size_t read_superblock(){
-    block_buf = (ext4_block*) kmalloc(sizeof(ext4_block));
-
-    DEBUG("Allocated block buffer at 0x%x\n", block_buf);
+static size_t read_superblock(){
+    rootfs.block_buf = (ext4_block*) kmalloc(sizeof(ext4_block));
+    rootfs.superblock = (ext_superblock*) kmalloc(sizeof(sector) * 2);
 
     emmc_seek_sector(ROOT_SUPERBLOCK_SECTOR);
 
-    int result = emmc_read((uint8_t*)block_buf, sizeof(sector) * 2);
+    int result = emmc_read(rootfs.superblock, sizeof(sector) * 2);
 
-    ext_superblock* sb = (ext_superblock*) block_buf;
+    ext_superblock* sb = (ext_superblock*) rootfs.superblock;
     block_size = 1024 << sb->s_log_block_size;
     inode_size = sb->s_inode_size;
     inodes_per_group = sb->s_inodes_per_group;
@@ -148,15 +149,16 @@ size_t read_superblock(){
     uint64_t inode_start_sector = (FS_START_SECTOR) + (group_descriptor_table->bg_inode_table_lo * 8);
 
     emmc_seek_sector(inode_start_sector);
-    emmc_read((uint8_t*)block_buf, sizeof(ext4_block));
-    ext4_inode* inode = (ext4_inode*)block_buf;
+    emmc_read((uint8_t*)rootfs.block_buf, sizeof(ext4_block));
+    ext4_inode* inode = (ext4_inode*)rootfs.block_buf;
 
-    uint64_t root_dir_start_sector = (FS_START_SECTOR) + (inode[1].i_block[0] * 8);
+    uint64_t root_block = inode[1].i_block[0];
+    uint64_t root_dir_start_sector = (FS_START_SECTOR) + (root_block * 8);
 
     emmc_seek_sector(root_dir_start_sector);
-    emmc_read((uint8_t*)block_buf, sizeof(ext4_block));
+    emmc_read((uint8_t*)rootfs.block_buf, sizeof(ext4_block));
 
-    ext4_dir_entry* dir = (ext4_dir_entry*) block_buf;
+    ext4_dir_entry* dir = (ext4_dir_entry*) rootfs.block_buf;
 
     INFO("\n\n> ls\n");
 
@@ -172,19 +174,19 @@ size_t read_dir(size_t sector_num){
     size_t inode_sector = inode_to_sector(lib_inode, &offset);
 
     emmc_seek_sector(inode_sector);
-    emmc_read(block_buf, sizeof(ext4_block));
+    emmc_read(rootfs.block_buf, sizeof(ext4_block));
 
-    ext4_inode* inode = (ext4_inode*) UNSCALED_POINTER_ADD(block_buf, offset);
+    ext4_inode* inode = (ext4_inode*) UNSCALED_POINTER_ADD(rootfs.block_buf, offset);
 
     uint32_t dirblock = inode->i_block[0];
     uint32_t dirsector = FS_START_SECTOR + dirblock * 8;
 
     emmc_seek_sector(dirsector);
-    emmc_read(block_buf, sizeof(ext4_block));
+    emmc_read(rootfs.block_buf, sizeof(ext4_block));
 
     INFO("\n\n> ls /lib\n");
 
-    print_dir((ext4_dir_entry*) block_buf);
+    print_dir((ext4_dir_entry*) rootfs.block_buf);
 }
 
 void test_read_ls(){
@@ -194,23 +196,28 @@ void test_read_ls(){
     size_t inode_sector = inode_to_sector(ls_libnode, &offset);
 
     emmc_seek_sector(inode_sector);
-    emmc_read((uint8_t*)block_buf, sizeof(ext4_block));
-    ext4_inode* inode = (ext4_inode*) UNSCALED_POINTER_ADD(block_buf, offset);
+    emmc_read(rootfs.block_buf, sizeof(ext4_block));
+    ext4_inode* inode = (ext4_inode*) UNSCALED_POINTER_ADD(rootfs.block_buf, offset);
 
     INFO("Inode size: %d\n", inode->i_size_lo);
 
     // get offset of the first data block
     size_t datasector = FS_START_SECTOR + (inode->i_block[0] * 8);
     emmc_seek_sector(datasector);
-    emmc_read((uint8_t*)block_buf, sizeof(ext4_block));
+    emmc_read(rootfs.block_buf, sizeof(ext4_block));
 
     INFO("Displaying first 16 bytes of executable...\n");
 
     for(int i = 0; i < 16; i++){
-        kprintf("0x%x ", ((uint8_t*)block_buf)[i]);
+        kprintf("0x%x ", ((uint8_t*)rootfs.block_buf)[i]);
     }
+    kprintf("\n");
 }
 
+
+void filesystem_init(){
+    
+}
 /*
     inode_start_sector = 0x106108
     root_dir_start_sector = 0x10e108

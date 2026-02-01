@@ -81,7 +81,7 @@ void* kmalloc(size_t bytes){
 
     // no slabs yet
     if(list_empty(&kcaches[cache_idx].partial_slabs)){
-        // allocate new slab
+        // allocate new slab (should be 1 page)
         slab* new_slab = (slab*) _slab_alloc(0);
 
         // zero the slab bitmap
