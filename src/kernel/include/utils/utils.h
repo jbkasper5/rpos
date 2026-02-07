@@ -16,5 +16,6 @@ uint32_t get_el();
 uint8_t mmu_enabled();
 
 int log2_pow2(uint64_t num);
+int strcmp(const char* str1, const char* str2);
 
 #endif

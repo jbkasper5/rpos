@@ -88,19 +88,21 @@ void hardware_init(){
     INFO("Hardware initialization complete.\n\n");
 }
 
-
 void drop_to_user();
 
 int kernel_main(){
     DEBUG("\nRaspberry PI Baremetal OS Initializing...\n");
     hardware_init();
 
-    size_t root_sector = read_superblock();
-    read_dir(root_sector);
-
-    test_read_ls();
-
-    open("/bin/ls", 0);
+    file_t* file = open("/bin/ls", 0);
+    ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
+    if(!file){
+        ERROR("Failed to open /bin/ls\n");
+    }else{
+        INFO("Successfully opened /bin/ls. FP: 0x%x\n", file);
+        uint64_t bytes_read = read(file, block, sizeof(ext4_block));
+        INFO("Read %d bytes from /bin/ls.\n", bytes_read);
+    }
     
     while(TRUE){
         uart_putc(uart_getc());

@@ -191,7 +191,8 @@ extern fs rootfs;
 void filesystem_init();
 void print_partitions(mbr* mbr);
 void print_fat32_directory(sector* s);
+void read_block(void* buf, uint32_t block_num);
 
-void test_read_ls();
+ext4_inode* lookup(ext4_inode* dirnode, char* name);
 
 #endif

@@ -12,5 +12,6 @@ typedef struct {
 } file_t;
 
 int open(const char* pathname, uint32_t flags);
+uint64_t read(file_t* file, void* buf, uint64_t count);
 
 #endif
