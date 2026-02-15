@@ -91,6 +91,14 @@ static mem_descriptor_t parse_block_flags(uint64_t flags, bool is_page){
         }
     }
 
+    if(flags & MAP_USER){
+        if(flags & MAP_READ && flags & MAP_WRITE){
+            md.bits.ap = 0b01;
+        }else if(flags & MAP_READ){
+            md.bits.ap = 0b11;
+        }
+    }
+
     return md;
 }
 

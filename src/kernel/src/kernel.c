@@ -14,6 +14,7 @@
 #include "filesystem/disk.h"
 #include "filesystem/filesystem.h"
 #include "memory/kmalloc.h"
+#include "filesystem/elf.h"
 
 void debug_init(){
 
@@ -99,18 +100,17 @@ int kernel_main(){
     if(!file){
         ERROR("Failed to open /bin/ls\n");
     }else{
-        INFO("Successfully opened /bin/ls. FP: 0x%x\n", file);
-        uint64_t bytes_read = read(file, block, sizeof(ext4_block));
-        INFO("Read %d bytes from /bin/ls.\n", bytes_read);
+        INFO("Successfully opened /bin/ls. FP: 0x%x. Starting ELF parsing.\n", file);
+        readelf(file);
+        close(file);
     }
     
-    while(TRUE){
-        uart_putc(uart_getc());
-    }
+    // while(TRUE){
+    //     uart_putc(uart_getc());
+    // }
 
-    DEBUG("Waiting complete, dropping to user mode...\n");
+    // DEBUG("Waiting complete, dropping to user mode...\n");
     start_scheduler();
-
     return 0;
 }
 

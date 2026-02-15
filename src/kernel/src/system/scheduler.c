@@ -10,7 +10,7 @@
 extern reglist_t* user_context_ptr;
 
 pcb_list_t proclist;
-uint64_t active_process;
+uint64_t active_process = 0;
 
 void scheduler_init(){
     // debug pins
@@ -21,28 +21,28 @@ void scheduler_init(){
     gpio_pin_enable(DEBUG_PIN);
     gpio_pin_set_func(DEBUG_PIN, GFOutput);
 
-    // creare 2 active processes
-    proclist.processes = 1;
+    // create 2 active processes
+    proclist.processes = 0;
 
     // idle process, for when no real user processes are available
-    proclist.proclist[0].registers.pc = (uint64_t) &idle_proc;
-    proclist.proclist[0].registers.sp = (uint64_t) (USTACK - (1 << 11) + 128);
-    proclist.proclist[0].registers.spsr = 0;
-    proclist.proclist[0].state = PROCESS_READY;
+    // proclist.proclist[0].registers.pc = (uint64_t) &idle_proc;
+    // proclist.proclist[0].registers.sp = (uint64_t) (USTACK - (1 << 11) + 128);
+    // proclist.proclist[0].registers.spsr = 0;
+    // proclist.proclist[0].state = PROCESS_READY;
 
     // first user process program counter will point to the function do user things
-    proclist.processes++;
-    proclist.proclist[1].registers.pc = (uint64_t) &do_user_things;
-    proclist.proclist[1].registers.sp = (uint64_t) USTACK;
-    proclist.proclist[1].registers.spsr = 0;
-    proclist.proclist[1].state = PROCESS_READY;
+    // proclist.processes++;
+    // proclist.proclist[1].registers.pc = (uint64_t) &do_user_things;
+    // proclist.proclist[1].registers.sp = (uint64_t) USTACK;
+    // proclist.proclist[1].registers.spsr = 0;
+    // proclist.proclist[1].state = PROCESS_READY;
 
-    // second user process will point to the other user function
-    proclist.processes++;
-    proclist.proclist[2].registers.pc = (uint64_t) &do_user_things_2;
-    proclist.proclist[2].registers.sp = (uint64_t) (USTACK - (1 << 11));
-    proclist.proclist[2].registers.spsr = 0;
-    proclist.proclist[2].state = PROCESS_READY;
+    // // second user process will point to the other user function
+    // proclist.processes++;
+    // proclist.proclist[2].registers.pc = (uint64_t) &do_user_things_2;
+    // proclist.proclist[2].registers.sp = (uint64_t) (USTACK - (1 << 11));
+    // proclist.proclist[2].registers.spsr = 0;
+    // proclist.proclist[2].state = PROCESS_READY;
 
     // third user process will lead to assembly for testing purposes
     // proclist.processes++;
@@ -128,7 +128,8 @@ void start_scheduler(){
     uint64_t sp = proclist.proclist[active_process].registers.sp;
     uint64_t pc = proclist.proclist[active_process].registers.pc;
     uint64_t spsr = proclist.proclist[active_process].registers.spsr;
-    drop_to_user(sp, pc, spsr);
+    uint64_t ttbr = proclist.proclist[active_process].registers.ttbr;
+    drop_to_user(sp, pc, spsr, ttbr);
 }
 
 void deschedule(){
@@ -148,4 +149,11 @@ void reschedule(uint64_t procnum){
     DEBUG("Rescheduling %d\n", procnum);
     proclist.proclist[procnum].state = PROCESS_READY;
     scheduler(user_context_ptr);
+}
+
+void add_to_schedule(pcb_t* proc){
+    proc->state = PROCESS_READY;
+    proc->registers.spsr = 0x0;
+    memcpy(&proclist.proclist[proclist.processes], proc, sizeof(pcb_t));
+    proclist.processes++;
 }

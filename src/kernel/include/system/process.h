@@ -3,6 +3,7 @@
 
 #include "macros.h"
 #include "filesystem/filesystem.h"
+#include "memory/kmalloc.h"
 
 #define MAX_PROCESSES 64
 #define MAX_OPEN_FILES 32
@@ -41,5 +42,7 @@ typedef struct PCB_LIST_S{
 
 extern pcb_list_t proclist;
 extern uint64_t active_process;
+
+pcb_t* procalloc();
 
 #endif

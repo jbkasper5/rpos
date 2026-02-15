@@ -69,33 +69,151 @@ int open(const char* pathname, uint32_t flags){
 }
 
 
-uint64_t read(file_t* file, void* buf, uint64_t count){
-    uint64_t total_bytes_read = 0;
-    uint8_t* buffer = (uint8_t*) buf;
-    uint64_t bytes_to_read = 0;
+int close(file_t* file){
+    if(file){
+        DEBUG("Closing file pointer inode...\n");
+        kfree(file->inode);
 
-    for(int i = 0; i < 15; i ++){
-        // look for a valid block to read
-        if(!file->inode->i_block[i]) continue;
+        DEBUG("Closing file pointer...\n");
+        kfree(file);
 
-        // once a block is found, read it into the block scratch buffer
-        read_block(rootfs.block_buf, file->inode->i_block[i]);
+        DEBUG("File closed.\n");
+        return 0;
+    }
+    return -1;
+}
 
-        // determine how many bytes to read from this block
-        bytes_to_read = MIN(count - total_bytes_read, 4096);
 
-        // copy the data from the block buffer to the user buffer
-        memcpy(buffer + total_bytes_read, rootfs.block_buf, bytes_to_read);
+static uint32_t read_file_block(file_t* file, void* buf, uint64_t count, uint32_t blockno){
+    uint32_t block_offset = file->pos % 4096;
+    uint32_t bytes_to_read = MIN(count, 4096 - block_offset);
 
-        // if we read the right number of bytes, exit
-        total_bytes_read += bytes_to_read;
-
-        // advance the position of the filepointer
+    // if the block is empty, just fill it with 0s
+    if(!blockno){
+        memset((uint8_t*) buf, 0, bytes_to_read);
         file->pos += bytes_to_read;
-
-        // if we have read enough bytes, break
-        if(total_bytes_read >= count) break;
+        return bytes_to_read;
     }
 
-    return total_bytes_read;
+    // read the block into the scratch buffer
+    read_block(rootfs.block_buf, blockno);
+
+    // advance the pointer to the offset in the block
+    uint8_t* ptr = UNSCALED_POINTER_ADD(rootfs.block_buf->data, block_offset);
+
+    // copy the data from the block into the buffer
+    memcpy((uint8_t*) buf, ptr, bytes_to_read);
+
+    // advance the file position 
+    file->pos += bytes_to_read;
+
+    // return number of bytes read
+    return bytes_to_read;
+}
+
+
+static uint64_t read_direct(file_t* file, void* buf, uint64_t count){
+    uint32_t block_no = file->pos / 4096;
+    uint32_t block_offset = file->pos % 4096;
+
+    uint64_t bytes_read = 0;
+    uint64_t bytes_to_read = count;
+    for(int i = block_no; i < 15; i++){
+        void* buf_advanced = UNSCALED_POINTER_ADD(buf, bytes_read);
+        bytes_read += read_file_block(file, buf_advanced, count - bytes_read, file->inode->i_block[i]);
+
+        block_offset = 0; // only offset for the first block
+
+        if(bytes_read >= count){
+            break;
+        }
+    }
+
+    return bytes_read;
+}
+
+static uint64_t read_single_indirect(file_t* file, void* buf, uint64_t count, uint64_t offset){
+    // get the indirect block index from the file pointer
+    uint64_t single_indirect_blockno = file->inode->i_block[12];
+
+    // load in the list of direct blocks
+    uint32_t* blocks = (uint32_t*) kmalloc(sizeof(ext4_block));
+    read_block(blocks, single_indirect_blockno);
+
+    // get the proper start direct block
+    uint32_t new_blockno = blocks[offset];
+
+
+    uint64_t bytes_read = 0;
+    while(bytes_read < count){
+        
+        // auto-advances file->pos
+        void* buf_advanced = UNSCALED_POINTER_ADD(buf, bytes_read);
+
+        bytes_read += read_file_block(file, buf_advanced, count - bytes_read, new_blockno);
+
+        // move to the next indirect block number
+        new_blockno = blocks[++offset];
+
+        // there are 128 possible entries in a single indirect block, so if we 
+        // exceed it, then we advance into the double indirect space
+        if(new_blockno >= 128) break;
+    }
+
+    // free block buffer
+    kfree(blocks);
+
+    return bytes_read;
+}
+
+static uint64_t read_double_indirect(file_t* file, void* buf, uint64_t count, uint64_t offset){
+    uint64_t double_indirect_blockno = file->inode->i_block[13];
+    uint32_t* blocks = (uint32_t) rootfs.block_buf;
+    read_block(blocks, double_indirect_blockno);
+}
+
+static uint64_t read_triple_indirect(file_t* file, void* buf, uint64_t count, uint64_t offset){
+    
+}
+
+
+
+uint64_t read(file_t* file, void* buf, uint64_t count){
+    if(!file || !buf){
+        return -1;
+    }
+
+    uint64_t entries_per_block = (1 << 10);
+    uint64_t entries_per_double_indirect = entries_per_block * entries_per_block;
+    uint64_t entries_per_triple_indirect = entries_per_double_indirect* entries_per_block;
+
+    uint32_t blockno = file->pos / (1 << 12);
+    if (blockno < 12) {
+        return read_direct(file, buf, count);
+    }
+    else if (blockno < 12 + entries_per_block) {
+        return read_single_indirect(file, buf, count, blockno - 12);
+    }
+    else if (blockno < 12 + entries_per_block + entries_per_double_indirect) {
+        return read_double_indirect(file, buf, count, blockno - (12 + entries_per_block));
+    }
+    else if (blockno < 12 + entries_per_block + entries_per_double_indirect + entries_per_triple_indirect) {
+        return read_triple_indirect(file, buf, count, blockno - (12 + entries_per_block + entries_per_double_indirect));
+    }
+
+    ERROR("Block number exceeds EXT filesystem limits\n");
+    return -1;
+}
+
+
+int seek(file_t* file, uint64_t offset, int whence){
+    if(whence == SEEK_SET){
+        file->pos = offset;
+    }else if(whence == SEEK_CUR){
+        file->pos += offset;
+    }else if(whence == SEEK_END){
+        ERROR("SEEK_END is not currently supported.\n");
+        return -1;
+    }
+    return 0;
 }

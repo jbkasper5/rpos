@@ -16,6 +16,10 @@ RESET  := \033[0m
 DIRS := $(filter-out bin/,$(wildcard */))
 BINS := $(patsubst %/,bin/%,$(DIRS))
 
+LDSCRIPT := linker.ld
+LDFLAGS  := -T $(LDSCRIPT)
+
+
 .PHONY: all clean
 all: $(BINS)
 
@@ -49,7 +53,7 @@ bin/%: %/
 		$(CC) $(CFLAGS) -c $$f -o $$o; \
 		OBJ_LIST="$$OBJ_LIST $$o"; \
 	done; \
-	$(CC) $(CFLAGS) $$OBJ_LIST -o $@ && \
+	$(CC) $(CFLAGS) $(LDFLAGS) $$OBJ_LIST -o $@ && \
 	printf "$(GREEN)✓ Built %s$(RESET)\n" "$@"
 
 clean:
@@ -75,3 +79,21 @@ dmp:
 	@mkdir -p dmp
 	@hexdump -C "bin/$(FILE)" > "dmp/$(FILE).dmp"
 	@echo "Created dmp/$(FILE).dmp"
+
+
+# make objdump FILE=filename
+.PHONY: asm
+asm:
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make objdump FILE=<executable_name>"; \
+		exit 1; \
+	fi
+
+	@if [ ! -f "bin/$(FILE)" ]; then \
+		echo "Error: bin/$(FILE) does not exist"; \
+		exit 1; \
+	fi
+
+	@mkdir -p dmp
+	@aarch64-none-elf-objdump -d "bin/$(FILE)" > "dmp/$(FILE).objdump"
+	@echo "Created dmp/$(FILE).objdump"
