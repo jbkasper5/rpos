@@ -1,5 +1,7 @@
 #include "filesystem/elf.h"
 
+extern void do_user_things();
+
 
 void readelf(file_t* file){
     ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
@@ -35,7 +37,10 @@ void readelf(file_t* file){
     // allocate process metadata
     // should now have a valid L0 page table and stack
     pcb_t* process = procalloc();
-    process->registers.pc = header->e_entry;
+    // process->registers.pc = header->e_entry;
+    process->registers.pc = &do_user_things;
+
+    map(process->registers.pc, process->registers.pc, 0, MAP_KERNEL | MAP_EXEC | MAP_READ, process->registers.ttbr);
 
     elf64_program_header* program_header = UNSCALED_POINTER_ADD(header, header->e_phoff);
 

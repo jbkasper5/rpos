@@ -9,10 +9,6 @@
     // x2 -> program state
     // x3 -> user ttbr
 drop_to_user:
-
-    # ldr x3, =USTACK
-    # AT S1E0R, x3
-    # mrs x1, PAR_EL1     // read result
     msr TTBR0_EL1, x3
 
     dsb ish

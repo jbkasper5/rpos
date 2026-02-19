@@ -33,24 +33,24 @@ uintptr_t alloc_page_table(){
 static table_descriptor_t parse_table_flags(uint64_t flags){
     table_descriptor_t td = {0};
 
-    if(!((flags & MAP_KERNEL) ^ (flags & MAP_USER))){
-        ERROR("Incorrect flags supplied to map function: received 0x%x, expected exactly one of 0x%x or 0x%x\n", flags, MAP_KERNEL, MAP_USER);
-        return td;
-    }
+    // if(!((flags & MAP_KERNEL) ^ (flags & MAP_USER))){
+    //     ERROR("Incorrect flags supplied to map function: received 0x%x, expected exactly one of 0x%x or 0x%x\n", flags, MAP_KERNEL, MAP_USER);
+    //     return td;
+    // }
 
     td.bits.valid = 1;
     td.bits.type = 1;
-    td.bits.uxn = 1;
-    td.bits.pxn = 1;
+    td.bits.uxn = 0;
+    td.bits.pxn = 0;
     td.bits.address = 0;
 
-    if(flags & MAP_EXEC){
-        if(flags & MAP_KERNEL){
-            td.bits.pxn = 0;
-        }else if(flags & MAP_USER){
-            td.bits.uxn = 0;
-        }
-    }
+    // if(flags & MAP_EXEC){
+    //     if(flags & MAP_KERNEL){
+    //         td.bits.pxn = 0;
+    //     }else if(flags & MAP_USER){
+    //         td.bits.uxn = 0;
+    //     }
+    // }
 
     return td;
 }
@@ -63,18 +63,18 @@ static table_descriptor_t parse_table_flags(uint64_t flags){
 static mem_descriptor_t parse_block_flags(uint64_t flags, bool is_page){
     mem_descriptor_t md = {0};
 
-    if(!((flags & MAP_KERNEL) ^ (flags & MAP_USER))){
-        ERROR("Incorrect flags supplied to map function: received 0x%x, expected exactly one of 0x%x or 0x%x\n", flags, MAP_KERNEL, MAP_USER);
-        return md;
-    }
+    // if(!((flags & MAP_KERNEL) ^ (flags & MAP_USER))){
+    //     ERROR("Incorrect flags supplied to map function: received 0x%x, expected exactly one of 0x%x or 0x%x\n", flags, MAP_KERNEL, MAP_USER);
+    //     return md;
+    // }
 
     md.bits.valid = 1;
     md.bits.af = 1;
     md.bits.ns = 0;
     md.bits.sh = 3;
     md.bits.ap = 0;
-    md.bits.pxn = 1;
-    md.bits.uxn = 1;
+    md.bits.pxn = 0;
+    md.bits.uxn = 0;
     md.bits.attr_index = 0;
     md.bits.type = is_page;
 
@@ -83,13 +83,13 @@ static mem_descriptor_t parse_block_flags(uint64_t flags, bool is_page){
         md.bits.sh = 0;
     }
 
-    if(flags & MAP_EXEC){
-        if(flags & MAP_KERNEL){
-            md.bits.pxn = 0;
-        }else if(flags & MAP_USER){
-            md.bits.uxn = 0;
-        }
-    }
+    // if(flags & MAP_EXEC){
+    //     if(flags & MAP_KERNEL){
+    //         md.bits.pxn = 0;
+    //     }else if(flags & MAP_USER){
+    //         md.bits.uxn = 0;
+    //     }
+    // }
 
     if(flags & MAP_USER){
         if(flags & MAP_READ && flags & MAP_WRITE){

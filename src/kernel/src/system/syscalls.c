@@ -59,3 +59,7 @@ uint64_t sys_pulse_led(uint64_t pin_num, uint64_t turn_on, uint64_t unused1, uin
     pulse(pin_num, !turn_on);
     return 0;
 }
+
+uint64_t sys_io_setup(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6){
+    return 0;
+}

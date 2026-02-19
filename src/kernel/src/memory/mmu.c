@@ -129,6 +129,8 @@ uint64_t* initialize_page_tables(){
     // map the frame buffer
     map_pages(frame.fb, frame.fb, 376, MAP_KERNEL, (uint64_t) L0_TABLE);
 
+    // map_pages(0x1000000, 0x1000000, 1, MAP_KERNEL | MAP_READ, L0_TABLE);
+
     // map the page frame array metadata detailing RAM
     map_page_frame_array();
 
