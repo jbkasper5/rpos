@@ -41,38 +41,37 @@ mmu_enabled:
 
 .globl page_frame_array_start
 page_frame_array_start:
-    adrp x0, __page_frame_array_start
+    ldr x0, =__page_frame_array_start
     ret
 
 .globl page_frame_array_end
 page_frame_array_end:
-    adrp x0, __page_frame_array_end
+    ldr x0, =__page_frame_array_end
     ret
 
 .globl static_page_region_start
 static_page_region_start:
-    adrp x0, __static_page_region_start
+    ldr x0, =__static_page_region_start
     ret
 
 .globl static_page_region_end
 static_page_region_end:
-    adrp x0, __static_page_region_end
+    ldr x0, =__static_page_region_end
     ret
 
 .globl static_page_region_pages
 static_page_region_pages:
-    # adrp x0, #100
-    mov x0, #100
+    ldr x0, =__STATIC_PAGES
     ret
 
 .globl kernel_start
 kernel_start:
-    adrp x0, __kernel_start
+    ldr x0, =__kernel_start
     ret
 
 .globl kernel_end
 kernel_end:
-    adrp x0, __kernel_end
+    ldr x0, =__kernel_end
     ret
 
 .globl panic

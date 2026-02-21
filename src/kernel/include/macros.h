@@ -39,8 +39,8 @@ typedef uint16_t pid_t;
 
 
 #define WFI()       __asm__("wfi");
-
 #define PACKED      __attribute__((packed))
+#define BOOT_FN     __attribute__((section(".text.boot")))
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))

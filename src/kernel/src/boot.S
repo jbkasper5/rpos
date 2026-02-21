@@ -10,18 +10,27 @@ _start:
 
 master:
    // initialize UART and set up debugging via JLINK
-   adrp x0, __kstack_top
+   ldr x0, =__kstack_top
    mov sp, x0
+
+   // TODO: high map should go here
+   // bl map_high
+
+   // initialize UART
    bl uart_init
    
+   // initialize JLINK (if requested)
    #ifdef DEBUG
    bl debug_init
    #endif
 
+   // start the highhalf mapping process
+   bl map_high
+
    bl irq_init_vectors
 
    // initialize kernel stack for when we enter the trap handler
-   adrp x0, __kstack_top
+   ldr x0, =__kstack_top
    mov sp, x0
    msr SP_EL1, x0
 
@@ -55,7 +64,7 @@ master:
    mov x0, #0b01001 // DAIF=0000
    msr SPSR_EL3, x0 // M[4:0]=01001 EL2h must match SCR_EL3.RW
 
-   adr x0, el2_entry // el2_entry points to the first instruction of
+   ldr x0, =el2_entry // el2_entry points to the first instruction of
    msr ELR_EL3, x0 
 
    // drop into EL2
@@ -70,7 +79,7 @@ el2_entry:
    msr HCR_EL2, x0
    mov x0, #0b00101 // DAIF=0000
    msr SPSR_EL2, x0 // M[4:0]=00101 EL1h must match HCR_EL2.RW.
-   adr x0, el1_entry // el1_entry points to the first instruction of
+   ldr x0, =el1_entry // el1_entry points to the first instruction of
    msr ELR_EL2, x0 // EL1 code.
 
    mrs x0, cptr_el2
@@ -87,8 +96,8 @@ el2_entry:
    eret
 
 el1_entry:
-   adr x0, bss_begin
-   adr x1, bss_end
+   ldr x0, =bss_begin
+   ldr x1, =bss_end
    sub x1, x1, x0
 
    # clear the bss segment
@@ -109,7 +118,7 @@ el1_entry:
    mov w1, #0xBEEF
    dup v0.16b, w1
 
-   adrp x0, __kstack_top
+   ldr x0, =__kstack_top
    mov sp, x0
 
    bl kernel_main
@@ -121,11 +130,11 @@ _infinite:
 
 .globl get_bss_begin
 get_bss_begin:
-   adr x0, bss_begin
+   ldr x0, =bss_begin
    ret
 
 .globl get_bss_end
 get_bss_end:
-   adr x0, bss_end
+   ldr x0, =bss_end
    ret
 

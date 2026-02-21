@@ -16,6 +16,8 @@
 #include "memory/kmalloc.h"
 #include "filesystem/elf.h"
 
+// TODO: remove BOOT_FN later
+// void BOOT_FN debug_init(){
 void debug_init(){
 
     // JTAG
