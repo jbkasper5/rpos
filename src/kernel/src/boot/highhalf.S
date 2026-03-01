@@ -55,5 +55,5 @@ enable_mmu:
     mrs x1, par_el1 // 0x807
 
     // 6. Absolute Jump to High Memory
-    ldr x0, =kernel_main
+    ldr x0, =el1_entry
     br x0

@@ -11,7 +11,8 @@ extern unsigned char _binary_src_kernel_fonts_tamzen10x20_psf_size[];
 extern unsigned char _binary_src_kernel_fonts_tamzen10x20_psf_start[];
 
 unsigned char* font = _binary_src_kernel_fonts_tamzen10x20_psf_start;
-unsigned long font_size = (unsigned long)_binary_src_kernel_fonts_tamzen10x20_psf_size;
+unsigned long font_size;
+
 uint64_t line = 0;
 uint64_t cursor = 0;
 
@@ -106,7 +107,9 @@ void load_font(){
 
     DEBUG("_binary_font_psf_start: 0x%x\n", _binary_src_kernel_fonts_tamzen10x20_psf_start);
     DEBUG("_binary_font_psf_end: 0x%x\n", _binary_src_kernel_fonts_tamzen10x20_psf_end);
-    DEBUG("_binary_font_psf_size: 0x%x\n", _binary_src_kernel_fonts_tamzen10x20_psf_size);
+
+    font_size = (uint64_t) _binary_src_kernel_fonts_tamzen10x20_psf_end - (uint64_t)_binary_src_kernel_fonts_tamzen10x20_psf_start;
+    DEBUG("_binary_font_psf_size: 0x%x\n", font_size);
 
     psf2_header_t* font_hdr = (psf2_header_t*)_binary_src_kernel_fonts_tamzen10x20_psf_start;
     font = UNSCALED_POINTER_ADD(font, font_hdr->headersize);

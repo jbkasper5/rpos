@@ -41,6 +41,10 @@ typedef uint16_t pid_t;
 #define WFI()       __asm__("wfi");
 #define PACKED      __attribute__((packed))
 #define BOOT_FN     __attribute__((section(".text.boot")))
+#define BOOT_DATA   __attribute__((section(".boot.data")))
+#define BOOT_BSS    __attribute__((section(".boot.bss")))
+#define BOOT_RODATA __attribute__((section(".boot.rodata")))
+
 #define TEST_FN     __attribute__((section(".test.text")))
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))

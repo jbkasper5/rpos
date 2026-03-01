@@ -16,34 +16,6 @@
 #include "memory/kmalloc.h"
 #include "filesystem/elf.h"
 
-// TODO: remove BOOT_FN later
-// void BOOT_FN debug_init(){
-void debug_init(){
-
-    // JTAG
-    #define TCK 22
-    #define TMS 27
-    #define TDI 4
-    #define TDO 5
-    #define TRST 25
-
-    gpio_pin_set_func(TCK, GFAlt4);
-    gpio_pin_set_func(TMS, GFAlt4);
-    gpio_pin_set_func(TDI, GFAlt4);
-    gpio_pin_set_func(TDO, GFAlt4);
-    gpio_pin_set_func(TRST, GFAlt4);
-
-    gpio_pin_enable(TCK);
-    gpio_pin_enable(TMS);
-    gpio_pin_enable(TDI);
-    gpio_pin_enable(TDO);
-    gpio_pin_enable(TRST);
-
-    int gate = 0;
-    DEBUG("Waiting for gate to be released by debugger...\n");
-    while(!gate);
-}
-
 void hardware_init(){
 
     // load the font for the CLI
@@ -93,10 +65,9 @@ void hardware_init(){
 
 void drop_to_user();
 
-__attribute__((section(".test.text")))
 int kernel_main(){
     
-    // DEBUG("\nRaspberry PI Baremetal OS Initializing...\n");
+    DEBUG("Raspberry PI Baremetal OS Initializing...\n");
     // hardware_init();
 
     // file_t* file = open("/bin/ls", 0);

@@ -10,16 +10,12 @@ extern uint64_t kernel_high_start();
 extern uint64_t kernel_high_end();
 extern uint64_t kernel_end();
 
-// extern void enable_mmu();
+extern void enable_mmu();
 
-__attribute__((section(".boot.bss")))
-static table_descriptor_t k_code_table_mapping = {0};
+static BOOT_BSS table_descriptor_t k_code_table_mapping = {0};
+static BOOT_BSS mem_descriptor_t k_code_mem_mapping = {0};
+static BOOT_BSS int lo_allocated_pages = 0;
 
-__attribute__((section(".boot.bss")))
-static mem_descriptor_t k_code_mem_mapping = {0};
-
-__attribute__((section(".boot.bss")))
-static int lo_allocated_pages = 0;
 
 static BOOT_FN uint64_t alloc_page_table_lo(){
     // get physical address of the allocated pages variable

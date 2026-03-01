@@ -14,14 +14,12 @@ master:
    mov sp, x0
 
    // initialize UART
-   bl uart_init
+   bl uart_init_lo
    
    // initialize JLINK (if requested)
    #ifdef DEBUG
-   bl debug_init
+   bl debug_init_lo
    #endif
-
-   bl irq_init_vectors
 
    // initialize kernel stack for when we enter the trap handler
    ldr x0, =__kstack_top
@@ -95,6 +93,7 @@ _infinite:
 
 # move this section to the highmap
 .section .text
+.globl el1_entry
 el1_entry:
    ldr x0, =bss_begin
    ldr x1, =bss_end
@@ -118,7 +117,7 @@ el1_entry:
    mov w1, #0xBEEF
    dup v0.16b, w1
 
-   ldr x0, =__kstack_top
+   ldr x0, =__kstack_top_hi
    mov sp, x0
 
    bl kernel_main
