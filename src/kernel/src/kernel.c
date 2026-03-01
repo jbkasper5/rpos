@@ -93,23 +93,25 @@ void hardware_init(){
 
 void drop_to_user();
 
+__attribute__((section(".test.text")))
 int kernel_main(){
-    DEBUG("\nRaspberry PI Baremetal OS Initializing...\n");
-    hardware_init();
-
-    file_t* file = open("/bin/ls", 0);
-    ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
-    if(!file){
-        ERROR("Failed to open /bin/ls\n");
-    }else{
-        INFO("Successfully opened /bin/ls. FP: 0x%x. Starting ELF parsing.\n", file);
-        readelf(file);
-        close(file);
-    }
     
-    // while(TRUE){
-    //     uart_putc(uart_getc());
+    // DEBUG("\nRaspberry PI Baremetal OS Initializing...\n");
+    // hardware_init();
+
+    // file_t* file = open("/bin/ls", 0);
+    // ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
+    // if(!file){
+    //     ERROR("Failed to open /bin/ls\n");
+    // }else{
+    //     INFO("Successfully opened /bin/ls. FP: 0x%x. Starting ELF parsing.\n", file);
+    //     readelf(file);
+    //     close(file);
     // }
+    
+    while(TRUE){
+        uart_putc(uart_getc());
+    }
 
     // DEBUG("Waiting complete, dropping to user mode...\n");
     start_scheduler();

@@ -13,9 +13,6 @@ master:
    ldr x0, =__kstack_top
    mov sp, x0
 
-   // TODO: high map should go here
-   // bl map_high
-
    // initialize UART
    bl uart_init
    
@@ -23,9 +20,6 @@ master:
    #ifdef DEBUG
    bl debug_init
    #endif
-
-   // start the highhalf mapping process
-   bl map_high
 
    bl irq_init_vectors
 
@@ -79,8 +73,8 @@ el2_entry:
    msr HCR_EL2, x0
    mov x0, #0b00101 // DAIF=0000
    msr SPSR_EL2, x0 // M[4:0]=00101 EL1h must match HCR_EL2.RW.
-   ldr x0, =el1_entry // el1_entry points to the first instruction of
-   msr ELR_EL2, x0 // EL1 code.
+   ldr x0, =map_high // very first job of EL1 is to set up the high map kernel
+   msr ELR_EL2, x0
 
    mrs x0, cptr_el2
    bic x0, x0, #(1 << 10)
@@ -95,6 +89,12 @@ el2_entry:
    // drop into el1
    eret
 
+_infinite:
+   b _infinite
+
+
+# move this section to the highmap
+.section .text
 el1_entry:
    ldr x0, =bss_begin
    ldr x1, =bss_end
@@ -122,19 +122,3 @@ el1_entry:
    mov sp, x0
 
    bl kernel_main
-   b _infinite
-
-_infinite:
-    b _infinite
-
-
-.globl get_bss_begin
-get_bss_begin:
-   ldr x0, =bss_begin
-   ret
-
-.globl get_bss_end
-get_bss_end:
-   ldr x0, =bss_end
-   ret
-

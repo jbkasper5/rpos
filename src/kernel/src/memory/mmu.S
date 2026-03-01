@@ -33,6 +33,7 @@ mmu_init:
     // this will have to be set in the context switching section of the kernel
     # msr TTBR0_EL1, x0
 
+    // 1000 0000 0001 0000 0000 0000 0001 0000
     ldr x0, =0x80100010
     msr TCR_EL1, x0
 
@@ -49,6 +50,17 @@ mmu_init:
     msr sctlr_el1, x0
 
     isb
+
+    ldr x0, =kernel_main
+    at s1e1r, x0
+    isb
+    mrs x1, par_el1
+
+    ldr x0, =kernel_main
+    at s1e1w, x0
+    isb
+    mrs x1, par_el1
+
 
     ldp x29, x30, [sp], #16
     ret

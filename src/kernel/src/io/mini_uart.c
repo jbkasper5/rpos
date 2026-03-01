@@ -9,6 +9,7 @@
 #define TXD 14
 #define RXD 15
 
+__attribute__((section(".boot.bss")))
 uint8_t USE_PANEL = TRUE;
 
 void disable_panel(){

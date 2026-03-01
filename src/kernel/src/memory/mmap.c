@@ -1,6 +1,6 @@
 #include "memory/mmap.h"
 
-static uint64_t allocated_pages = 0;
+uint64_t allocated_pages = 0;
 extern uint32_t static_page_region_pages();
 extern uintptr_t static_page_region_start();
 
