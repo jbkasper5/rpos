@@ -47,7 +47,7 @@ void* open(const char* pathname, uint32_t flags){
     ext4_inode* dirnode = lookup(rootfs.root_inode, "bin");
     if(dirnode != NULL){
         INFO("Found 'bin' directory inode.\n");
-        ext4_inode* filenode = lookup(dirnode, "ls");
+        ext4_inode* filenode = lookup(dirnode, "pwd");
         if(filenode){
             INFO("Found 'ls' file inode.\n");
             kfree(dirnode);

@@ -1,4 +1,5 @@
 #include "system/syscalls.h"
+#include "system/scheduler.h"
 #include "io/kprintf.h"
 #include "io/gpio.h"
 #include "utils/timer.h"
@@ -62,4 +63,10 @@ uint64_t sys_pulse_led(uint64_t pin_num, uint64_t turn_on, uint64_t unused1, uin
 
 uint64_t sys_io_setup(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6){
     return 0;
+}
+
+
+uint64_t sys_exit_group(uint64_t status, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5){
+    INFO("Current running process number: %d\n", active_process);
+    reap();
 }

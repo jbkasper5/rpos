@@ -13,14 +13,6 @@ pcb_list_t proclist;
 uint64_t active_process = 0;
 
 void scheduler_init(){
-    // debug pins
-    gpio_pin_enable(USER_PIN);
-    gpio_pin_set_func(USER_PIN, GFOutput);
-    gpio_pin_enable(USER_PIN_2);
-    gpio_pin_set_func(USER_PIN_2, GFOutput);
-    gpio_pin_enable(DEBUG_PIN);
-    gpio_pin_set_func(DEBUG_PIN, GFOutput);
-
     // create 2 active processes
     proclist.processes = 0;
 
@@ -63,8 +55,6 @@ void print_reg_file(reglist_t* regfile){
 }
 
 void scheduler(reglist_t* reg_addr){
-    pulse(DEBUG_PIN, FALSE);
-
     // switch active processes
     int selected_process = 0;
     int i = active_process;
@@ -117,7 +107,10 @@ void scheduler(reglist_t* reg_addr){
 
     // prime the scheduler timer for another quantum
     prime_physical_timer();
-    pulse(DEBUG_PIN, TRUE);
+}
+
+static void idle(){
+    while(TRUE);
 }
 
 void start_scheduler(){
@@ -148,7 +141,8 @@ void deschedule(){
 void reschedule(uint64_t procnum){
     DEBUG("Rescheduling %d\n", procnum);
     proclist.proclist[procnum].state = PROCESS_READY;
-    scheduler(user_context_ptr);
+    // scheduler(user_context_ptr);
+    idle();
 }
 
 void add_to_schedule(pcb_t* proc){
@@ -156,4 +150,10 @@ void add_to_schedule(pcb_t* proc){
     proc->registers.spsr = 0x0;
     memcpy(&proclist.proclist[proclist.processes], proc, sizeof(pcb_t));
     proclist.processes++;
+}
+
+// placeholder for now
+void reap(uint64_t procnum){
+    // deschedule();
+    reschedule(procnum);
 }
