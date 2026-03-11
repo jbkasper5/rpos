@@ -27,8 +27,8 @@ static_page_region_pages:
     ldr x0, =__STATIC_PAGES
     ret
 
-.globl virt_base
-virt_base:
+.globl virt_base_lo
+virt_base_lo:
     ldr x0, =VIRT_BASE
     ret
 

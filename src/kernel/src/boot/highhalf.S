@@ -33,26 +33,18 @@ enable_mmu:
     msr sctlr_el1, x2
     isb
 
-    ldr x0, =enable_mmu
+    ldr x0, =0xFFFF8000FF841000
     at s1e1r, x0
     isb
-    mrs x1, par_el1 // 0x807
+    mrs x1, par_el1 // 0x80F
 
-    ldr x0, =test_hi
-    at s1e1r, x0
-    isb
-    mrs x1, par_el1 // 0x807
-
-    ldr x0, =kernel_main
+    ldr x0, =0xFFFF8000FF842000
     at s1e1r, x0
     isb
     mrs x1, par_el1 // 0x80F
 
     ldr x0, =__kstack_top_hi
     mov sp, x0
-    at s1e1r, x0
-    isb 
-    mrs x1, par_el1 // 0x807
 
     // 6. Absolute Jump to High Memory
     ldr x0, =el1_entry

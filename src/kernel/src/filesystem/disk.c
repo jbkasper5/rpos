@@ -2,6 +2,7 @@
 #include "io/kprintf.h"
 #include "macros.h"
 #include "memory/mem.h"
+#include "memory/kmalloc.h"
 
 fs rootfs;
 
@@ -235,7 +236,8 @@ ext4_inode* lookup(ext4_inode* dirnode, char* name){
 }
 
 void filesystem_init(){
-    rootfs.block_buf = (ext4_block*) kmalloc(sizeof(ext4_block));
+    uint64_t test = (uint64_t) kmalloc(sizeof(ext4_block));
+    rootfs.block_buf = (ext4_block*) test;
     rootfs.superblock = (ext_superblock*) kmalloc(sizeof(sector) * 2);
     rootfs.root_inode = (ext4_inode*) kmalloc(inode_size);
     group_descriptor_table = (ext4_group_desc_t*) kmalloc(sizeof(ext4_block) * 8);

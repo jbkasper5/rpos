@@ -3,7 +3,7 @@
 
 #include "macros.h"
 
-#define GIC_BASE        0xFF840000
+#define GIC_BASE        0xFFFF8000FF840000
 
 struct gicd_regs {
     reg32_t gicd_ctlr;              // 0x000

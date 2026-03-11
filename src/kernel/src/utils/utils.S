@@ -63,6 +63,28 @@ get_bss_end:
    ldr x0, =bss_end
    ret
 
+.globl virt_base
+virt_base:
+    ldr x0, =VIRT_BASE
+    ret
+
+
+.globl va_to_pa
+va_to_pa:
+    stp x1, xzr, [sp, #-16]!
+    ldr x1, =VIRT_BASE
+    sub x0, x0, x1
+    ldp x1, xzr, [sp], #16
+    ret
+
+
+.globl pa_to_va
+pa_to_va:
+    stp x1, xzr, [sp, #-16]!
+    ldr x1, =VIRT_BASE
+    add x0, x0, x1
+    ldp x1, xzr, [sp], #16
+    ret
 
 .globl panic
 panic:

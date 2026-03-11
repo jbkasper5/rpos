@@ -6,12 +6,10 @@
 #include "io/lcd.h"
 #include "io/gpio.h"
 #include "peripherals/base.h"
+#include "peripherals/gic.h"
 
 #include "io/kprintf.h"
-
-extern uintptr_t static_page_region_start();
-extern uint32_t static_page_region_pages();
-extern uint64_t walk(uint64_t addr);
+#include "asm_utils.h"
 
 uint64_t* L0_TABLE;
 
@@ -64,27 +62,6 @@ void print_page_table(uint64_t* pt_addr, int n_entries){
     }
 }
 
-uint64_t* create_kernel_identity_mapping(uint64_t allocated_pages){
-    /*
-    Once page frame array is populated, we can allocate pages and create 
-    the page table mapping for the kernel memory
-    */
-
-    // allocate 4 pages for the kernels initial page table structure
-    table_descriptor_t* kernel_l0_pt = (table_descriptor_t*) alloc_page_table();
-
-    L0_TABLE = (uint64_t*) kernel_l0_pt;
-
-    uint64_t flags = MAP_KERNEL | MAP_EXEC;
-    map_pages(PAGE_SIZE, PAGE_SIZE, allocated_pages - 1, flags, (uint64_t) L0_TABLE);
-
-    // peripheral addresses occupy a total of 16MiB, or 8 L2-blocks (each 2MiB)
-    flags = MAP_DEVICE | MAP_KERNEL;
-    map(PBASE, PBASE, 12, flags, (uint64_t) L0_TABLE);
-
-    return (uint64_t*) kernel_l0_pt;
-}
-
 static void map_page_frame_array(){
     uint64_t start_addr = ALIGN_DOWN(page_frame_array_start(), PAGE_SIZE);
     uint64_t end_addr = ALIGN_UP(page_frame_array_end(), PAGE_SIZE);
@@ -97,7 +74,7 @@ static void map_page_frame_array(){
     
     INFO("Mapping %d frontside pages at address 0x%x\n", frontside_pages, start_addr);
 
-    map_pages(start_addr, start_addr, frontside_pages, MAP_KERNEL, L0_TABLE);
+    map_pages(start_addr, va_to_pa(start_addr), frontside_pages, MAP_KERNEL, L0_TABLE);
 
     uint64_t n_blocks = (pages_to_map - frontside_pages) / 512;
 
@@ -105,7 +82,7 @@ static void map_page_frame_array(){
 
     INFO("Mapping %d blocks at address 0x%x\n", n_blocks, start_addr);
 
-    map_blocks(start_addr, start_addr, n_blocks, MAP_KERNEL, L0_TABLE);
+    map_blocks(start_addr, va_to_pa(start_addr), n_blocks, MAP_KERNEL, L0_TABLE);
 
     uint64_t backside_pages = pages_to_map - frontside_pages - (512 * n_blocks);
 
@@ -113,7 +90,7 @@ static void map_page_frame_array(){
 
     INFO("Mapping %d backside pages at address 0x%x\n", backside_pages, start_addr);
 
-    map_pages(start_addr, start_addr, backside_pages, MAP_KERNEL, L0_TABLE);
+    map_pages(start_addr, va_to_pa(start_addr), backside_pages, MAP_KERNEL, L0_TABLE);
 }
 
 
@@ -122,14 +99,14 @@ static void map_static_page_region(){
     map_pages(start_addr, start_addr, static_page_region_pages(), MAP_KERNEL, L0_TABLE);
 }
 
-uint64_t* initialize_page_tables(){
-    uint64_t allocated_pages = initialize_page_frame_array();
-    uint64_t* l0_pt = create_kernel_identity_mapping(allocated_pages);
+uint64_t* finish_virtual_mapping(){
+    L0_TABLE = static_page_region_start();
 
-    // map the frame buffer
-    map_pages(frame.fb, frame.fb, 376, MAP_KERNEL, (uint64_t) L0_TABLE);
+    uint64_t flags = MAP_KERNEL | MAP_DEVICE;
+    map(PBASE, va_to_pa(PBASE), 12, flags, (uint64_t) L0_TABLE);
 
-    // map_pages(0x1000000, 0x1000000, 1, MAP_KERNEL | MAP_READ, L0_TABLE);
+    uint64_t gic_virtual = ALIGN_DOWN(GIC_BASE, BLOCK_SIZE);
+    map(gic_virtual, va_to_pa(gic_virtual), 9, flags, L0_TABLE);
 
     // map the page frame array metadata detailing RAM
     map_page_frame_array();
@@ -137,6 +114,11 @@ uint64_t* initialize_page_tables(){
     // map the page tables themselves
     map_static_page_region();
 
+    // initialize the buddy allocator
+    initialize_page_frame_array();
+
     // return the L0 table to be stored in TTBR_EL1
     return L0_TABLE;
 }
+
+// 765 608 6680

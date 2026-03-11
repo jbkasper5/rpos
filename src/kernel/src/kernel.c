@@ -18,10 +18,12 @@
 
 void hardware_init(){
 
+    finish_virtual_mapping();
+
     // load the font for the CLI
     load_font();
 
-    INFO("Enabling LCD panel...\n");
+    // INFO("Enabling LCD panel...\n");
     init_framebuffer();
 
     INFO("Enabling interrupt controller...\n");
@@ -42,9 +44,6 @@ void hardware_init(){
     INFO("Enabling IRQ interrupts...\n");
     irq_enable();
 
-    INFO("Initializing MMU...\n");
-    mmu_init();
-
     INFO("Enabling system scheduler...\n");
     scheduler_init();
 
@@ -63,26 +62,24 @@ void hardware_init(){
     INFO("Hardware initialization complete.\n\n");
 }
 
-void drop_to_user();
-
 int kernel_main(){
     
-    DEBUG("Raspberry PI Baremetal OS Initializing...\n");
-    // hardware_init();
+    // DEBUG("Raspberry PI Baremetal OS Initializing...\n");
+    hardware_init();
 
-    // file_t* file = open("/bin/ls", 0);
-    // ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
-    // if(!file){
-    //     ERROR("Failed to open /bin/ls\n");
-    // }else{
-    //     INFO("Successfully opened /bin/ls. FP: 0x%x. Starting ELF parsing.\n", file);
-    //     readelf(file);
-    //     close(file);
-    // }
-    
-    while(TRUE){
-        uart_putc(uart_getc());
+    file_t* file = open("/bin/ls", 0);
+    ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
+    if(!file){
+        ERROR("Failed to open /bin/ls\n");
+    }else{
+        INFO("Successfully opened /bin/ls. FP: 0x%x. Starting ELF parsing.\n", file);
+        readelf(file);
+        close(file);
     }
+    
+    // while(TRUE){
+    //     uart_putc(uart_getc());
+    // }
 
     // DEBUG("Waiting complete, dropping to user mode...\n");
     start_scheduler();

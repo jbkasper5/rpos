@@ -9,8 +9,20 @@
     // x2 -> program state
     // x3 -> user ttbr
 drop_to_user:
-    msr TTBR0_EL1, x3
+    // surgical clear of TLB mappings for specific ASID
+    # mov x5, #0
+    # tlbi aside1is, x5
+    # dsb ish
+    # isb
 
+    // switch out new table
+    msr TTBR0_EL1, x3
+    dsb ish
+    isb
+
+
+    // nuke to fully wipe the TLB
+    tlbi vmalle1is
     dsb ish
     isb
 

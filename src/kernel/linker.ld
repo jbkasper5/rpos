@@ -19,9 +19,7 @@ SECTIONS {
   . = PHYS_BASE;
   __kernel_start = .;
 
-  /* TODO: Stopgap - eventually need to remove this */
   __kernel_high_start = . + VIRT_BASE;
-  /* . = . - VIRT_BASE; */
 
   .text.boot : { 
     */boot_s.o(.text.boot)
@@ -43,33 +41,28 @@ SECTIONS {
   . = . + VIRT_BASE;
 
   .text : AT(ADDR(.text) - VIRT_BASE) { 
-  /* .text : { */
     *(.text) 
   } : text
 
   /* String literals end up going here */
   .rodata : AT(ADDR(.rodata) - VIRT_BASE) { 
-  /* .rodata : { */
     *(.rodata) 
   } : rodata
 
 
   . = ALIGN(0x10);
   .font : AT(ADDR(.font) - VIRT_BASE) {
-  /* .font : { */
     __font_start = .;
     bin/font.o(*)
     __font_end = .;
   } : rodata
 
   .data : AT(ADDR(.data) - VIRT_BASE) { 
-  /* .data : { */
     *(.data) 
   } : data
 
   . = ALIGN(0x8);
   .bss : AT(ADDR(.bss) - VIRT_BASE) {
-  /* .bss : { */
     bss_begin = .;
     *(.bss*)
     *(COMMON)
@@ -78,9 +71,8 @@ SECTIONS {
 
   . = ALIGN(0x10);
   .kstack_top (NOLOAD) : AT(ADDR(.kstack_top) - VIRT_BASE) {
-  /* .kstack_top (NOLOAD) : { */
     __kstack_bottom = . - VIRT_BASE;
-    __kastck_bottom_hi = .;
+    __kstack_bottom_hi = .;
     . += 0x2000;
     __kstack_top = . - VIRT_BASE;
     __kstack_top_hi = .;
@@ -95,9 +87,7 @@ SECTIONS {
 
 
   /* TODO: Stopgap - eventually need to remove this */
-  /* . = VIRT_BASE + .; */
   __kernel_high_end = .;
-  /* . = . - VIRT_BASE; */
 
   /*
     If uisng 1 GiB RAM: PFE = 32 bytes, 2^12 page size, 2^30 RAM bytes => 2^18 pages * 2^5 bytes = 2^23
@@ -105,7 +95,6 @@ SECTIONS {
   */
   . = ALIGN(0x1000);
   .page_frame_array (NOLOAD) : AT(ADDR(.page_frame_array) - VIRT_BASE) {
-  /* .page_frame_array (NOLOAD) : { */
     __page_frame_array_start = .;
     . += 0x800000; /* 2^23 bytes, only maps 1GiB */
     __page_frame_array_end = .;
@@ -114,7 +103,6 @@ SECTIONS {
 
   . = ALIGN(0x1000);
   .static_page_region (NOLOAD) : AT(ADDR(.static_page_region) - VIRT_BASE) {
-  /* .static_page_region (NOLOAD) : { */
     __static_page_region_start_virt = .;
     __static_page_region_start = .;
     __static_page_region_start_phys = LOADADDR(.static_page_region);
@@ -124,7 +112,6 @@ SECTIONS {
 
 
   .uram.text : AT(ADDR(.uram.text) - VIRT_BASE) {
-  /* .uram.text : { */
     *(.uram.text)
   } : text
 }

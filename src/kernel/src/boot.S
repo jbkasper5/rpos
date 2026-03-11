@@ -13,6 +13,8 @@ master:
    ldr x0, =__kstack_top
    mov sp, x0
 
+   bl irq_init_vectors
+
    // initialize UART
    bl uart_init_lo
    

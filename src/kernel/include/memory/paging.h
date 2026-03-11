@@ -55,8 +55,8 @@ typedef struct {
 
 
 
-uintptr_t buddy_alloc(uint64_t bytes);
-uintptr_t buddy_alloc_pt();
+uint64_t buddy_alloc(uint64_t bytes);
+uint64_t buddy_alloc_pt();
 uint64_t initialize_page_frame_array();
 uint8_t get_block_order(uint64_t addr);
 void* head_from_page(void* page_addr);

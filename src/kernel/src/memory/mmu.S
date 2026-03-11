@@ -16,56 +16,6 @@ debug_str:
      (0b11 << 28)| /* SH1 = Inner Shareable */ \
      (0b10 << 30)) /* TG1 = 4KB granule */
 
-
-.globl mmu_init
-mmu_init:
-    stp x29, x30, [sp, #-16]!
-
-    // c code to initialize the kernel page tables
-    bl initialize_page_tables
-
-    // move returned L0 page table pointer into TTBR1_EL1
-    msr TTBR1_EL1, x0
-    msr TTBR0_EL1, x0
-
-
-    // TODO: create the VM mapping for user processes
-    // this will have to be set in the context switching section of the kernel
-    # msr TTBR0_EL1, x0
-
-    // 1000 0000 0001 0000 0000 0000 0001 0000
-    ldr x0, =0x80100010
-    msr TCR_EL1, x0
-
-    isb
-
-    ldr x0, =((0xFF << 0) | (0x04 << 8))
-    msr MAIR_EL1, x0
-
-    dsb ish
-    isb
-
-    mrs x0, sctlr_el1
-    orr x0, x0, #(1 << 0)      // M (MMU enable)
-    msr sctlr_el1, x0
-
-    isb
-
-    ldr x0, =kernel_main
-    at s1e1r, x0
-    isb
-    mrs x1, par_el1
-
-    ldr x0, =kernel_main
-    at s1e1w, x0
-    isb
-    mrs x1, par_el1
-
-
-    ldp x29, x30, [sp], #16
-    ret
-
-
 .globl walk
 walk:
     // stage 1 el0 read translation

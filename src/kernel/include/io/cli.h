@@ -44,6 +44,7 @@ void set_text_color();
 void unset_text_background_color();
 void unset_text_color();
 
+void fill_screen(frame_t* frame, uint32_t argb);
 void scroll();
 void print_glyph(char c);
 void print_string(char* s);

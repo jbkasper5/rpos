@@ -67,6 +67,7 @@ typedef union {
 // 2 ^ 20 = (1 << 20) pages = (1 << 20) bytes given 1B metadata per page
 
 void mmu_init();
+uint64_t* finish_virtual_mapping();
 uint64_t* initialize_page_tables();
 uint64_t* create_kernel_identity_mapping();
 

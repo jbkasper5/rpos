@@ -55,5 +55,7 @@ typedef uint16_t pid_t;
 #define ALIGN_UP(addr, align)   (((addr) + ((align) - 1)) & ~((align) - 1))
 
 extern void panic();
+extern uint64_t pa_to_va(uint64_t pa);
+extern uint64_t va_to_pa(uint64_t va);
 
 #endif

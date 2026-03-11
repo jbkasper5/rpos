@@ -18,7 +18,7 @@ typedef struct {
 } file_t;
 
 int close(file_t* file);
-int open(const char* pathname, uint32_t flags);
+void* open(const char* pathname, uint32_t flags);
 uint64_t read(file_t* file, void* buf, uint64_t count);
 int seek(file_t* file, uint64_t offset, int whence);
 

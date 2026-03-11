@@ -2,12 +2,7 @@
 #include "memory/virtual_memory.h"
 #include "memory/mem.h"
 
-void* static_page_region_start();
-void* static_page_region_end();
-void* page_frame_array_start();
-void* page_frame_array_end();
-void* kernel_start();
-void* kernel_end();
+#include "asm_utils.h"
 
 #define MAX_ORDER 20
 
@@ -65,7 +60,7 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
     }
 
     // return the pointer to the start of the allocated page
-    return pfn << 12;
+    return pa_to_va(pfn << 12);
 }
 
 
@@ -109,7 +104,8 @@ void buddy_free(void* page){
     // then add the new block to the higher order buddy list
 
     // get the frame from the page address
-    page_frame_t* frame = &frame_metadata[(uintptr_t) page >> 12];
+    uint64_t pfn = va_to_pa(page) >> 12;
+    page_frame_t* frame = &frame_metadata[pfn];
 
     // step 1: mark the frame as free
     frame->flags.bits.state = PAGE_FREE;
@@ -132,7 +128,7 @@ void buddy_free(void* page){
  * @param bytes     Number of bytes to allocate 
  * @return          Address of the header page   
  */
-uintptr_t buddy_alloc(uint64_t bytes){
+uint64_t buddy_alloc(uint64_t bytes){
     // round bytes up to the nearest page granule
     uint32_t n_pages = (bytes + 4095) >> 12;  // For 4 KiB pages
 
@@ -157,14 +153,14 @@ uintptr_t buddy_alloc(uint64_t bytes){
  * @brief Allocates and zeroes a single page for a page table   
  * @return          Address of the page      
  */
-uintptr_t buddy_alloc_pt(){
+uint64_t buddy_alloc_pt(){
     uintptr_t pt = buddy_alloc(PAGE_SIZE);
     memset((void*) pt, 0, PAGE_SIZE);
     return pt;
 }
 
 void set_page_owner(void* page_addr, page_state new_owner){
-    uint64_t pfn = (uint64_t) page_addr >> 12;
+    uint64_t pfn = va_to_pa(page_addr) >> 12;
 
     if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
         // if it's a tail page, get the head page first
@@ -176,7 +172,7 @@ void set_page_owner(void* page_addr, page_state new_owner){
 }
 
 page_state get_page_owner(void* page_addr){
-    uint64_t pfn = (uint64_t) page_addr >> 12;
+    uint64_t pfn = va_to_pa(page_addr) >> 12;
 
     if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
         // if it's a tail page, get the head page first
@@ -188,7 +184,7 @@ page_state get_page_owner(void* page_addr){
 }
 
 void* head_from_page(void* page_addr){
-    uint64_t pfn = (uint64_t) page_addr >> 12;
+    uint64_t pfn = va_to_pa(page_addr) >> 12;
 
     page_frame_t* pf = &frame_metadata[pfn];
 
@@ -204,7 +200,7 @@ void* head_from_page(void* page_addr){
 
     // otherwise, use the order to compute the head address
     size_t offset_from_head = pf->order;
-    return (void*) ((pfn - offset_from_head) << 12);
+    return (void*) pa_to_va(((pfn - offset_from_head) << 12));
 }
 
 static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t available_pages){
@@ -236,9 +232,11 @@ uint8_t get_block_order(uint64_t addr){
 
 uint64_t initialize_page_frame_array(){
     for(int i = 0; i <= MAX_ORDER; i++) INIT_LIST_HEAD(&buddy_lists[i]);
-    frame_metadata = (page_frame_t*) page_frame_array_start();
-    uint64_t reserved_memory = (uint64_t) static_page_region_end();
+    frame_metadata = (page_frame_t*) (page_frame_array_start());
+    uint64_t reserved_memory = (uint64_t) va_to_pa(static_page_region_end());
     uint64_t reserved_pages = (reserved_memory + 0xFFF) >> 12;
+
+    // this is now the physical address
     uint64_t start_page_addr = (reserved_memory + 0xFFF) & (~0xFFF);
 
     // stay in the lower 1 GiB for now

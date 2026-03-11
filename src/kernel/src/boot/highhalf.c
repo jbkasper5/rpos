@@ -5,7 +5,7 @@ extern uint32_t static_page_region_pages();
 extern uintptr_t static_page_region_start();
 extern uintptr_t static_page_region_end();
 
-extern uint64_t virt_base();
+extern uint64_t virt_base_lo();
 extern uint64_t kernel_high_start();
 extern uint64_t kernel_high_end();
 extern uint64_t kernel_end();
@@ -19,7 +19,7 @@ static BOOT_BSS int lo_allocated_pages = 0;
 
 static BOOT_FN uint64_t alloc_page_table_lo(){
     // get physical address of the allocated pages variable
-    // int* var = UNSCALED_POINTER_SUB(&allocated_pages, virt_base());
+    // int* var = UNSCALED_POINTER_SUB(&allocated_pages, virt_base_lo());
     uint64_t* page_addr = UNSCALED_POINTER_ADD(static_page_region_start_phys(), (PAGE_SIZE * lo_allocated_pages));
     lo_allocated_pages++;
     for(int i = 0; i < PAGE_SIZE / sizeof(uint64_t); i++) page_addr[i] = 0;
@@ -71,18 +71,18 @@ static BOOT_FN void map_lo(uint64_t va, uint64_t pa, int pages, uint64_t* pt){
 }
 
 static BOOT_FN void map_static_page_region(uint64_t* pt){
-    uint64_t vb = virt_base();
+    uint64_t vb = virt_base_lo();
     uint64_t spr = static_page_region_start();
 
     uint64_t pages_to_map = static_page_region_pages();
 
-    map_lo(spr + vb, spr, pages_to_map, pt);
+    map_lo(spr, spr - vb, pages_to_map, pt);
 }
 
 static BOOT_FN void identity_map_code(uint64_t* pt){
     uint64_t code_base = ALIGN_DOWN(kernel_high_start(), PAGE_SIZE);
     uint64_t code_end = ALIGN_UP(kernel_high_end(), PAGE_SIZE);
-    uint64_t vb = virt_base();
+    uint64_t vb = virt_base_lo();
     
     uint64_t reserved_memory = (uint64_t) static_page_region_end();
     uint64_t reserved_pages = (reserved_memory + 0xFFF) >> 12;
@@ -94,7 +94,7 @@ static BOOT_FN void map_code(uint64_t* pt){
     // align the kernel start down to the nearest page boundary
     uint64_t code_base = ALIGN_DOWN(kernel_high_start(), PAGE_SIZE);
     uint64_t code_end = ALIGN_UP(kernel_high_end(), PAGE_SIZE);
-    uint64_t vb = virt_base();
+    uint64_t vb = virt_base_lo();
     
     uint64_t pages_to_map = (code_end - code_base) / PAGE_SIZE;
 

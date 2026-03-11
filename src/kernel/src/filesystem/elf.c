@@ -37,10 +37,9 @@ void readelf(file_t* file){
     // allocate process metadata
     // should now have a valid L0 page table and stack
     pcb_t* process = procalloc();
-    // process->registers.pc = header->e_entry;
-    process->registers.pc = &do_user_things;
 
-    map(process->registers.pc, process->registers.pc, 0, MAP_KERNEL | MAP_EXEC | MAP_READ, process->registers.ttbr);
+    // set process's entrypoint
+    process->registers.pc = header->e_entry;
 
     elf64_program_header* program_header = UNSCALED_POINTER_ADD(header, header->e_phoff);
 
@@ -59,17 +58,20 @@ void readelf(file_t* file){
 
         uint16_t order = log2_pow2(program_header->p_memsz / 4096);
 
-        uint64_t phys_block = buddy_alloc(program_header->p_memsz);
+        uint64_t phys_block = buddy_alloc(program_header->p_memsz); // 3ffd7000
 
         // map physical block into kernel memory so we can set up the process
-        map(phys_block, phys_block, order, MAP_KERNEL | MAP_WRITE, L0_TABLE);
+        map(phys_block, va_to_pa(phys_block), order, MAP_KERNEL | MAP_WRITE, L0_TABLE);
 
         seek(file, program_header->p_offset, SEEK_SET);
         read(file, rootfs.block_buf, program_header->p_filesz);
-        memcpy(phys_block, rootfs.block_buf, program_header->p_filesz);
 
-        // munmap the physical block
-        map(program_header->p_vaddr, phys_block, order, flags, process->registers.ttbr);
+        uint64_t in_page_offset = program_header->p_vaddr % PAGE_SIZE;
+
+        memcpy(UNSCALED_POINTER_ADD(phys_block, in_page_offset), rootfs.block_buf, program_header->p_filesz);
+
+        map(program_header->p_vaddr, va_to_pa(phys_block), order, flags, process->registers.ttbr); // 0x400000 -> 3ffd7000
+
         program_header++;
     }
 

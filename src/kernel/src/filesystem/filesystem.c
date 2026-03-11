@@ -38,7 +38,7 @@ static ext4_inode* resolve_path(const char* pathname){
     kfree(buf);
 }
 
-int open(const char* pathname, uint32_t flags){
+void* open(const char* pathname, uint32_t flags){
     INFO("Opening path '%s'\n", pathname);
     ext4_inode* inode = resolve_path(pathname);
 
