@@ -21,6 +21,7 @@ struct AuxRegs{
     reg32_t mu_baud_rate;
 };
 
+#define REGS_AUX_LO ((struct AuxRegs*)(PBASE_PHYS + 0x00215000))
 #define REGS_AUX ((struct AuxRegs*)(PBASE + 0x00215000))
 
 

@@ -5,10 +5,11 @@
 #include "system/process.h"
 #include "macros.h"
 
-extern void drop_to_user(uint64_t sp, uint64_t pc, uint64_t spsr);
+extern void drop_to_user(uint64_t sp, uint64_t pc, uint64_t spsr, uint64_t ttbr);
 
 void scheduler_init();
 void start_scheduler();
+void add_to_schedule(pcb_t* proc);
 void scheduler(reglist_t* reg_addr);
 void deschedule();
 void reschedule(uint64_t procnum);

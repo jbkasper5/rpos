@@ -20,7 +20,7 @@ static void* _slab_alloc(uint32_t order){
     if(!phys_page) panic();
 
     // map the page into memory
-    map(phys_page, phys_page, 0, MAP_KERNEL, L0_TABLE);
+    map(phys_page, va_to_pa(phys_page), 0, MAP_KERNEL, L0_TABLE);
 
     // for now, convert this to virtual later
     return phys_page;
@@ -70,18 +70,18 @@ void* kmalloc(size_t bytes){
 
     // if aligned_bytes >= 4096, then log2 >= 12
     if(log2 > MAX_SLAB_ORDER){
-        void* pages = (void*) buddy_alloc(aligned_bytes);
+        uint64_t pages = buddy_alloc(aligned_bytes);
 
         // need to map the page(s) into memory first
-        map((uintptr_t) pages, (uintptr_t) pages, log2 - PAGE_SHIFT, MAP_KERNEL, L0_TABLE);
+        map(pages, va_to_pa(pages), log2 - PAGE_SHIFT, MAP_KERNEL, L0_TABLE);
 
-        return pages;
+        return (void*) pages;
     }
 
 
     // no slabs yet
     if(list_empty(&kcaches[cache_idx].partial_slabs)){
-        // allocate new slab
+        // allocate new slab (should be 1 page)
         slab* new_slab = (slab*) _slab_alloc(0);
 
         // zero the slab bitmap

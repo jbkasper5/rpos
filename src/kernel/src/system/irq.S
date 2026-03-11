@@ -1,9 +1,9 @@
 
-.section .text
+.section .text.boot
 
 .globl irq_init_vectors
 irq_init_vectors:
-    adr x0, vectors
+    ldr x0, =vectors
     msr vbar_el1, x0
     msr vbar_el2, x0
     msr vbar_el3, x0

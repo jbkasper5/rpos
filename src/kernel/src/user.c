@@ -83,11 +83,12 @@ URAM_FN void morse(char* str, int pin){
 
 URAM_FN void do_user_things(){
     // write system call takes filedescriptor, buffer, count as arguments
-    char str[] = "Free Coffee\n";
+    char str[] = "Free Coffee 0\n";
     while(TRUE){
         syscall(SYS_WRITE, NULL, str);
-        morse(str, USER_PIN);
-        pause(5);
+        str[12] = '0' + ((str[12] + 1) % 10);
+        // morse(str, USER_PIN);
+        // pause(5);
     }
 }
 
@@ -96,7 +97,7 @@ URAM_FN void do_user_things_2(){
     char str[] = "Free snacks\n";
     while(TRUE){
         syscall(SYS_WRITE, NULL, str);
-        morse(str, USER_PIN_2);
-        pause(5);
+        // morse(str, USER_PIN_2);
+        // pause(5);
     }
 }

@@ -11,41 +11,19 @@
 #include "io/lcd.h"
 #include "io/cli.h"
 #include "emmc/emmc.h"
-#include "system/filesystem.h"
+#include "filesystem/disk.h"
+#include "filesystem/filesystem.h"
 #include "memory/kmalloc.h"
-
-void debug_init(){
-
-    // JTAG
-    #define TCK 22
-    #define TMS 27
-    #define TDI 4
-    #define TDO 5
-    #define TRST 25
-
-    gpio_pin_set_func(TCK, GFAlt4);
-    gpio_pin_set_func(TMS, GFAlt4);
-    gpio_pin_set_func(TDI, GFAlt4);
-    gpio_pin_set_func(TDO, GFAlt4);
-    gpio_pin_set_func(TRST, GFAlt4);
-
-    gpio_pin_enable(TCK);
-    gpio_pin_enable(TMS);
-    gpio_pin_enable(TDI);
-    gpio_pin_enable(TDO);
-    gpio_pin_enable(TRST);
-
-    int gate = 0;
-    DEBUG("Waiting for gate to be released by debugger...\n");
-    while(!gate);
-}
+#include "filesystem/elf.h"
 
 void hardware_init(){
+
+    finish_virtual_mapping();
 
     // load the font for the CLI
     load_font();
 
-    INFO("Enabling LCD panel...\n");
+    // INFO("Enabling LCD panel...\n");
     init_framebuffer();
 
     INFO("Enabling interrupt controller...\n");
@@ -66,9 +44,6 @@ void hardware_init(){
     INFO("Enabling IRQ interrupts...\n");
     irq_enable();
 
-    INFO("Initializing MMU...\n");
-    mmu_init();
-
     INFO("Enabling system scheduler...\n");
     scheduler_init();
 
@@ -81,28 +56,33 @@ void hardware_init(){
     INFO("Initializing kernel heap...\n");
     kheap_init();
 
+    INFO("Initializing filesystem...\n");
+    filesystem_init();
+
     INFO("Hardware initialization complete.\n\n");
 }
 
-
-void drop_to_user();
-
 int kernel_main(){
-    DEBUG("\nRaspberry PI Baremetal OS Initializing...\n");
+    
+    // DEBUG("Raspberry PI Baremetal OS Initializing...\n");
     hardware_init();
 
-    size_t root_sector = read_superblock();
-    read_dir(root_sector);
-
-    test_read_ls();
-    
-    while(TRUE){
-        uart_putc(uart_getc());
+    file_t* file = open("/bin/pwd", 0);
+    ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
+    if(!file){
+        ERROR("Failed to open file.\n");
+    }else{
+        INFO("Successfully opened file. FP: 0x%x. Starting ELF parsing.\n", file);
+        readelf(file);
+        close(file);
     }
+    
+    // while(TRUE){
+    //     uart_putc(uart_getc());
+    // }
 
-    DEBUG("Waiting complete, dropping to user mode...\n");
+    // DEBUG("Waiting complete, dropping to user mode...\n");
     start_scheduler();
-
     return 0;
 }
 

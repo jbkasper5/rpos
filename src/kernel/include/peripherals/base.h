@@ -1,11 +1,9 @@
 #ifndef __PERIPHERALS_BASE_H__
 #define __PERIPHERALS_BASE_H__
 
-#ifdef KERNEL_VM
-#define PBASE      0xFFFF0000FE000000UL  // virtual MMIO base
-#else
-#define PBASE      0xFE000000UL          // physical MMIO base
-#endif
+#define PBASE           0xFFFF8000FE000000UL  // virtual MMIO base
+#define PBASE_PHYS      0xFE000000UL          // physical MMIO base
+
 
 #define CORE_CLOCK_SPEED    1500000000
 

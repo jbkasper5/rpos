@@ -11,7 +11,8 @@ extern unsigned char _binary_src_kernel_fonts_tamzen10x20_psf_size[];
 extern unsigned char _binary_src_kernel_fonts_tamzen10x20_psf_start[];
 
 unsigned char* font = _binary_src_kernel_fonts_tamzen10x20_psf_start;
-unsigned long font_size = (unsigned long)_binary_src_kernel_fonts_tamzen10x20_psf_size;
+unsigned long font_size;
+
 uint64_t line = 0;
 uint64_t cursor = 0;
 
@@ -21,7 +22,7 @@ uint32_t DEFAULT_BACKGROUND_COLOR = COLOR_BLACK;
 uint32_t TEXT_COLOR = COLOR_WHITE;
 uint32_t DEFAULT_TEXT_COLOR = COLOR_WHITE;
 
-static void fill_screen(frame_t* frame, uint32_t argb){
+void fill_screen(frame_t* frame, uint32_t argb){
     // frame width = 800
     // frame hieght = 480
     // sizeof(argb) = 4
@@ -102,11 +103,11 @@ void print_string(char* s){
 }
 
 void load_font(){
-    fill_screen(&frame, DEFAULT_BACKGROUND_COLOR);
-
     DEBUG("_binary_font_psf_start: 0x%x\n", _binary_src_kernel_fonts_tamzen10x20_psf_start);
     DEBUG("_binary_font_psf_end: 0x%x\n", _binary_src_kernel_fonts_tamzen10x20_psf_end);
-    DEBUG("_binary_font_psf_size: 0x%x\n", _binary_src_kernel_fonts_tamzen10x20_psf_size);
+
+    font_size = (uint64_t) _binary_src_kernel_fonts_tamzen10x20_psf_end - (uint64_t)_binary_src_kernel_fonts_tamzen10x20_psf_start;
+    DEBUG("_binary_font_psf_size: 0x%x\n", font_size);
 
     psf2_header_t* font_hdr = (psf2_header_t*)_binary_src_kernel_fonts_tamzen10x20_psf_start;
     font = UNSCALED_POINTER_ADD(font, font_hdr->headersize);

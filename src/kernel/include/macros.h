@@ -39,8 +39,13 @@ typedef uint16_t pid_t;
 
 
 #define WFI()       __asm__("wfi");
-
 #define PACKED      __attribute__((packed))
+#define BOOT_FN     __attribute__((section(".text.boot")))
+#define BOOT_DATA   __attribute__((section(".boot.data")))
+#define BOOT_BSS    __attribute__((section(".boot.bss")))
+#define BOOT_RODATA __attribute__((section(".boot.rodata")))
+
+#define TEST_FN     __attribute__((section(".test.text")))
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
@@ -50,5 +55,7 @@ typedef uint16_t pid_t;
 #define ALIGN_UP(addr, align)   (((addr) + ((align) - 1)) & ~((align) - 1))
 
 extern void panic();
+extern uint64_t pa_to_va(uint64_t pa);
+extern uint64_t va_to_pa(uint64_t va);
 
 #endif

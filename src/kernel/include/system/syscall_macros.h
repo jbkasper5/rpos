@@ -20,6 +20,7 @@
 #define SYS_READ                    63
 #define SYS_WRITE                   64
 #define SYS_EXIT                    93
+#define SYS_EXIT_GROUP              94
 #define SYS_NANOSLEEP               101
 #define SYS_CLOCK_GETTIME           113
 #define SYS_KILL                    129

@@ -69,7 +69,7 @@ static void _init_framebuffer(uint32_t* mb, uint32_t width, uint32_t height, uin
     // display uses AARRGGBB
     uint32_t* fb_bytes = (uint32_t *)GPU_BUS_TO_ARM(fb_addr);
 
-    frame.fb = fb_bytes;
+    frame.fb = fb_bytes ? pa_to_va(fb_bytes) : 0;
     frame.width = width;
     frame.height = height;
     frame.pitch = pitch;
@@ -83,9 +83,22 @@ int panel_ready(){
     return LCD_READY;
 }
 
+static void fill_screen(frame_t* frame, uint32_t argb){
+    // frame width = 800
+    // frame hieght = 480
+    // sizeof(argb) = 4
+    memset(frame->fb, argb, frame->width * frame->height * sizeof(argb));
+}
+
 int init_framebuffer(){
     _init_framebuffer(mb, 800, 480, 32);
     DEBUG("Frame buffer address: 0x%x\n", frame.fb);
-    LCD_READY = TRUE;
-    return 0;
+    LCD_READY = (frame.fb) ? TRUE : FALSE;
+
+    if(frame.fb){
+        map_pages(frame.fb, va_to_pa(frame.fb), 376, MAP_KERNEL, (uint64_t) L0_TABLE);
+        fill_screen(&frame, 0xFF000000);
+    }
+
+    return LCD_READY;
 }

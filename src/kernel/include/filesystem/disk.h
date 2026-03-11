@@ -1,5 +1,5 @@
-#ifndef __FILESYSTEM_H__
-#define __FILESYSTEM_H__
+#ifndef __DISK_H__
+#define __DISK_H__
 
 #include "macros.h"
 
@@ -179,19 +179,20 @@ typedef struct PACKED {
     uint16_t bg_checksum;
 } ext4_group_desc_t;
 
-
 typedef struct {
-    ext4_inode* inode;      // inode of the file
-    uint64_t pos;            // current seek position
-    uint32_t flags;          // O_RDONLY, O_RDWR, etc.
-    uint32_t refcount;       // for dup/close
-} file_t;
+    ext_superblock* superblock;
+    ext4_inode* root_inode;
+    ext4_block* block_buf;
+} fs;
+
+extern fs rootfs;
 
 
+void filesystem_init();
 void print_partitions(mbr* mbr);
 void print_fat32_directory(sector* s);
+void read_block(void* buf, uint32_t block_num);
 
-size_t read_superblock();
-void test_read_ls();
+ext4_inode* lookup(ext4_inode* dirnode, char* name);
 
 #endif

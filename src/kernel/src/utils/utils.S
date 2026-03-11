@@ -1,5 +1,4 @@
 .section .text
-
 .globl delay
 delay:
     subs x0, x0, #1
@@ -41,38 +40,50 @@ mmu_enabled:
 
 .globl page_frame_array_start
 page_frame_array_start:
-    adrp x0, __page_frame_array_start
+    ldr x0, =__page_frame_array_start
     ret
 
 .globl page_frame_array_end
 page_frame_array_end:
-    adrp x0, __page_frame_array_end
-    ret
-
-.globl static_page_region_start
-static_page_region_start:
-    adrp x0, __static_page_region_start
-    ret
-
-.globl static_page_region_end
-static_page_region_end:
-    adrp x0, __static_page_region_end
-    ret
-
-.globl static_page_region_pages
-static_page_region_pages:
-    # adrp x0, #100
-    mov x0, #100
+    ldr x0, =__page_frame_array_end
     ret
 
 .globl kernel_start
 kernel_start:
-    adrp x0, __kernel_start
+    ldr x0, =__kernel_start
     ret
 
-.globl kernel_end
-kernel_end:
-    adrp x0, __kernel_end
+.globl get_bss_begin
+get_bss_begin:
+   ldr x0, =bss_begin
+   ret
+
+.globl get_bss_end
+get_bss_end:
+   ldr x0, =bss_end
+   ret
+
+.globl virt_base
+virt_base:
+    ldr x0, =VIRT_BASE
+    ret
+
+
+.globl va_to_pa
+va_to_pa:
+    stp x1, xzr, [sp, #-16]!
+    ldr x1, =VIRT_BASE
+    sub x0, x0, x1
+    ldp x1, xzr, [sp], #16
+    ret
+
+
+.globl pa_to_va
+pa_to_va:
+    stp x1, xzr, [sp, #-16]!
+    ldr x1, =VIRT_BASE
+    add x0, x0, x1
+    ldp x1, xzr, [sp], #16
     ret
 
 .globl panic

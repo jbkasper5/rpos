@@ -2,7 +2,7 @@
 #define __VIRTUAL_MEMORY_H__
 
 #define PAGE_SHIFT                      12
-#define PAGE_SIZE                       (1 << PAGE_SHIFT)
+#define PAGE_SIZE                       (1ULL << PAGE_SHIFT)
 #define PAGE_TABLE_BITS                 9
 
 // 1 << 9 = 512 entries, each entry is 8 bytes (so shift 3 more)
