@@ -6,21 +6,24 @@
 #include "user.h"
 #include "memory/mem.h"
 #include "memory/mm.h"
+#include "asm_utils.h"
 
 extern reglist_t* user_context_ptr;
+
+extern void idle();
 
 pcb_list_t proclist;
 uint64_t active_process = 0;
 
 void scheduler_init(){
     // create 2 active processes
-    proclist.processes = 0;
+    proclist.processes = 1;
 
     // idle process, for when no real user processes are available
-    // proclist.proclist[0].registers.pc = (uint64_t) &idle_proc;
-    // proclist.proclist[0].registers.sp = (uint64_t) (USTACK - (1 << 11) + 128);
-    // proclist.proclist[0].registers.spsr = 0;
-    // proclist.proclist[0].state = PROCESS_READY;
+    proclist.proclist[0].registers.pc = (uint64_t) &idle;
+    proclist.proclist[0].registers.sp = (uint64_t) kstack_top_hi();
+    proclist.proclist[0].registers.spsr = 0x5; // this will maintain the EL1 kernel state 
+    proclist.proclist[0].state = PROCESS_READY;
 
     // first user process program counter will point to the function do user things
     // proclist.processes++;
@@ -45,16 +48,22 @@ void scheduler_init(){
 }
 
 void print_reg_file(reglist_t* regfile){
-    kprintf("Register file at: 0x%x\n", regfile);
-    for(int i = 0; i < 31; i++){
-        kprintf("\tx%d: 0x%x\n", i, regfile->regs[i]);
+    if(!regfile){
+        WARNING("Register file is NULL.\n");
     }
-    kprintf("\tsp: 0x%x\n", regfile->sp);
-    kprintf("\tpc: 0x%x\n", regfile->pc);
-    kprintf("\tspsr: 0x%x\n\n", regfile->spsr);
+    INFO("Register file at: 0x%x\n", regfile);
+    for(int i = 0; i < 31; i++){
+        INFO("\tx%d: 0x%x\n", i, regfile->regs[i]);
+    }
+    INFO("\tsp: 0x%x\n", regfile->sp);
+    INFO("\tpc: 0x%x\n", regfile->pc);
+    INFO("\tspsr: 0x%x\n\n", regfile->spsr);
 }
 
 void scheduler(reglist_t* reg_addr){
+
+    // print_reg_file(reg_addr);
+
     // switch active processes
     int selected_process = 0;
     int i = active_process;
@@ -109,14 +118,11 @@ void scheduler(reglist_t* reg_addr){
     prime_physical_timer();
 }
 
-static void idle(){
-    while(TRUE);
-}
-
 void start_scheduler(){
-    // SAFE - start running the idle task and have scheduler switch active process in
-    active_process = 0;
-    proclist.proclist[active_process].state = PROCESS_RUNNING;
+    INFO("Enabling physical timer...\n");
+    physical_timer_enable();
+
+    active_process = 1;
 
     uint64_t sp = proclist.proclist[active_process].registers.sp;
     uint64_t pc = proclist.proclist[active_process].registers.pc;

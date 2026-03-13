@@ -88,9 +88,10 @@ void handle_irq(uint64_t reg_addr, uint8_t el){
             // Handle ARM physical timer interrupt
 			// if in EL1, just prime the timer
 			// if in EL0, actually jump to scheduler code
-			if(el){
+			if(el && active_process != 0){
 				prime_physical_timer();
 			}else{
+				// 
 				scheduler((reglist_t*) reg_addr);
 			}
         }else if(gic_irq == 27){

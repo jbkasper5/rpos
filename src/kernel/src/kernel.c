@@ -32,20 +32,14 @@ void hardware_init(){
     INFO("Enabling system timers...\n");
     timer_init();
 
-    // INFO("Enabling physical timer...\n");
-    // physical_timer_enable();
-
     INFO("Enabling virtual timer...\n");
     virtual_timer_enable();
 
-    INFO("Priming physical timer...\n");
-    prime_physical_timer();
+    // INFO("Priming physical timer...\n");
+    // prime_physical_timer();
 
     INFO("Enabling IRQ interrupts...\n");
     irq_enable();
-
-    INFO("Enabling system scheduler...\n");
-    scheduler_init();
 
     INFO("Enabling SD...\n");
     if(!emmc_init()){
@@ -58,6 +52,9 @@ void hardware_init(){
 
     INFO("Initializing filesystem...\n");
     filesystem_init();
+
+    INFO("Enabling system scheduler...\n");
+    scheduler_init();
 
     INFO("Hardware initialization complete.\n\n");
 }
@@ -76,14 +73,15 @@ int kernel_main(){
         readelf(file);
         close(file);
     }
-    
-    // while(TRUE){
-    //     uart_putc(uart_getc());
-    // }
 
-    // DEBUG("Waiting complete, dropping to user mode...\n");
     start_scheduler();
     return 0;
+}
+
+void idle(){
+    while(TRUE){
+        uart_putc(uart_getc());
+    }
 }
 
 /*

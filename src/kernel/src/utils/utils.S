@@ -68,6 +68,11 @@ virt_base:
     ldr x0, =VIRT_BASE
     ret
 
+.globl kstack_top_hi
+kstack_top_hi:
+    ldr x0, =__kstack_top_hi
+    ret
+
 
 .globl va_to_pa
 va_to_pa:

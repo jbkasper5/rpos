@@ -17,6 +17,11 @@ physical_timer_enable:
     msr CNTP_CTL_EL0, x0
     mov x0, #(1 << 1) | (1 << 0)  // EL0VCTEN | EL0PCTEN
     msr cntkctl_el1, x0
+
+    ldr x0, =QUANTUM
+    lsl x0, x0, #2 // 4 quantums to start
+    msr CNTP_TVAL_EL0, x0
+
     ret
 
 // TVAL uses relative delay

@@ -177,10 +177,13 @@ handle_el1_irq:
     bl kprintf
     #endif
 
+    // put the register file pointer into x0
+    mov x0, sp
+
+    // reload EL into x1
     mrs x1, SPSR_EL1
     lsr x1, x1, #2
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
-
 
     // don't handle IRQs for EL1->EL1 yet
     bl handle_irq

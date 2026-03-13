@@ -105,7 +105,7 @@ el1_entry:
    bl memzero
 
 
-   mov x0, #0b00000 // DAIF=0000 M[4:0]=00000 EL0t.
+   mov x0, #0b000101
    msr SPSR_EL1, x0
 
    // At EL1, MMU off

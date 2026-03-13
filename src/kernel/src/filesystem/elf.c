@@ -75,7 +75,7 @@ void readelf(file_t* file){
         program_header++;
     }
 
-    add_to_schedule(process);
+    // add_to_schedule(process);
     
 
     seek(file, header->e_shoff, SEEK_SET);
