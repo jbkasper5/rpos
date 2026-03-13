@@ -110,7 +110,7 @@ void scheduler(reglist_t* reg_addr){
 }
 
 static void idle(){
-    while(TRUE);
+    while(TRUE) uart_putc(uart_getc());
 }
 
 void start_scheduler(){
