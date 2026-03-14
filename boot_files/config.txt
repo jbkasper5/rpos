@@ -1,0 +1,14 @@
+enable_uart=1
+enable_gic=1
+dtoverlay=disable-bt
+dtoverlay=rpi-ft5406
+dtoverlay=vc4-kms-v3d
+arm_64bit=1
+uart_2ndstage=1
+uart_debug=1
+kernel=kernel8-pi4.img
+armstub=armstub.bin
+
+enable_jtag_gpio=1
+gpio=22-27=a4
+gpio=22=a4,pu
