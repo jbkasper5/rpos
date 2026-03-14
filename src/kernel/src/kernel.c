@@ -15,6 +15,7 @@
 #include "filesystem/filesystem.h"
 #include "memory/kmalloc.h"
 #include "filesystem/elf.h"
+#include "drivers/dt.h"
 
 void hardware_init(){
 
@@ -58,6 +59,9 @@ void hardware_init(){
 
     INFO("Initializing filesystem...\n");
     filesystem_init();
+
+    INFO("Initializing device drivers...\n");
+    device_tree_init();
 
     INFO("Hardware initialization complete.\n\n");
 }

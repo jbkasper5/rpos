@@ -4,7 +4,8 @@ CFLAGS += \
   -ffreestanding \
   -nostdlib \
   -nostartfiles \
-  -fno-pie -no-pie
+  -fno-pie -no-pie \
+  -I /Users/jakekasper/C/RaspberryPi/rpos/src/kernel/include/system
 
 # ANSI colors
 GREEN  := \033[1;32m

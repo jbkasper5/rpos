@@ -2,6 +2,7 @@
 #define __SYSCALLS_H__
 
 #include "system/syscall_macros.h"
+#include "macros.h"
 
 typedef uint64_t (*syscall_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 
@@ -22,6 +23,9 @@ uint64_t sys_execve(uint64_t path, uint64_t argv, uint64_t envp, uint64_t unused
 
 uint64_t sys_exit_group(uint64_t status, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5);
 
+uint64_t sys_get_framebuffer(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+
+
 
 syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_IO_SETUP] = sys_io_setup,
@@ -34,6 +38,7 @@ syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_NANOSLEEP] = sys_nanosleep,
     [SYS_CLOCK_GETTIME] = sys_clock_gettime,
     [SYS_PULSE_LED] = sys_pulse_led,
+    [SYS_GET_FRAMEBUFFER] = sys_get_framebuffer
 };
 
 #endif

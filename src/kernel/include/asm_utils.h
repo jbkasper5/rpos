@@ -22,4 +22,5 @@ extern uint64_t kernel_end();
 extern uint64_t get_bss_begin();
 extern uint64_t get_bss_end();
 
+extern uint64_t get_device_tree_start();
 #endif

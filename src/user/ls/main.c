@@ -1,7 +1,7 @@
 #include <stdint.h>
+#include "syscall_macros.h"
 
 #define NULL        (void*) 0
-#define SYS_WRITE   64
 
 
 

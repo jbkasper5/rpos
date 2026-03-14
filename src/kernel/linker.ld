@@ -12,10 +12,17 @@ PHDRS {
 
 __STATIC_PAGES = 100;
 
+DEVICE_TREE_BASE = 0x10000;
 PHYS_BASE = 0x80000;
 VIRT_BASE = 0xFFFF800000000000;
 
 SECTIONS {
+  . = DEVICE_TREE_BASE;
+  .device_tree_reserved (NOLOAD) : {
+    . += 0x20000; 
+    . = ALIGN(4096); /* Buffer space before BSS starts */
+  }
+
   . = PHYS_BASE;
   __kernel_start = .;
 
@@ -77,10 +84,6 @@ SECTIONS {
     __kstack_top = . - VIRT_BASE;
     __kstack_top_hi = .;
   }
-
-  .test.text : AT(ADDR(.test.text) - VIRT_BASE) {
-    *(.test.text)
-  } : test_text
 
 
   __kernel_end = .;

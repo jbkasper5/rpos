@@ -1,8 +1,6 @@
 #ifndef __SYSCALL_MACROS_H__
 #define __SYSCALL_MACROS_H__
 
-#include "macros.h"
-
 #define SYS_MAX                     300
 
 
@@ -32,5 +30,6 @@
 #define SYS_MMAP                    222
 
 #define SYS_PULSE_LED               292
+#define SYS_GET_FRAMEBUFFER         293
 
 #endif

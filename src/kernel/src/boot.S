@@ -1,8 +1,28 @@
 #include "memory/mm.h"
-.section ".text.boot"
 
+.section .data
+.align 3
+.global device_tree_data
+device_tree_data:
+    .quad 0               // 8 bytes, initialized to 0
+
+.section ".text.boot"
 .globl _start
-_start: 
+_start:
+   // GPU provides the device tree info to x0 during boot, so save it off and continue
+   // get device tree data (high map address)
+   # ldr x1, =device_tree_data
+
+   # // subtract virtual base to get phys address
+   # ldr x2, =VIRT_BASE
+   # sub x1, x1, x2
+
+   # // store x0 into physical address of device tree ptr
+   # str x0, [x1]
+
+   // try to store the DTB address in x19
+   mov x19, x0
+
    mrs x0, mpidr_el1
    and x0, x0, #0xFF
    cbz x0, master

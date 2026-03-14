@@ -86,6 +86,11 @@ pa_to_va:
     ldp x1, xzr, [sp], #16
     ret
 
+.globl get_device_tree_start
+get_device_tree_start:
+    ldr x0, =DEVICE_TREE_BASE
+    ret
+
 .globl panic
 panic:
     brk #0xBEEF

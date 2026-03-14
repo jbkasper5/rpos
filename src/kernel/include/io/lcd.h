@@ -3,6 +3,7 @@
 
 #include "macros.h"
 #include "peripherals/base.h"
+#include "macros.h"
 
 #define MAILBOX_BASE   (PBASE + 0xB880)
 #define MAILBOX_READ   ((volatile uint32_t *)(MAILBOX_BASE + 0x00))
@@ -25,8 +26,6 @@
 
 void mailbox_write(uint8_t channel, uint64_t data);
 uint32_t mailbox_read(uint8_t channel);
-
-#include "macros.h"
 
 #define GPU_BUS_TO_ARM(addr) ((addr) & 0x3FFFFFFF)
 

@@ -1,8 +1,10 @@
 .globl _start
 _start:
+    mov x19, x0
     bl setup_gic           // Call GIC setup before jumping to kernel
-    ldr w0, kernel_entry32
-    br x0
+    mov x0, x19
+    ldr w1, kernel_entry32
+    br x1
 
 
 // ===========================

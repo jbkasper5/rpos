@@ -4,6 +4,7 @@
 #include "io/gpio.h"
 #include "utils/timer.h"
 #include "macros.h"
+#include "io/lcd.h"
 
 uint64_t handle_syscall(uint64_t x0, uint64_t x1, uint64_t x2, uint64_t x3, uint64_t x4, uint64_t x5, uint64_t syscall_number){
     DEBUG("Syscall Number: %d\n", syscall_number);
@@ -69,4 +70,9 @@ uint64_t sys_io_setup(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint
 uint64_t sys_exit_group(uint64_t status, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5){
     INFO("Current running process number: %d\n", active_process);
     reap();
+}
+
+uint64_t sys_get_framebuffer(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6){
+    // return frame.fb;
+    return 0;
 }
