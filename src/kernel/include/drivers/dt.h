@@ -3,6 +3,15 @@
 
 #include "macros.h"
 #include "asm_utils.h"
+#include "utils/utils.h"
+
+typedef enum {
+    FDT_BEGIN_NODE = 0x1,
+    FDT_END_NODE = 0x2,
+    FDT_PROP = 0x3,
+    FDT_NOP = 0x4,
+    FDT_END = 0x9,
+} ftd_tokens;
 
 typedef struct {
     uint32_t magic;             /* 0xd00dfeed */
@@ -15,7 +24,12 @@ typedef struct {
     uint32_t boot_cpuid_phys;   /* Physical CPU ID */
     uint32_t size_dt_strings;   /* Size of strings block */
     uint32_t size_dt_struct;    /* Size of structure block */
-} dt_header;
+} fdt_header;
+
+typedef struct {
+    uint32_t len;
+    uint32_t nameoff;
+} fdt_property;
 
 void device_tree_init();
 

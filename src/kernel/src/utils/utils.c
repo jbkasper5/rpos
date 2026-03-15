@@ -15,3 +15,9 @@ int strcmp(const char* str1, const char* str2){
     }
     return !(*str1 == '\0' && *str2 == '\0');
 }
+
+int strlen(const char* str) {
+    const char* s = str;
+    while (*s) s++;
+    return (int)(s - str);
+}
