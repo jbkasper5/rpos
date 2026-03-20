@@ -6,6 +6,7 @@
 #include "user.h"
 #include "memory/mem.h"
 #include "memory/mm.h"
+#include "memory/mmap.h"
 
 extern reglist_t* user_context_ptr;
 
@@ -156,4 +157,19 @@ void add_to_schedule(pcb_t* proc){
 void reap(uint64_t procnum){
     // deschedule();
     reschedule(procnum);
+}
+
+
+void add_test_section_to_scheduler(){
+    pcb_t* proc = procalloc();
+    uint64_t test_phys = get_phys_test_region();
+    uint64_t test_virt = get_virt_test_region();
+    uint64_t test_size = get_test_size();
+    uint16_t order = log2_pow2(test_size / 4096);
+
+    map(test_virt, test_phys, order, MAP_USER | MAP_READ | MAP_EXEC, proc->registers.ttbr);
+
+    proc->registers.pc = test_virt;
+
+    add_to_schedule(proc);
 }

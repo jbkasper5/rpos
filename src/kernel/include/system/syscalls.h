@@ -1,7 +1,7 @@
 #ifndef __SYSCALLS_H__
 #define __SYSCALLS_H__
 
-#include "system/syscall_macros.h"
+#include "uabi/rpos/syscall_macros.h"
 #include "macros.h"
 
 typedef uint64_t (*syscall_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
@@ -25,10 +25,11 @@ uint64_t sys_exit_group(uint64_t status, uint64_t unused1, uint64_t unused2, uin
 
 uint64_t sys_get_framebuffer(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 
-
+uint64_t sys_open(uint64_t path, uint64_t flags, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 
 syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_IO_SETUP] = sys_io_setup,
+    [SYS_OPEN] = sys_open,
     [SYS_WRITE] = sys_write,
     [SYS_READ]  = sys_read,
     [SYS_MMAP] = sys_mmap,

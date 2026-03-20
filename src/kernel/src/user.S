@@ -1,4 +1,3 @@
-.section ".uram.text"
 .globl syscall
 // calling conventions state:
 //  x0-x5: arguments to system call

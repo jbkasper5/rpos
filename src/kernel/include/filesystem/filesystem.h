@@ -22,4 +22,6 @@ void* open(const char* pathname, uint32_t flags);
 uint64_t read(file_t* file, void* buf, uint64_t count);
 int seek(file_t* file, uint64_t offset, int whence);
 
+uint8_t check_vfs(char* path);
+
 #endif

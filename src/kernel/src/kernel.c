@@ -71,21 +71,24 @@ int kernel_main(){
     // DEBUG("Raspberry PI Baremetal OS Initializing...\n");
     hardware_init();
 
-    file_t* file = open("/bin/pwd", 0);
-    ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
-    if(!file){
-        ERROR("Failed to open file.\n");
-    }else{
-        INFO("Successfully opened file. FP: 0x%x. Starting ELF parsing.\n", file);
-        readelf(file);
-        close(file);
-    }
+    // file_t* file = open("/bin/pwd", 0);
+    // ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
+    // if(!file){
+    //     ERROR("Failed to open file.\n");
+    // }else{
+    //     INFO("Successfully opened file. FP: 0x%x. Starting ELF parsing.\n", file);
+    //     readelf(file);
+    //     close(file);
+    // }
+
+    
     
     // while(TRUE){
     //     uart_putc(uart_getc());
     // }
 
     // DEBUG("Waiting complete, dropping to user mode...\n");
+    add_test_section_to_scheduler();
     start_scheduler();
     return 0;
 }

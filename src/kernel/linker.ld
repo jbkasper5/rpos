@@ -4,10 +4,14 @@ PHDRS {
   boot  PT_LOAD FLAGS(0x5);  /* R | X */
   boot_data  PT_LOAD FLAGS(0x6);  /* R | X */
   boot_rodata  PT_LOAD FLAGS(0x4);  /* R | X */
+
   text PT_LOAD FLAGS(0x5);  /* R | X */
-  test_text PT_LOAD FLAGS(0x5);  /* R | X */
   rodata PT_LOAD FLAGS(0x4); /* R */
   data PT_LOAD FLAGS(0x6);  /* R | W */
+
+  test_text PT_LOAD FLAGS(0x5);  /* R | X */
+  test_rodata PT_LOAD FLAGS(0x4); /* R */
+  test_data PT_LOAD FLAGS(0x6);  /* R | W */
 }
 
 __STATIC_PAGES = 100;
@@ -15,6 +19,8 @@ __STATIC_PAGES = 100;
 DEVICE_TREE_BASE = 0x10000;
 PHYS_BASE = 0x80000;
 VIRT_BASE = 0xFFFF800000000000;
+
+TEST_BASE = 0x8000000;
 
 SECTIONS {
   . = DEVICE_TREE_BASE;
@@ -48,14 +54,12 @@ SECTIONS {
   . = . + VIRT_BASE;
 
   .text : AT(ADDR(.text) - VIRT_BASE) { 
-    *(.text) 
+    *(EXCLUDE_FILE (*user.o *user_s.o) .text*)
   } : text
 
-  /* String literals end up going here */
-  .rodata : AT(ADDR(.rodata) - VIRT_BASE) { 
-    *(.rodata) 
+  .rodata : AT(ADDR(.rodata) - VIRT_BASE) {
+    *(EXCLUDE_FILE (*user.o *user_s.o) .rodata*)
   } : rodata
-
 
   . = ALIGN(0x10);
   .font : AT(ADDR(.font) - VIRT_BASE) {
@@ -114,7 +118,27 @@ SECTIONS {
   } : data
 
 
-  .uram.text : AT(ADDR(.uram.text) - VIRT_BASE) {
-    *(.uram.text)
-  } : text
+  __test_phys_loc = __static_page_region_end - VIRT_BASE;
+  __test_phys_loc = ALIGN(__test_phys_loc, 0x1000);
+
+  /* 2. Map Test Text - Force VMA to 0x8000000 */
+  .text.test TEST_BASE : AT(__test_phys_loc) {
+    _test_text_start = .;
+    *user.o(.text*)
+    *user_s.o(.text*)
+    . = ALIGN(0x1000);
+    _test_text_end = .;
+  } : test_text
+
+  /* 3. Map Test Data - Force VMA to stay in the Low-Half (0x800xxxx) */
+  /* This 'ADDR(...) + SIZEOF(...)' is the magic that fixes the truncation */
+  .test.data ADDR(.text.test) + SIZEOF(.text.test) : AT(LOADADDR(.text.test) + SIZEOF(.text.test)) {
+    *user.o(.rodata*)
+    *user.o(.data*)
+    *user_s.o(.rodata*)
+    *user_s.o(.data*)
+    . = ALIGN(0x1000);
+  } : test_data
+
+  __test_size = LOADADDR(.test.data) + SIZEOF(.test.data) - __test_phys_loc;
 }

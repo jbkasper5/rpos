@@ -14,4 +14,6 @@ void scheduler(reglist_t* reg_addr);
 void deschedule();
 void reschedule(uint64_t procnum);
 
+void add_test_section_to_scheduler();
+
 #endif

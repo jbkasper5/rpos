@@ -45,6 +45,11 @@ typedef uint16_t pid_t;
 #define BOOT_BSS    __attribute__((section(".boot.bss")))
 #define BOOT_RODATA __attribute__((section(".boot.rodata")))
 
+#define TEST_FN         __attribute__((section(".text.test")))
+#define TEST_DATA       __attribute__((section(".test.data")))
+#define TEST_BSS        __attribute__((section(".test.bss")))
+#define TEST_RODATA     __attribute__((section(".test.rodata")))
+
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))

@@ -76,3 +76,13 @@ uint64_t sys_get_framebuffer(uint64_t unused1, uint64_t unused2, uint64_t unused
     // return frame.fb;
     return 0;
 }
+
+
+uint64_t sys_open(uint64_t path, uint64_t flags, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6){
+    if(check_vfs((char*) path)){
+        // file to open is virtual, likely looking for a device
+    }else{
+        open(path, flags);
+    }
+    return 0;
+}

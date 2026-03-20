@@ -38,6 +38,11 @@ static ext4_inode* resolve_path(const char* pathname){
     kfree(buf);
 }
 
+uint8_t check_vfs(char* path){
+    if(*path == DELIMITER) path++;
+    return path[0] == 'd' && path[1] == 'e' && path[2] == 'v';
+}
+
 void* open(const char* pathname, uint32_t flags){
     INFO("Opening path '%s'\n", pathname);
     ext4_inode* inode = resolve_path(pathname);

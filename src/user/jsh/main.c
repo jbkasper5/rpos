@@ -1,5 +1,5 @@
 #include "jsh.h"
-#include "syscall_macros.h"
+#include "uabi/rpos/syscall_macros.h"
 
 int main(){
     syscall(SYS_GET_FRAMEBUFFER);

@@ -91,6 +91,22 @@ get_device_tree_start:
     ldr x0, =DEVICE_TREE_BASE
     ret
 
+.globl get_virt_test_region
+get_virt_test_region:
+    ldr x0, =TEST_BASE
+    ret
+
+.globl get_phys_test_region
+get_phys_test_region:
+    ldr x0, =__test_phys_loc
+    ret
+
+.globl get_test_size
+get_test_size:
+    ldr x0, =__test_size
+    ret
+
+
 .globl panic
 panic:
     brk #0xBEEF

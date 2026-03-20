@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "syscall_macros.h"
+#include "uabi/rpos/syscall_macros.h"
 
 #define NULL        (void*) 0
 
