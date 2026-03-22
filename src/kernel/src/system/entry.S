@@ -229,6 +229,9 @@ handle_el0_svc:
     // handle the system call
     bl handle_syscall
 
+    // write the return value from handle_syscall into the x0 value of the 
+    str x0, [sp, #16 * 0]
+
     // restore registers and processor state
     kernel_exit
     eret

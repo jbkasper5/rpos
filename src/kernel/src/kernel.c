@@ -30,17 +30,17 @@ void hardware_init(){
     INFO("Enabling interrupt controller...\n");
     enable_interrupt_controller();
 
-    INFO("Enabling system timers...\n");
-    timer_init();
+    // INFO("Enabling system timers...\n");
+    // timer_init();
 
     // INFO("Enabling physical timer...\n");
     // physical_timer_enable();
 
-    INFO("Enabling virtual timer...\n");
-    virtual_timer_enable();
+    // INFO("Enabling virtual timer...\n");
+    // virtual_timer_enable();
 
-    INFO("Priming physical timer...\n");
-    prime_physical_timer();
+    // INFO("Priming physical timer...\n");
+    // prime_physical_timer();
 
     INFO("Enabling IRQ interrupts...\n");
     irq_enable();

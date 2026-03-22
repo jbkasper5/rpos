@@ -43,6 +43,8 @@ master:
    bl debug_init_lo
    #endif
 
+   bl setup_gic
+
    // initialize kernel stack for when we enter the trap handler
    ldr x0, =__kstack_top
    mov sp, x0

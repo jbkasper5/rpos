@@ -11,10 +11,18 @@ typedef enum{
 } seek_whence;
 
 typedef struct {
+    int (*read)(struct file_s* file, char *buf, size_t count);
+    int (*write)(struct file_s* file, const char *buf, size_t count);
+    int (*ioctl)(struct file_s* file, unsigned int cmd, unsigned long arg);
+    int (*close)(struct file_s* file);
+} fileops_t;
+
+typedef struct file_s{
     ext4_inode* inode;      // inode of the file
     uint64_t pos;            // current seek position
     uint32_t flags;          // O_RDONLY, O_RDWR, etc.
     uint32_t refcount;       // for dup/close
+    fileops_t file_ops;
 } file_t;
 
 int close(file_t* file);

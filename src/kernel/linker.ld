@@ -36,19 +36,23 @@ SECTIONS {
 
   .text.boot : { 
     */boot_s.o(.text.boot)
+    */gic.o(.text)
     *(.text.boot) 
   } : boot
 
   .boot.data : {
     *(.boot.data)
+    */gic.o(.data)
   } : boot_data
 
   .boot.rodata : {
     *(.boot.rodata)
+    */gic.o(.rodata)
   } : boot_rodata
 
   .boot.bss (NOLOAD) : {
       *(.boot.bss)
+      */gic.o(.bss)
   } : boot_data
 
   . = . + VIRT_BASE;

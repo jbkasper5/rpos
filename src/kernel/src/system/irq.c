@@ -45,6 +45,7 @@ void enable_interrupt_controller() {
 	// enable CPU interface for GIC
 	// interrupts have already been enabled in EL3 before dropping into kernel init
 	REGS_GICC->gicc_ctlr = 0x1;
+	REGS_BCMIRQ->irq0_enable_0 = (1 << 29);
 }
 
 
@@ -98,6 +99,14 @@ void handle_irq(uint64_t reg_addr, uint8_t el){
 			
 			// handle the timer sleep stack
 			handle_virtual_timer();
+		}else if(gic_irq == 125){
+			DEBUG("Mini UART Recv: ");	
+			uart_putc(uart_getc());
+			DEBUG("\n");
+		}else if(gic_irq == 89){
+			DEBUG("UART Recv: ");
+			uart_putc(uart_getc());
+			DEBUG("\n");
 		}
         // Acknowledge end of interrupt
         REGS_GICC->gicc_eoir = gic_irq;
