@@ -107,6 +107,11 @@ get_test_size:
     ret
 
 
+.globl get_core_pcb
+get_core_pcb:
+    nop
+    ret
+
 .globl panic
 panic:
     brk #0xBEEF

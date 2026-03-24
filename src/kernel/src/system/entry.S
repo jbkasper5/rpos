@@ -234,6 +234,10 @@ handle_el0_svc:
 
     // restore registers and processor state
     kernel_exit
+
+    // allow IRQs again
+    msr daifclr, #0xf
+
     eret
 
 
@@ -264,6 +268,11 @@ handle_el0_irq:
 
     bl handle_irq
     kernel_exit
+
+
+    // allow IRQs again
+    msr daifclr, #0xf
+    
     eret
 
 

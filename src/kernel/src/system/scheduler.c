@@ -110,34 +110,31 @@ void scheduler(reglist_t* reg_addr){
     prime_physical_timer();
 }
 
+static uint64_t get_current_daif() {
+    uint64_t daif;
+    asm volatile ("mrs %0, daif" : "=r" (daif));
+    return daif;
+}
+
 
 static void idle(){
-
-    // 3. Is the GIC actually listening to ID 125?
-    // Check GICD_ISENABLER3 (Offset 0x10C). Bit 29 must be 1.
-    // uint32_t *isenabler3 = (uint32_t*)(0xff841000 + 0x10C);
-
     asm volatile("msr daifclr, #0xf");
+
+    uint64_t daif = get_current_daif();
 
     uint64_t gicd_base = 0xFFFF8000FF841000;
     uint32_t pending = *(uint32_t*)(gicd_base + 0x20C);
-
-    uint32_t* gicc_ctlr = 0xFFFF8000ff842000;
-    DEBUG("GICC_CTLR: %x\n", *gicc_ctlr);
-
-    // *(uint32_t*)(0xFFFF8000ff842004) = 0xFF;
-    // *(uint32_t*)(0xFFFF8000FF84108C) |= (1 << 29);
-
-    // *(uint32_t*)(0xFFFF8000FF841000) = 0x3;
-
-    uint64_t daif;
-    asm volatile("mrs %0, daif" : "=r"(daif));
     
     while(TRUE){
-        // pending = *(uint32_t*)(gicd_base + 0x20C);
-        // if ((REGS_AUX->mu_iir & 1) == 0) {
-        //     DEBUG("UART signals! | GIC Pending Bit 29: %d\n", (pending >> 29) & 1);
-        // }
+        pending = *(uint32_t*)(gicd_base + 0x20C);
+        if ((REGS_AUX->mu_iir & 1) == 0) {
+            for (int i = 0; i < 4; i++) {
+                uint32_t p = *(volatile uint32_t*)(gicd_base + 0x200 + (i * 4));
+                if (p != 0) {
+                    DEBUG("GIC Register %d has pending bits: 0x%08x\n", i, p);
+                }
+            }
+        }
     }
 }
 

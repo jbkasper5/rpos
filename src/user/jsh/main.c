@@ -2,6 +2,6 @@
 #include "uapi/rpos/syscall_macros.h"
 
 int main(){
-    syscall(SYS_GET_FRAMEBUFFER);
+    syscall(SYS_EXIT_GROUP);
     return 0;
 }

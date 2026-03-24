@@ -28,4 +28,6 @@ extern uint64_t get_virt_test_region();
 extern uint64_t get_phys_test_region();
 extern uint64_t get_test_size();
 
+extern uint64_t get_core_pcb();
+
 #endif

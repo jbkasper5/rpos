@@ -45,7 +45,7 @@ void enable_interrupt_controller() {
 	// enable CPU interface for GIC
 	// interrupts have already been enabled in EL3 before dropping into kernel init
 	REGS_GICC->gicc_ctlr = 0x1;
-	REGS_BCMIRQ->irq0_enable_0 = (1 << 29);
+	REGS_BCMIRQ->irq0_enable_0 = AUX_IRQ;
 }
 
 

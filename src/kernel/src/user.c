@@ -23,6 +23,10 @@ TEST_FN void user(){
     // make the thing black
     // for(uint32_t i = 0; i < SCREEN_SIZE_BYTES; i++) framebuffer[i] = 0xFF000000;
     
-    syscall(SYS_WRITE, NULL, "Back from open!\n");
+    
+
+
+
+
     syscall(SYS_EXIT_GROUP);
 }

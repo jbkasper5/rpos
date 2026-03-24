@@ -11,8 +11,8 @@ typedef enum{
 } seek_whence;
 
 typedef struct {
-    int (*read)(struct file_s* file, char *buf, size_t count);
-    int (*write)(struct file_s* file, const char *buf, size_t count);
+    int (*read)(struct file_s* file, char* buf, size_t count);
+    int (*write)(struct file_s* file, const char* buf, size_t count);
     int (*ioctl)(struct file_s* file, unsigned int cmd, unsigned long arg);
     int (*close)(struct file_s* file);
 } fileops_t;

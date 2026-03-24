@@ -30,17 +30,17 @@ void hardware_init(){
     INFO("Enabling interrupt controller...\n");
     enable_interrupt_controller();
 
-    // INFO("Enabling system timers...\n");
-    // timer_init();
+    INFO("Enabling system timers...\n");
+    timer_init();
 
-    // INFO("Enabling physical timer...\n");
-    // physical_timer_enable();
+    INFO("Enabling physical timer...\n");
+    physical_timer_enable();
 
-    // INFO("Enabling virtual timer...\n");
-    // virtual_timer_enable();
+    INFO("Enabling virtual timer...\n");
+    virtual_timer_enable();
 
-    // INFO("Priming physical timer...\n");
-    // prime_physical_timer();
+    INFO("Priming physical timer...\n");
+    prime_physical_timer();
 
     INFO("Enabling IRQ interrupts...\n");
     irq_enable();
@@ -66,6 +66,14 @@ void hardware_init(){
     INFO("Hardware initialization complete.\n\n");
 }
 
+
+static uint64_t get_current_daif() {
+    uint64_t daif;
+    asm volatile ("mrs %0, daif" : "=r" (daif));
+    return daif;
+}
+
+
 int kernel_main(){
     
     // DEBUG("Raspberry PI Baremetal OS Initializing...\n");
@@ -87,9 +95,9 @@ int kernel_main(){
     //     uart_putc(uart_getc());
     // }
 
-    // DEBUG("Waiting complete, dropping to user mode...\n");
     add_test_section_to_scheduler();
     start_scheduler();
+
     return 0;
 }
 
