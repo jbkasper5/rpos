@@ -33,5 +33,6 @@
 
 #define SYS_PULSE_LED               292
 #define SYS_GET_FRAMEBUFFER         293
+#define SYS_GETC                    294
 
 #endif

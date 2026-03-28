@@ -126,15 +126,7 @@ static void idle(){
     uint32_t pending = *(uint32_t*)(gicd_base + 0x20C);
     
     while(TRUE){
-        pending = *(uint32_t*)(gicd_base + 0x20C);
-        if ((REGS_AUX->mu_iir & 1) == 0) {
-            for (int i = 0; i < 4; i++) {
-                uint32_t p = *(volatile uint32_t*)(gicd_base + 0x200 + (i * 4));
-                if (p != 0) {
-                    DEBUG("GIC Register %d has pending bits: 0x%08x\n", i, p);
-                }
-            }
-        }
+        uart_putc(uart_getc());
     }
 }
 

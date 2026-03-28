@@ -23,10 +23,25 @@ TEST_FN void user(){
     // make the thing black
     // for(uint32_t i = 0; i < SCREEN_SIZE_BYTES; i++) framebuffer[i] = 0xFF000000;
     
-    
+    char buf[256];
+    char c;
+    char* cp = buf;
 
+    while(TRUE){
+        c = syscall(SYS_GETC);
+        if(c == '\n' || c == '\r'){
+            *cp = '\n';
+            cp++;
+            *cp = '\0';
+            cp = buf;
+            break;
+        }else{
+            *cp = c;
+            cp++;
+        }
+    }
 
-
+    syscall(SYS_WRITE, NULL, buf);
 
     syscall(SYS_EXIT_GROUP);
 }

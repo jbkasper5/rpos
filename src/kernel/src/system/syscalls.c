@@ -115,3 +115,8 @@ uint64_t sys_ioctl(uint64_t fd, uint64_t cmd, uint64_t arg, uint64_t unused1, ui
     }
     return SYS_ERROR;
 }
+
+
+uint64_t sys_getc(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6){
+    return uart_getc();
+}
