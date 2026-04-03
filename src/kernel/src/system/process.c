@@ -1,8 +1,15 @@
 #include "system/process.h"
 #include "memory/mmap.h"
-
+#include "filedescriptors/filedescriptors.h"
 
 #define USER_STACK_TOP   0x0000800000000ULL
+
+const fileops_t stdout_ops = {
+    .write = uart_write,
+    .read = uart_read,
+    .close = NULL,
+    .ioctl = NULL,
+};
 
 pcb_t* procalloc(){
     // allocate new process control block
@@ -23,6 +30,10 @@ pcb_t* procalloc(){
 
     // subtract 16 since USER_STACK_TOP technically lies outside the 2 page boundary
     process->registers.sp = USER_STACK_TOP - 16;
+
+    process->fds[STDIN].file_ops = &stdout_ops;
+    process->fds[STDOUT].file_ops = &stdout_ops;
+    process->fds[STDERR].file_ops = &stdout_ops;
     
     return process;
 }

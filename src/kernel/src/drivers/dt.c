@@ -1,5 +1,8 @@
 #include "drivers/dt.h"
 #include "memory/mem.h"
+#include "utils/datastructures.h"
+
+static trie* device_trie;
 
 static inline uint32_t swap_endianness_32(uint32_t data) {
     return __builtin_bswap32(data);
@@ -63,35 +66,42 @@ static void parse_device_tree(fdt_header* header){
 
 void device_tree_init(){
     uint64_t tree = get_device_tree_start();
-
-
     INFO("Tree loaded at 0x%x\n", tree);
 
-    
-    fdt_header* header = (fdt_header*) tree;
+    device_trie = trie_init();
 
-    header->magic = swap_endianness_32(header->magic);
-    header->totalsize = swap_endianness_32(header->totalsize);
-    header->off_dt_struct = swap_endianness_32(header->off_dt_struct);
-    header->off_dt_strings = swap_endianness_32(header->off_dt_strings);
-    header->off_mem_rsvmap = swap_endianness_32(header->off_mem_rsvmap);
-    header->version = swap_endianness_32(header->version);
-    header->last_comp_version = swap_endianness_32(header->last_comp_version);
-    header->boot_cpuid_phys = swap_endianness_32(header->boot_cpuid_phys);
-    header->size_dt_strings = swap_endianness_32(header->size_dt_strings);
-    header->size_dt_struct = swap_endianness_32(header->size_dt_struct);
+    INFO("Device trie created at: 0x%x\n", device_trie);
 
-    INFO("Parsed header: \n");
-    INFO("\tmagic: 0x%x\n", header->magic);
-    INFO("\tsize: 0x%x\n", header->totalsize);
-    INFO("\toff_dt_struct: 0x%x\n", header->off_dt_struct);
-    INFO("\toff_dt_strings: 0x%x\n", header->off_dt_strings);
-    INFO("\toff_mem_rsvmap: 0x%x\n", header->off_mem_rsvmap);
-    INFO("\tversion: 0x%x\n", header->version);
-    INFO("\tlast_comp_version: 0x%x\n", header->last_comp_version);
-    INFO("\tboot_cpuid_phys: 0x%x\n", header->boot_cpuid_phys);
-    INFO("\tsize_dt_strings: 0x%x\n", header->size_dt_strings);
-    INFO("\tsize_dt_struct: 0x%x\n", header->size_dt_struct);
+    trie_add(device_trie, "/dev/fb0", 1);
 
-    parse_device_tree(header);
+    INFO("'/dev/fb0' in trie: %d\n", trie_get(device_trie, "/dev/fb0"));    
+
+    if(FALSE){
+        fdt_header* header = (fdt_header*) tree;
+
+        header->magic = swap_endianness_32(header->magic);
+        header->totalsize = swap_endianness_32(header->totalsize);
+        header->off_dt_struct = swap_endianness_32(header->off_dt_struct);
+        header->off_dt_strings = swap_endianness_32(header->off_dt_strings);
+        header->off_mem_rsvmap = swap_endianness_32(header->off_mem_rsvmap);
+        header->version = swap_endianness_32(header->version);
+        header->last_comp_version = swap_endianness_32(header->last_comp_version);
+        header->boot_cpuid_phys = swap_endianness_32(header->boot_cpuid_phys);
+        header->size_dt_strings = swap_endianness_32(header->size_dt_strings);
+        header->size_dt_struct = swap_endianness_32(header->size_dt_struct);
+
+        INFO("Parsed header: \n");
+        INFO("\tmagic: 0x%x\n", header->magic);
+        INFO("\tsize: 0x%x\n", header->totalsize);
+        INFO("\toff_dt_struct: 0x%x\n", header->off_dt_struct);
+        INFO("\toff_dt_strings: 0x%x\n", header->off_dt_strings);
+        INFO("\toff_mem_rsvmap: 0x%x\n", header->off_mem_rsvmap);
+        INFO("\tversion: 0x%x\n", header->version);
+        INFO("\tlast_comp_version: 0x%x\n", header->last_comp_version);
+        INFO("\tboot_cpuid_phys: 0x%x\n", header->boot_cpuid_phys);
+        INFO("\tsize_dt_strings: 0x%x\n", header->size_dt_strings);
+        INFO("\tsize_dt_struct: 0x%x\n", header->size_dt_struct);
+
+        parse_device_tree(header);
+    }
 }

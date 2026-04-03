@@ -21,7 +21,10 @@ uint64_t handle_syscall(uint64_t x0, uint64_t x1, uint64_t x2, uint64_t x3, uint
 
 uint64_t sys_write(uint64_t fd, uint64_t buf, uint64_t count, uint64_t unused1, uint64_t unused2, uint64_t unused3){
     // write a buffer to a file descriptor
-    kprintf((char*) buf);
+    // get fd
+    if(proclist.proclist[active_process].fds[fd].file_ops->write){
+        return proclist.proclist[active_process].fds[fd].file_ops->write(proclist.proclist[active_process].fds, buf, count);
+    }
     return 0;
 }
 
@@ -119,4 +122,27 @@ uint64_t sys_ioctl(uint64_t fd, uint64_t cmd, uint64_t arg, uint64_t unused1, ui
 
 uint64_t sys_getc(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6){
     return uart_getc();
+}
+
+
+uint64_t sys_clone3(uint64_t cl_args, uint64_t size, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4){
+    clone_args* args = (clone_args*) cl_args;
+
+
+}
+
+
+uint64_t sys_pipe2(uint64_t fd_rets, uint64_t flags, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4){
+    // allocate a pipe buffer of 64KiB (16 pages)
+    uint64_t* pipe = buddy_alloc(16 << PAGE_SHIFT);
+
+    // create 2 new file descriptors from the process's file descriptor list
+    // read
+
+    uint64_t* return_fds = (uint64_t*)fd_rets;
+
+    // return_fds[0] = read_end;
+    // return_fds[1] = write_end;
+
+    return 0;
 }

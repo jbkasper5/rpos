@@ -17,6 +17,7 @@
 #define SYS_DUP3                    24
 #define SYS_IOCTL                   29
 #define SYS_OPEN                    56
+#define SYS_PIPE2                   59
 #define SYS_READ                    63
 #define SYS_WRITE                   64
 #define SYS_EXIT                    93
@@ -28,6 +29,7 @@
 #define SYS_GETPID                  172
 
 #define SYS_MUNMAP                  215
+#define SYS_CLONE3                  220
 #define SYS_EXECVE                  221
 #define SYS_MMAP                    222
 

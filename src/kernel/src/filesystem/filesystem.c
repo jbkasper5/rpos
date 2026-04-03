@@ -1,9 +1,12 @@
 #include "filesystem/filesystem.h"
 #include "memory/kmalloc.h"
 #include "memory/mem.h"
+#include "utils/datastructures.h"
 
 #define DELIMITER   '/'
 #define MAX_NAME    255
+
+extern trie* device_trie;
 
 static ext4_inode* resolve_path(const char* pathname){
     char* buf = (char*) kmalloc(MAX_NAME);
@@ -39,8 +42,7 @@ static ext4_inode* resolve_path(const char* pathname){
 }
 
 uint8_t check_vfs(char* path){
-    if(*path == DELIMITER) path++;
-    return path[0] == 'd' && path[1] == 'e' && path[2] == 'v';
+    return trie_get(device_trie, path);
 }
 
 void* open(const char* pathname, uint32_t flags){

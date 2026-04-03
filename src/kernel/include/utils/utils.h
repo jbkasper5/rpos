@@ -2,6 +2,7 @@
 #define __UTILS_H__
 
 #include "macros.h"
+#include "system/process.h"
 
 // assembly functions
 void delay(uint64_t ticks);
@@ -18,5 +19,8 @@ uint8_t mmu_enabled();
 int log2_pow2(uint64_t num);
 int strcmp(const char* str1, const char* str2);
 int strlen(const char* str);
+
+pcb_t* get_active_pcb();
+void set_active_pcb(pcb_t* pcb);
 
 #endif

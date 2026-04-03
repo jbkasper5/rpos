@@ -3,6 +3,17 @@
 
 #include "macros.h"
 #include "filesystem/disk.h"
+#include "filedescriptors/filedescriptors.h"
+
+typedef struct {
+	// struct page *page;
+    void* page;
+	unsigned int offset, len;
+	// const struct pipe_buf_operations *ops;
+	unsigned int flags;
+	unsigned long private;
+} pipe_buffer_t;
+
 
 typedef enum{
     SEEK_SET = 0,
@@ -10,9 +21,10 @@ typedef enum{
     SEEK_END = 2
 } seek_whence;
 
-typedef struct {
-    int (*read)(struct file_s* file, char* buf, size_t count);
-    int (*write)(struct file_s* file, const char* buf, size_t count);
+
+typedef struct fileops_s{
+    int (*read)(struct file_s* file, char* buf, uint64_t count);
+    int (*write)(struct file_s* file, const char* buf, uint64_t count);
     int (*ioctl)(struct file_s* file, unsigned int cmd, unsigned long arg);
     int (*close)(struct file_s* file);
 } fileops_t;
@@ -22,7 +34,8 @@ typedef struct file_s{
     uint64_t pos;            // current seek position
     uint32_t flags;          // O_RDONLY, O_RDWR, etc.
     uint32_t refcount;       // for dup/close
-    fileops_t file_ops;
+    fileops_t* file_ops;
+    void* private_data;
 } file_t;
 
 int close(file_t* file);

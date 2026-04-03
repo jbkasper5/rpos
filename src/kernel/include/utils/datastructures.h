@@ -61,4 +61,23 @@ static inline int list_empty(list_head_t* head) {
 }
 /* ======================================== */
 
+/* ============= SEARCH TRIES ============= */
+typedef struct trie_s{
+    struct trie_node_s* head;
+    uint32_t keys;
+} trie;
+
+typedef struct trie_node_s{
+    struct trie_node_s* next;
+    struct trie_node_s* down;
+    uint64_t value;
+    char c;
+    char reserved[7];
+} trie_node;
+
+trie* trie_init();
+void trie_add(trie* t, const char* key, uint64_t);
+void trie_remove(trie* t, const char* key);
+uint64_t trie_get(trie* t, const char* key);
+/* ======================================== */
 #endif

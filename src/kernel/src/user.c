@@ -2,6 +2,7 @@
 #include "uapi/rpos/fb.h"
 #include "uapi/rpos/ioctls.h"
 #include "uapi/rpos/mman.h"
+#include "uapi/rpos/fds.h"
 
 #include "macros.h"
 
@@ -10,9 +11,9 @@ extern int syscall(uint64_t, ...);
 #define SCREEN_SIZE_BYTES        (800 * 480 * 4)
 
 TEST_FN void user(){
-    syscall(SYS_WRITE, NULL, "Opening framebuffer device...\n");
+    syscall(SYS_WRITE, STDOUT, "Opening framebuffer device...\n");
 
-    int fd = syscall(SYS_OPEN, "/dev/fb");
+    int fd = syscall(SYS_OPEN, "/dev/fb0");
 
     fb_var_screeninfo vinfo;
     syscall(SYS_IOCTL, fd, FBIOGET_VSCREENINFO, &vinfo);
@@ -41,7 +42,7 @@ TEST_FN void user(){
         }
     }
 
-    syscall(SYS_WRITE, NULL, buf);
+    syscall(SYS_WRITE, STDOUT, buf);
 
     syscall(SYS_EXIT_GROUP);
 }

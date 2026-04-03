@@ -107,9 +107,15 @@ get_test_size:
     ret
 
 
-.globl get_core_pcb
-get_core_pcb:
-    nop
+.globl get_active_pcb
+get_active_pcb:
+    mrs x0, TPIDR_EL1
+    ret
+
+
+.globl set_active_pcb
+set_active_pcb:
+    msr TPIDR_EL1, x0
     ret
 
 .globl panic
