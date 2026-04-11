@@ -3,31 +3,31 @@
 
 #include <stdint.h>
 
-extern void delay(uint64_t ticks);
+extern void delay(u64 ticks);
 
-extern uint32_t get_el();
+extern u32 get_el();
 
-extern uint64_t page_frame_array_start();
-extern uint64_t page_frame_array_end();
+extern u64 page_frame_array_start();
+extern u64 page_frame_array_end();
 
-extern uint64_t static_page_region_start();
-extern uint64_t static_page_region_end();
-extern uint32_t static_page_region_pages();
+extern u64 static_page_region_start();
+extern u64 static_page_region_end();
+extern u32 static_page_region_pages();
 
-extern uint64_t virt_base();
+extern u64 virt_base();
 
-extern uint64_t kernel_start();
-extern uint64_t kernel_end();
+extern u64 kernel_start();
+extern u64 kernel_end();
 
-extern uint64_t get_bss_begin();
-extern uint64_t get_bss_end();
+extern u64 get_bss_begin();
+extern u64 get_bss_end();
 
-extern uint64_t get_device_tree_start();
+extern u64 get_device_tree_start();
 
-extern uint64_t get_virt_test_region();
-extern uint64_t get_phys_test_region();
-extern uint64_t get_test_size();
+extern u64 get_virt_test_region();
+extern u64 get_phys_test_region();
+extern u64 get_test_size();
 
-extern uint64_t get_core_pcb();
+extern u64 get_core_pcb();
 
 #endif

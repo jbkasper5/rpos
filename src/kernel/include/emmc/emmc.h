@@ -12,20 +12,20 @@
 		((x >> 24) & 0x000000ff ))
 
 typedef struct {
-    uint8_t resp_a : 1;
-    uint8_t block_count : 1;
-    uint8_t auto_command : 2;
-    uint8_t direction : 1;
-    uint8_t multiblock : 1;
-    uint16_t resp_b : 10;
-    uint8_t response_type : 2;
-    uint8_t res0 : 1;
-    uint8_t crc_enable : 1;
-    uint8_t idx_enable : 1;
-    uint8_t is_data : 1;
-    uint8_t type : 2;
-    uint8_t index : 6;
-    uint8_t res1 : 2;
+    u8 resp_a : 1;
+    u8 block_count : 1;
+    u8 auto_command : 2;
+    u8 direction : 1;
+    u8 multiblock : 1;
+    u16 resp_b : 10;
+    u8 response_type : 2;
+    u8 res0 : 1;
+    u8 crc_enable : 1;
+    u8 idx_enable : 1;
+    u8 is_data : 1;
+    u8 type : 2;
+    u8 index : 6;
+    u8 res1 : 2;
 } emmc_cmd_t;
 
 #define RES_CMD {1, 1, 3, 1, 1, 0xF, 3, 1, 1, 1, 1, 3, 0xF, 3}
@@ -55,9 +55,9 @@ typedef enum {
 } cmd_type;
 
 typedef struct {
-    uint32_t scr[2];
-    uint32_t bus_widths;
-    uint32_t version;
+    u32 scr[2];
+    u32 bus_widths;
+    u32 version;
 } scr_register_t;
 
 typedef enum {
@@ -77,55 +77,55 @@ typedef enum {
 
 typedef struct {
     bool last_success;
-    uint32_t transfer_blocks;
+    u32 transfer_blocks;
     emmc_cmd_t last_command;
-    uint32_t last_command_value;
-    uint32_t block_size;
-    uint32_t last_response[4];
+    u32 last_command_value;
+    u32 block_size;
+    u32 last_response[4];
     bool sdhc;
-    uint16_t ocr;
-    uint32_t rca;
-    uint64_t offset;
+    u16 ocr;
+    u32 rca;
+    u64 offset;
     void *buffer;
-    uint32_t base_clock;
-    uint32_t last_error;
-    uint32_t last_interrupt;
+    u32 base_clock;
+    u32 last_error;
+    u32 last_interrupt;
     scr_register_t scr;
 } emmc_device_t;
 
 typedef struct  {
-    uint32_t arg2;
-    uint32_t block_size_count;
-    uint32_t arg1;
-    uint32_t cmd_xfer_mode;
-    uint32_t response[4];
-    uint32_t data;
-    uint32_t status;
-    uint32_t control[2];
-    uint32_t int_flags;
-    uint32_t int_mask;
-    uint32_t int_enable;
-    uint32_t control2;
-    uint32_t cap1;
-    uint32_t cap2;
-    uint32_t res0[2];
-    uint32_t force_int;
-    uint32_t res1[7];
-    uint32_t boot_timeout;
-    uint32_t debug_config;
-    uint32_t res2[2];
-    uint32_t ext_fifo_config;
-    uint32_t ext_fifo_enable;
-    uint32_t tune_step;
-    uint32_t tune_SDR;
-    uint32_t tune_DDR;
-    uint32_t res3[23];
-    uint32_t spi_int_support;
-    uint32_t res4[2];
-    uint32_t slot_int_status;
+    u32 arg2;
+    u32 block_size_count;
+    u32 arg1;
+    u32 cmd_xfer_mode;
+    u32 response[4];
+    u32 data;
+    u32 status;
+    u32 control[2];
+    u32 int_flags;
+    u32 int_mask;
+    u32 int_enable;
+    u32 control2;
+    u32 cap1;
+    u32 cap2;
+    u32 res0[2];
+    u32 force_int;
+    u32 res1[7];
+    u32 boot_timeout;
+    u32 debug_config;
+    u32 res2[2];
+    u32 ext_fifo_config;
+    u32 ext_fifo_enable;
+    u32 tune_step;
+    u32 tune_SDR;
+    u32 tune_DDR;
+    u32 res3[23];
+    u32 spi_int_support;
+    u32 res4[2];
+    u32 slot_int_status;
 } emmc_regs_t;
 
-#define TO_REG(p) *((uint32_t *)p)
+#define TO_REG(p) *((u32 *)p)
 
 // SD Clock Frequencies (in Hz)
 #define SD_CLOCK_ID         400000
@@ -165,9 +165,9 @@ typedef struct  {
 #define EMMC_STATUS_CMD_INHIBIT (1 << 0)
 
 bool emmc_init();
-int emmc_read(uint8_t *buffer, uint32_t size);
-void emmc_seek(uint64_t offset);
-void emmc_seek_sector(uint64_t _sector);
+int emmc_read(u8 *buffer, u32 size);
+void emmc_seek(u64 offset);
+void emmc_seek_sector(u64 _sector);
 
 
 

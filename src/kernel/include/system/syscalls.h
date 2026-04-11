@@ -8,25 +8,26 @@
 #define SYS_ERROR           -1ULL
 #define SYS_SUCCESS         0
 
-typedef uint64_t (*syscall_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
+typedef u64 (*syscall_fn_t)(u64, u64, u64, u64, u64, u64);
 
 
-uint64_t sys_ioctl(uint64_t fd, uint64_t cmd, uint64_t arg, uint64_t unused1, uint64_t unused2, uint64_t unused3);
-uint64_t sys_io_setup(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
-uint64_t sys_write(uint64_t fd, uint64_t buf, uint64_t count, uint64_t unused1, uint64_t unused2, uint64_t unused3);
-uint64_t sys_read(uint64_t fd, uint64_t buf, uint64_t count, uint64_t unused1, uint64_t unused2, uint64_t unused3);
-uint64_t sys_nanosleep(uint64_t ns, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5);
-uint64_t sys_clock_gettime(uint64_t clock, uint64_t kernel_timespec, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5);
-uint64_t sys_pulse_led(uint64_t pin_num, uint64_t turn_on, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4);
-uint64_t sys_mmap(uint64_t addr, uint64_t len, uint64_t prot, uint64_t flags, uint64_t fd, uint64_t offset);
-uint64_t sys_munmap(uint64_t addr, uint64_t len, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4);
-uint64_t sys_clone3(uint64_t cl_args, uint64_t size, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4);
-uint64_t sys_execve(uint64_t path, uint64_t argv, uint64_t envp, uint64_t unused1, uint64_t unused2, uint64_t unused3);
-uint64_t sys_exit_group(uint64_t status, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5);
-uint64_t sys_get_framebuffer(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
-uint64_t sys_open(uint64_t path, uint64_t flags, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
-uint64_t sys_getc(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
-uint64_t sys_pipe2(uint64_t fd_rets, uint64_t flags, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4);
+u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64 unused1, u64 unused2, u64 unused3);
+u64 sys_io_setup(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6);
+u64 sys_write(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3);
+u64 sys_read(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3);
+u64 sys_nanosleep(u64 ns, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5);
+u64 sys_clock_gettime(u64 clock, u64 kernel_timespec, u64 unused2, u64 unused3, u64 unused4, u64 unused5);
+u64 sys_pulse_led(u64 pin_num, u64 turn_on, u64 unused1, u64 unused2, u64 unused3, u64 unused4);
+u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset);
+u64 sys_munmap(u64 addr, u64 len, u64 unused1, u64 unused2, u64 unused3, u64 unused4);
+u64 sys_clone3(u64 cl_args, u64 size, u64 unused1, u64 unused2, u64 unused3, u64 unused4);
+u64 sys_execve(u64 path, u64 argv, u64 envp, u64 unused1, u64 unused2, u64 unused3);
+u64 sys_exit_group(u64 status, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5);
+u64 sys_get_framebuffer(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6);
+u64 sys_open(u64 path, u64 flags, u64 unused3, u64 unused4, u64 unused5, u64 unused6);
+u64 sys_getc(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6);
+u64 sys_pipe2(u64 fd_rets, u64 flags, u64 unused1, u64 unused2, u64 unused3, u64 unused4);
+u64 sys_fork(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6);
 
 syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_IOCTL] = sys_ioctl,
@@ -45,6 +46,7 @@ syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_GET_FRAMEBUFFER] = sys_get_framebuffer,
     [SYS_GETC] = sys_getc,
     [SYS_PIPE2] = sys_pipe2,
+    [SYS_FORK] = sys_fork,
 };
 
 #endif

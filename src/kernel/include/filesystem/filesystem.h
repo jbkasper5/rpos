@@ -23,26 +23,26 @@ typedef enum{
 
 
 typedef struct fileops_s{
-    int (*read)(struct file_s* file, char* buf, uint64_t count);
-    int (*write)(struct file_s* file, const char* buf, uint64_t count);
+    int (*read)(struct file_s* file, char* buf, u64 count);
+    int (*write)(struct file_s* file, const char* buf, u64 count);
     int (*ioctl)(struct file_s* file, unsigned int cmd, unsigned long arg);
     int (*close)(struct file_s* file);
 } fileops_t;
 
 typedef struct file_s{
     ext4_inode* inode;      // inode of the file
-    uint64_t pos;            // current seek position
-    uint32_t flags;          // O_RDONLY, O_RDWR, etc.
-    uint32_t refcount;       // for dup/close
+    u64 pos;            // current seek position
+    u32 flags;          // O_RDONLY, O_RDWR, etc.
+    u32 refcount;       // for dup/close
     fileops_t* file_ops;
     void* private_data;
 } file_t;
 
 int close(file_t* file);
-void* open(const char* pathname, uint32_t flags);
-uint64_t read(file_t* file, void* buf, uint64_t count);
-int seek(file_t* file, uint64_t offset, int whence);
+void* open(const char* pathname, u32 flags);
+u64 read(file_t* file, void* buf, u64 count);
+int seek(file_t* file, u64 offset, int whence);
 
-uint8_t check_vfs(char* path);
+u8 check_vfs(char* path);
 
 #endif

@@ -13,16 +13,16 @@ extern unsigned char _binary_src_kernel_fonts_tamzen10x20_psf_start[];
 unsigned char* font = _binary_src_kernel_fonts_tamzen10x20_psf_start;
 unsigned long font_size;
 
-uint64_t line = 0;
-uint64_t cursor = 0;
+u64 line = 0;
+u64 cursor = 0;
 
-uint32_t BACKGROUND_COLOR = COLOR_BLACK;
-uint32_t DEFAULT_BACKGROUND_COLOR = COLOR_BLACK;
+u32 BACKGROUND_COLOR = COLOR_BLACK;
+u32 DEFAULT_BACKGROUND_COLOR = COLOR_BLACK;
 
-uint32_t TEXT_COLOR = COLOR_WHITE;
-uint32_t DEFAULT_TEXT_COLOR = COLOR_WHITE;
+u32 TEXT_COLOR = COLOR_WHITE;
+u32 DEFAULT_TEXT_COLOR = COLOR_WHITE;
 
-void fill_screen(frame_t* frame, uint32_t argb){
+void fill_screen(frame_t* frame, u32 argb){
     // frame width = 800
     // frame hieght = 480
     // sizeof(argb) = 4
@@ -43,15 +43,15 @@ static void newline(){
 
 static void _print_glyph(unsigned char* glyph_location){
     int fb_idx = (line * 800 * 20) + cursor;
-    uint32_t color;
+    u32 color;
 
     int bytes_per_row = 2;  // 10 pixels → 2 bytes
     for (int row = 0; row < 20; row++){
         // Read the 2 bytes of this row
-        uint16_t r = (glyph_location[row * bytes_per_row] << 8) | 
+        u16 r = (glyph_location[row * bytes_per_row] << 8) | 
                       glyph_location[row * bytes_per_row + 1];
 
-        uint16_t mask = 1 << 15;  // start at leftmost bit (MSB = pixel 0)
+        u16 mask = 1 << 15;  // start at leftmost bit (MSB = pixel 0)
         for (int col = 0; col < 10; col++){
             if (r & mask) color = TEXT_COLOR;  // black pixel
             else          color = BACKGROUND_COLOR;  // white pixel
@@ -106,7 +106,7 @@ void load_font(){
     DEBUG("_binary_font_psf_start: 0x%x\n", _binary_src_kernel_fonts_tamzen10x20_psf_start);
     DEBUG("_binary_font_psf_end: 0x%x\n", _binary_src_kernel_fonts_tamzen10x20_psf_end);
 
-    font_size = (uint64_t) _binary_src_kernel_fonts_tamzen10x20_psf_end - (uint64_t)_binary_src_kernel_fonts_tamzen10x20_psf_start;
+    font_size = (u64) _binary_src_kernel_fonts_tamzen10x20_psf_end - (u64)_binary_src_kernel_fonts_tamzen10x20_psf_start;
     DEBUG("_binary_font_psf_size: 0x%x\n", font_size);
 
     psf2_header_t* font_hdr = (psf2_header_t*)_binary_src_kernel_fonts_tamzen10x20_psf_start;
@@ -119,7 +119,7 @@ void load_font(){
     }
 }
 
-void set_text_background_color(uint32_t new_color){
+void set_text_background_color(u32 new_color){
     BACKGROUND_COLOR = 0xFF000000 | new_color;
 }
 
@@ -127,7 +127,7 @@ void unset_text_background_color(){
     BACKGROUND_COLOR = DEFAULT_BACKGROUND_COLOR;
 }
 
-void set_text_color(uint32_t new_color){
+void set_text_color(u32 new_color){
     TEXT_COLOR = 0xFF000000 | new_color;
 }
 
@@ -139,12 +139,12 @@ void scroll(){
     // get number of consecutive bytes that make up one line on the screen
     // 800 pixels * size per pixel for 1 row
     // multiply by 20 since thats the height of 1 glyph
-    uint32_t line_idxs = 800 * 20;
-    uint64_t line_bytes = line_idxs * 4;
+    u32 line_idxs = 800 * 20;
+    u64 line_bytes = line_idxs * 4;
     
     memcpy(frame.fb, UNSCALED_POINTER_ADD(frame.fb, line_bytes), line_bytes * (NUM_LINES - 1));
 
-    uint32_t* last_line = UNSCALED_POINTER_ADD(frame.fb, (line_bytes * (NUM_LINES - 1)));
+    u32* last_line = UNSCALED_POINTER_ADD(frame.fb, (line_bytes * (NUM_LINES - 1)));
 
-    memset(last_line, DEFAULT_BACKGROUND_COLOR, line_idxs * sizeof(uint32_t));
+    memset(last_line, DEFAULT_BACKGROUND_COLOR, line_idxs * sizeof(u32));
 }

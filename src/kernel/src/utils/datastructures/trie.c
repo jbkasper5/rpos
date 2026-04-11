@@ -19,7 +19,7 @@ static trie_node* alloc_trie_node(char c){
     return node;
 }
 
-static trie_node* trie_add_down(const char* key_remainder, uint64_t value){
+static trie_node* trie_add_down(const char* key_remainder, u64 value){
     char* cp = key_remainder;
     char c = *cp;
 
@@ -52,7 +52,7 @@ static trie_node* trie_get_down(trie_node* node, char c){
     }
 }
 
-void trie_add(trie* t, const char* key, uint64_t value){
+void trie_add(trie* t, const char* key, u64 value){
     if(!t->keys){
         trie_node* result = trie_add_down(key, value);
         if(result){
@@ -66,7 +66,7 @@ void trie_remove(trie* t, const char* key){
     return;
 }
 
-uint64_t trie_get(trie* t, const char* key){
+u64 trie_get(trie* t, const char* key){
     if(!t->keys) return NULL;
     char* cp = key;
     char c = *cp;

@@ -1,7 +1,7 @@
 #include "emmc/emmc.h"
 #include "emmc/emmc_clock.h"
 
-bool wait_reg_mask(reg32_t* reg, uint32_t mask, bool set, uint32_t timeout){
+bool wait_reg_mask(reg32_t* reg, u32 mask, bool set, u32 timeout){
     for(int cycles = 0; cycles <= timeout; cycles++){
         if ((*reg & mask) ? set : !set){
             return TRUE;
@@ -11,8 +11,8 @@ bool wait_reg_mask(reg32_t* reg, uint32_t mask, bool set, uint32_t timeout){
     return FALSE;
 }
 
-uint32_t get_clock_divider(uint32_t base_clock, uint32_t target_rate) {
-    uint32_t target_div = 1;
+u32 get_clock_divider(u32 base_clock, u32 target_rate) {
+    u32 target_div = 1;
 
     if (target_rate <= base_clock) {
         target_div = base_clock / target_rate;
@@ -24,7 +24,7 @@ uint32_t get_clock_divider(uint32_t base_clock, uint32_t target_rate) {
 
     int div = -1;
     for (int fb = 31; fb >= 0; fb--) {
-        uint32_t bt = (1 << fb);
+        u32 bt = (1 << fb);
 
         if (target_div & bt) {
             div = fb;
@@ -54,21 +54,21 @@ uint32_t get_clock_divider(uint32_t base_clock, uint32_t target_rate) {
         div = 0x3FF;
     }
 
-    uint32_t freqSel = div & 0xff;
-    uint32_t upper = (div >> 8) & 0x3;
-    uint32_t ret = (freqSel << 8) | (upper << 6) | (0 << 5);
+    u32 freqSel = div & 0xff;
+    u32 upper = (div >> 8) & 0x3;
+    u32 ret = (freqSel << 8) | (upper << 6) | (0 << 5);
 
     return ret;
 }
 
-bool switch_clock_rate(uint32_t base_clock, uint32_t target_rate) {
-    uint32_t divider = get_clock_divider(base_clock, target_rate);
+bool switch_clock_rate(u32 base_clock, u32 target_rate) {
+    u32 divider = get_clock_divider(base_clock, target_rate);
 
     while((EMMC->status & (EMMC_STATUS_CMD_INHIBIT | EMMC_STATUS_DAT_INHIBIT))) {
         timer_sleep(1);
     }
 
-    uint32_t c1 = EMMC->control[1] & ~EMMC_CTRL1_CLK_ENABLE;
+    u32 c1 = EMMC->control[1] & ~EMMC_CTRL1_CLK_ENABLE;
 
     EMMC->control[1] = c1;
 
@@ -88,9 +88,9 @@ bool switch_clock_rate(uint32_t base_clock, uint32_t target_rate) {
 bool emmc_setup_clock() {
     EMMC->control2 = 0;
 
-    uint32_t rate = mailbox_clock_rate(CT_EMMC);
+    u32 rate = mailbox_clock_rate(CT_EMMC);
 
-    uint32_t n = EMMC->control[1];
+    u32 n = EMMC->control[1];
     n |= EMMC_CTRL1_CLK_INT_EN;
     n |= get_clock_divider(rate, SD_CLOCK_ID);
     n &= ~(0xf << 16);

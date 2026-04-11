@@ -5,6 +5,9 @@
 #include "filesystem/filesystem.h"
 #include "memory/kmalloc.h"
 
+#define SET_PCB_REG_NUM(pcb, regnum, val)   (pcb->registers.regs[regnum] = val)
+#define SET_PCB_REG(pcb, reg, val)          (pcb->registers.reg = val)
+
 #define MAX_PROCESSES 64
 #define MAX_OPEN_FILES 32
 
@@ -15,16 +18,16 @@ enum PROC_STATE{
 };
 
 typedef struct reglist_s{
-    uint64_t regs[31];
-    uint64_t sp;            // stack pointer to use on return
-    uint64_t pc;            // instruction address to return to
-    uint64_t spsr;          // processor state to return to
-    uint64_t ttbr;          // page table base for the process
+    u64 regs[31];
+    u64 sp;            // stack pointer to use on return
+    u64 pc;            // instruction address to return to
+    u64 spsr;          // processor state to return to
+    u64 ttbr;          // page table base for the process
 }reglist_t;
 
 typedef struct PCB_S{
     enum PROC_STATE state;
-    uint32_t pid;
+    u32 pid;
     reglist_t registers;
     file_t fds[MAX_OPEN_FILES];
     // memory information
@@ -37,12 +40,13 @@ typedef struct PCB_S{
 
 typedef struct PCB_LIST_S{
     pcb_t proclist[MAX_PROCESSES];
-    uint32_t processes;
+    u32 processes;
 } pcb_list_t;
 
 extern pcb_list_t proclist;
-extern uint64_t active_process;
+extern u64 active_process;
 
 pcb_t* procalloc();
+pcb_t* clone_active_proc();
 
 #endif

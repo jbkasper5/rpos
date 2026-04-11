@@ -2,20 +2,21 @@
 #define __GIC_H__
 
 #include <stdint.h>
+#include "macros.h"
 
 #define GICD_BASE       0xFF841000
 #define GICC_BASE       0xFF842000
 
 // Distributor Registers
-#define GICD_CTRLR      ((volatile uint32_t*)(GICD_BASE + 0x000))
-#define GICD_IGROUPR    ((volatile uint32_t*)(GICD_BASE + 0x080))
-#define GICD_ISENABLER  ((volatile uint32_t*)(GICD_BASE + 0x100))
-#define GICD_IPRIORITYR ((volatile uint8_t*)(GICD_BASE + 0x400))    
-#define GICD_ITARGETSR  ((volatile uint8_t*)(GICD_BASE + 0x800))
+#define GICD_CTRLR      ((volatile u32*)(GICD_BASE + 0x000))
+#define GICD_IGROUPR    ((volatile u32*)(GICD_BASE + 0x080))
+#define GICD_ISENABLER  ((volatile u32*)(GICD_BASE + 0x100))
+#define GICD_IPRIORITYR ((volatile u8*)(GICD_BASE + 0x400))    
+#define GICD_ITARGETSR  ((volatile u8*)(GICD_BASE + 0x800))
 
 // CPU Interface Registers
-#define GICC_CTRLR      ((volatile uint32_t*)(GICC_BASE + 0x000))
-#define GICC_PMR        ((volatile uint32_t*)(GICC_BASE + 0x004))
+#define GICC_CTRLR      ((volatile u32*)(GICC_BASE + 0x000))
+#define GICC_PMR        ((volatile u32*)(GICC_BASE + 0x004))
 
 #define IT_NR           128 
 

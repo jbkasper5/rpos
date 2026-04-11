@@ -6,9 +6,9 @@
 #include "macros.h"
 
 #define MAILBOX_BASE   (PBASE + 0xB880)
-#define MAILBOX_READ   ((volatile uint32_t *)(MAILBOX_BASE + 0x00))
-#define MAILBOX_STATUS ((volatile uint32_t *)(MAILBOX_BASE + 0x18))
-#define MAILBOX_WRITE  ((volatile uint32_t *)(MAILBOX_BASE + 0x20))
+#define MAILBOX_READ   ((volatile u32 *)(MAILBOX_BASE + 0x00))
+#define MAILBOX_STATUS ((volatile u32 *)(MAILBOX_BASE + 0x18))
+#define MAILBOX_WRITE  ((volatile u32 *)(MAILBOX_BASE + 0x20))
 
 #define MAILBOX_FULL   0x80000000
 #define MAILBOX_EMPTY  0x40000000
@@ -24,16 +24,16 @@
 
 #define MBX ((mailbox_regs_t*)(PBASE + 0xB880))
 
-void mailbox_write(uint8_t channel, uint64_t data);
-uint32_t mailbox_read(uint8_t channel);
+void mailbox_write(u8 channel, u64 data);
+u32 mailbox_read(u8 channel);
 
 #define GPU_BUS_TO_ARM(addr) ((addr) & 0x3FFFFFFF)
 
 typedef struct frame_s{
-    uint32_t* fb;
-    uint32_t width;
-    uint32_t height;
-    uint32_t pitch;
+    u32* fb;
+    u32 width;
+    u32 height;
+    u32 pitch;
 } frame_t;
 
 
@@ -42,6 +42,6 @@ extern frame_t frame;
 void scroll();
 int panel_ready();
 int init_framebuffer();
-void write_pixel(uint64_t idx, uint32_t argb);
+void write_pixel(u64 idx, u32 argb);
 
 #endif

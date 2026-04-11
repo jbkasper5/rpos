@@ -18,10 +18,10 @@ typedef enum {
 } page_flags;
 
 typedef union {
-    uint8_t value;
+    u8 value;
     struct {
-        uint8_t state : 3;
-        uint8_t flags : 5;
+        u8 state : 3;
+        u8 flags : 5;
     } __attribute__((packed)) bits;
 } page_frame_flags_t;
 
@@ -46,7 +46,7 @@ typedef struct {
     size_t order;
 
     // 4 bytes
-    uint32_t refcount;
+    u32 refcount;
 
     // 1 byte
     page_frame_flags_t flags;
@@ -55,10 +55,10 @@ typedef struct {
 
 
 
-uint64_t buddy_alloc(uint64_t bytes);
-uint64_t buddy_alloc_pt();
-uint64_t initialize_page_frame_array();
-uint8_t get_block_order(uint64_t addr);
+u64 buddy_alloc(u64 bytes);
+u64 buddy_alloc_pt();
+u64 initialize_page_frame_array();
+u8 get_block_order(u64 addr);
 void* head_from_page(void* page_addr);
 page_state get_page_owner(void* page_addr);
 void set_page_owner(void* page_addr, page_state new_owner);

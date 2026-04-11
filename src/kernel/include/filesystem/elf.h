@@ -204,89 +204,89 @@ typedef enum {
 
 
 typedef struct {
-    uint8_t e_ident[EI_NIDENT];
-    uint16_t e_type;
-    uint16_t e_machine;
-    uint32_t e_version;
-    uint32_t e_entry;
-    uint32_t e_phoff;
-    uint32_t e_shoff;
-    uint32_t e_flags;
-    uint16_t e_ehsize;
-    uint16_t e_phentsize;
-    uint16_t e_phnum;
-    uint16_t e_shentsize;
-    uint16_t e_shnum;
-    uint16_t e_shstrndx;
+    u8 e_ident[EI_NIDENT];
+    u16 e_type;
+    u16 e_machine;
+    u32 e_version;
+    u32 e_entry;
+    u32 e_phoff;
+    u32 e_shoff;
+    u32 e_flags;
+    u16 e_ehsize;
+    u16 e_phentsize;
+    u16 e_phnum;
+    u16 e_shentsize;
+    u16 e_shnum;
+    u16 e_shstrndx;
 } elf32_header;
 
 
 typedef struct {
-    uint8_t e_ident[EI_NIDENT];
-    uint16_t e_type;
-    uint16_t e_machine;
-    uint32_t e_version;
-    uint64_t e_entry;
-    uint64_t e_phoff;
-    uint64_t e_shoff;
-    uint32_t e_flags;
-    uint16_t e_ehsize;
-    uint16_t e_phentsize;
-    uint16_t e_phnum;
-    uint16_t e_shentsize;
-    uint16_t e_shnum;
-    uint16_t e_shstrndx;
+    u8 e_ident[EI_NIDENT];
+    u16 e_type;
+    u16 e_machine;
+    u32 e_version;
+    u64 e_entry;
+    u64 e_phoff;
+    u64 e_shoff;
+    u32 e_flags;
+    u16 e_ehsize;
+    u16 e_phentsize;
+    u16 e_phnum;
+    u16 e_shentsize;
+    u16 e_shnum;
+    u16 e_shstrndx;
 } elf64_header;
 
 typedef struct {
-  uint32_t sh_name;      // Section name (index into string table)
-  uint32_t sh_type;      // Section type (SHT_*)
-  uint32_t sh_flags;     // Section flags (SHF_*)
-  uint32_t sh_addr;      // Address where section is to be loaded
-  uint32_t sh_offset;     // File offset of section data, in bytes
-  uint32_t sh_size;      // Size of section, in bytes
-  uint32_t sh_link;      // Section type-specific header table index link
-  uint32_t sh_info;      // Section type-specific extra information
-  uint32_t sh_addralign; // Section address alignment
-  uint32_t sh_entsize;   // Size of records contained within the section
+  u32 sh_name;      // Section name (index into string table)
+  u32 sh_type;      // Section type (SHT_*)
+  u32 sh_flags;     // Section flags (SHF_*)
+  u32 sh_addr;      // Address where section is to be loaded
+  u32 sh_offset;     // File offset of section data, in bytes
+  u32 sh_size;      // Size of section, in bytes
+  u32 sh_link;      // Section type-specific header table index link
+  u32 sh_info;      // Section type-specific extra information
+  u32 sh_addralign; // Section address alignment
+  u32 sh_entsize;   // Size of records contained within the section
 } elf32_section_header;
  
 // Section header for ELF64 - same fields as ELF32, different types.
 typedef struct {
-  uint32_t sh_name;
-  uint32_t sh_type;
-  uint64_t sh_flags;
-  uint64_t sh_addr;
-  uint64_t sh_offset;
-  uint64_t sh_size;
-  uint32_t sh_link;
-  uint32_t sh_info;
-  uint64_t sh_addralign;
-  uint64_t sh_entsize;
+  u32 sh_name;
+  u32 sh_type;
+  u64 sh_flags;
+  u64 sh_addr;
+  u64 sh_offset;
+  u64 sh_size;
+  u32 sh_link;
+  u32 sh_info;
+  u64 sh_addralign;
+  u64 sh_entsize;
 } elf64_section_header;
 
 
 typedef struct {
-	uint32_t	p_type;
-	uint32_t	p_offset;
-	uint32_t	p_vaddr;
-	uint32_t	p_paddr;
-	uint32_t	p_filesz;
-	uint32_t	p_memsz;
-	uint32_t	p_flags;
-	uint32_t	p_align;
+	u32	p_type;
+	u32	p_offset;
+	u32	p_vaddr;
+	u32	p_paddr;
+	u32	p_filesz;
+	u32	p_memsz;
+	u32	p_flags;
+	u32	p_align;
 } elf32_program_header;
 
 
 typedef struct {
-	uint32_t	p_type;
-	uint32_t	p_flags;
-	uint64_t	p_offset;
-	uint64_t	p_vaddr;
-	uint64_t	p_paddr;
-	uint64_t	p_filesz;
-	uint64_t	p_memsz;
-	uint64_t	p_align;
+	u32	p_type;
+	u32	p_flags;
+	u64	p_offset;
+	u64	p_vaddr;
+	u64	p_paddr;
+	u64	p_filesz;
+	u64	p_memsz;
+	u64	p_align;
 } elf64_program_header;
 
 

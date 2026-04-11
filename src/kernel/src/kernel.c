@@ -67,8 +67,8 @@ void hardware_init(){
 }
 
 
-static uint64_t get_current_daif() {
-    uint64_t daif;
+static u64 get_current_daif() {
+    u64 daif;
     asm volatile ("mrs %0, daif" : "=r" (daif));
     return daif;
 }
@@ -78,6 +78,8 @@ int kernel_main(){
     
     // DEBUG("Raspberry PI Baremetal OS Initializing...\n");
     hardware_init();
+
+    // mailbox_pcie_usb_power_on();
 
     // file_t* file = open("/bin/pwd", 0);
     // ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
@@ -107,3 +109,7 @@ TODO:
         - To know when pages can be delivered back to the buddy allocator
     - Finish buddy free
 */
+
+
+// 0xFFFF800000000000
+// 0xFFFF8000FD500000

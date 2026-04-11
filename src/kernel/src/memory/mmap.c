@@ -1,13 +1,13 @@
 #include "memory/mmap.h"
 
 // early boot uses 15 pages
-uint64_t allocated_pages = 15;
-extern uint32_t static_page_region_pages();
+u64 allocated_pages = 15;
+extern u32 static_page_region_pages();
 extern uintptr_t static_page_region_start();
-extern uint64_t virt_base();
+extern u64 virt_base();
 
-extern uint64_t pa_to_va(uint64_t pa);
-extern uint64_t pa_to_va(uint64_t va);
+extern u64 pa_to_va(u64 pa);
+extern u64 pa_to_va(u64 va);
 
 /**
  * @brief Rolls back a partial memory mapping made by the mapper functions on error.
@@ -34,7 +34,7 @@ uintptr_t alloc_page_table(){
  * @param flags     A bitfield of flags
  * @return          A table descriptor bitfield with appropriate attributes set, only needs address
  */
-static table_descriptor_t parse_table_flags(uint64_t flags){
+static table_descriptor_t parse_table_flags(u64 flags){
     table_descriptor_t td = {0};
 
     // if(!((flags & MAP_KERNEL) ^ (flags & MAP_USER))){
@@ -64,7 +64,7 @@ static table_descriptor_t parse_table_flags(uint64_t flags){
  * @param flags     A bitfield of flags
  * @return          A memory descriptor (block/page) bitfield with appropriate attributes set, only needs address
  */
-static mem_descriptor_t parse_block_flags(uint64_t flags, bool is_page){
+static mem_descriptor_t parse_block_flags(u64 flags, bool is_page){
     mem_descriptor_t md = {0};
 
     // if(!((flags & MAP_KERNEL) ^ (flags & MAP_USER))){
@@ -118,7 +118,7 @@ static mem_descriptor_t parse_block_flags(uint64_t flags, bool is_page){
  * @param pt_base       address of the L0 page table to add this allocation to
  * @return              whether or not the allocation was successful
  */
-bool map_pages(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint64_t flags, uint64_t pt_base){
+bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_base){
     // get pointer to page table, interpreted as table descriptor
     table_descriptor_t* l0_table = (table_descriptor_t*) pt_base;
     table_descriptor_t* l1_table;
@@ -145,19 +145,19 @@ bool map_pages(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint64
             ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
         }
-        l1_table = (table_descriptor_t*) (((uint64_t) l0_table[idx0].bits.address << PAGE_SHIFT) + virt_base());
+        l1_table = (table_descriptor_t*) (((u64) l0_table[idx0].bits.address << PAGE_SHIFT) + virt_base());
         if (!l1_table[idx1].bits.valid) {
             ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
         }
 
-        l2_table = (table_descriptor_t*) (((uint64_t) l1_table[idx1].bits.address << PAGE_SHIFT) + virt_base());
+        l2_table = (table_descriptor_t*) (((u64) l1_table[idx1].bits.address << PAGE_SHIFT) + virt_base());
         if (!l2_table[idx2].bits.valid) {
             ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l2_table[idx2] = ptte;
         }
 
-        l3_table = (mem_descriptor_t*) (((uint64_t) l2_table[idx2].bits.address << PAGE_SHIFT) + virt_base());
+        l3_table = (mem_descriptor_t*) (((u64) l2_table[idx2].bits.address << PAGE_SHIFT) + virt_base());
         if (!l3_table[idx3].bits.valid) {
             ptme.bits.address = (pa >> PAGE_SHIFT);
             l3_table[idx3] = ptme;
@@ -180,7 +180,7 @@ bool map_pages(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint64
  * @param pt_base       address of the L0 page table to add this allocation to
  * @return              whether or not the allocation was successful
  */
-bool map_blocks(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint64_t flags, uint64_t pt_base){
+bool map_blocks(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_base){
     // get pointer to page table, interpreted as table descriptor
     table_descriptor_t* l0_table = (table_descriptor_t*) pt_base;
     table_descriptor_t* l1_table;
@@ -205,13 +205,13 @@ bool map_blocks(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint6
             ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
         }
-        l1_table = (table_descriptor_t*) (((uint64_t) l0_table[idx0].bits.address << PAGE_SHIFT) + virt_base());
+        l1_table = (table_descriptor_t*) (((u64) l0_table[idx0].bits.address << PAGE_SHIFT) + virt_base());
         if (!l1_table[idx1].bits.valid) {
             ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
         }
 
-        l2_table = (mem_descriptor_t*) (((uint64_t) l1_table[idx1].bits.address << PAGE_SHIFT) + virt_base());
+        l2_table = (mem_descriptor_t*) (((u64) l1_table[idx1].bits.address << PAGE_SHIFT) + virt_base());
         if (!l2_table[idx2].bits.valid) {
             ptme.bits.address = (pa >> PAGE_SHIFT);
             l2_table[idx2] = ptme;
@@ -234,11 +234,11 @@ bool map_blocks(uint64_t virt_block, uint64_t phys_block, uint32_t blocks, uint6
  * @param pt_base       address of the L0 page table to add this allocation to
  * @return              whether or not the allocation was successful
  */
-bool map(uint64_t virt_block, uint64_t phys_block, uint8_t block_order, uint64_t flags, uint64_t pt_base){
+bool map(u64 virt_block, u64 phys_block, u8 block_order, u64 flags, u64 pt_base){
     // block order of 9 means it's a 2MiB block and can be block allocated in an L2 table instead
     int idx3 = (virt_block >> 12) & 0x1FF;
     int iters = 0;
-    bool (*mapping_func)(uint64_t, uint64_t, uint32_t, uint64_t, uint64_t);
+    bool (*mapping_func)(u64, u64, u32, u64, u64);
 
 
     // TODO: in case of any intermediate allocations or remappings, needs to figure out 

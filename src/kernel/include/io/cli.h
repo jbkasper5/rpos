@@ -25,14 +25,14 @@ typedef struct {
 } psf1_header_t;
 
 typedef struct {
-    uint32_t magic;         // 0x864ab572
-    uint32_t version;
-    uint32_t headersize;
-    uint32_t flags;
-    uint32_t glyph_count;
-    uint32_t bytes_per_glyph;
-    uint32_t height;
-    uint32_t width;
+    u32 magic;         // 0x864ab572
+    u32 version;
+    u32 headersize;
+    u32 flags;
+    u32 glyph_count;
+    u32 bytes_per_glyph;
+    u32 height;
+    u32 width;
 } psf2_header_t;
 
 
@@ -44,7 +44,7 @@ void set_text_color();
 void unset_text_background_color();
 void unset_text_color();
 
-void fill_screen(frame_t* frame, uint32_t argb);
+void fill_screen(frame_t* frame, u32 argb);
 void scroll();
 void print_glyph(char c);
 void print_string(char* s);

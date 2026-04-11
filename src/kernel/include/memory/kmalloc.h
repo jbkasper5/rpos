@@ -10,10 +10,10 @@
 
 typedef struct{
     list_head_t list;
-    uint8_t bitmap[16];
-    uint16_t inuse;
-    uint16_t total;
-    uint16_t slab_order;                 // used to trace a pointer back to cache idx
+    u8 bitmap[16];
+    u16 inuse;
+    u16 total;
+    u16 slab_order;                 // used to trace a pointer back to cache idx
 } slab;
 
 typedef struct{

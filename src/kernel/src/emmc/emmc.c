@@ -8,17 +8,17 @@
 static emmc_device_t device = {0};
 static const emmc_cmd_t INVALID_CMD = RES_CMD;
 
-static uint32_t sd_error_mask(sd_error_t err){
-    return 1 << (16 + (uint32_t) err);
+static u32 sd_error_mask(sd_error_t err){
+    return 1 << (16 + (u32) err);
 }
 
-static void set_last_error(uint32_t intr_val){
+static void set_last_error(u32 intr_val){
     device.last_error = intr_val & 0xFFFF0000;
     device.last_interrupt = intr_val;
 }
 
 static bool do_data_transfer(emmc_cmd_t cmd){
-    uint32_t wrIrpt = 0;
+    u32 wrIrpt = 0;
     bool write = FALSE;
     if(cmd.direction){
         wrIrpt = (1 << 5);
@@ -27,11 +27,11 @@ static bool do_data_transfer(emmc_cmd_t cmd){
         write = TRUE;
     }
 
-    uint32_t* data = (uint32_t*) device.buffer;
+    u32* data = (u32*) device.buffer;
 
     for(int block = 0; block < device.transfer_blocks; block++){
         wait_reg_mask(&EMMC->int_flags, wrIrpt | 0x8000, TRUE, 2000);
-        uint32_t intr_val = EMMC->int_flags;
+        u32 intr_val = EMMC->int_flags;
         EMMC->int_flags = wrIrpt | 0x8000;
 
         if((intr_val & 0xFFFF0000)){
@@ -39,7 +39,7 @@ static bool do_data_transfer(emmc_cmd_t cmd){
             return FALSE;
         }
 
-        uint32_t length = device.block_size;
+        u32 length = device.block_size;
         if(write){
             for(; length > 0; length -= 4){
                 EMMC->data = *data++;
@@ -53,7 +53,7 @@ static bool do_data_transfer(emmc_cmd_t cmd){
     return TRUE;
 }
 
-static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
+static bool emmc_issue_command(emmc_cmd_t cmd, u32 arg, u32 timeout) {
     device.last_command_value = TO_REG(&cmd);
     reg32_t command_reg = device.last_command_value;
 
@@ -71,7 +71,7 @@ static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
     int times = 0;
 
     while(times < timeout) {
-        uint32_t reg = EMMC->int_flags;
+        u32 reg = EMMC->int_flags;
 
         if (reg & 0x8001) {
             break;
@@ -88,7 +88,7 @@ static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
         return FALSE;
     }
 
-    uint32_t intr_val = EMMC->int_flags;
+    u32 intr_val = EMMC->int_flags;
 
     EMMC->int_flags = 0xFFFF0001;
 
@@ -141,7 +141,7 @@ static bool emmc_issue_command(emmc_cmd_t cmd, uint32_t arg, uint32_t timeout) {
     return TRUE;
 }
 
-static bool emmc_app_command(uint32_t command, uint32_t arg, uint32_t timeout) {
+static bool emmc_app_command(u32 command, u32 arg, u32 timeout) {
 
     if (commands[command].index >= 60) {
         DEBUG("EMMC_ERR: INVALID APP COMMAND\n");
@@ -150,7 +150,7 @@ static bool emmc_app_command(uint32_t command, uint32_t arg, uint32_t timeout) {
 
     device.last_command = commands[CTApp];
 
-    uint32_t rca = 0;
+    u32 rca = 0;
 
     if (device.rca) {
         rca = device.rca << 16;
@@ -165,7 +165,7 @@ static bool emmc_app_command(uint32_t command, uint32_t arg, uint32_t timeout) {
     return FALSE;
 }
 
-static bool emmc_command(uint32_t command, uint32_t arg, uint32_t timeout){
+static bool emmc_command(u32 command, u32 arg, u32 timeout){
     if (command & 0x80000000) {
         //The app command flag is set, shoudl use emmc_app_command instead.
         DEBUG("EMMC_ERR: COMMAND ERROR NOT APP\n");
@@ -262,7 +262,7 @@ static bool check_v2_card(){
 static bool check_sdhc_support(bool v2_card){
     bool card_busy = TRUE;
     while(card_busy){
-        uint32_t v2_flags = 0;
+        u32 v2_flags = 0;
 
         if(v2_card) v2_flags |= (1 << 30); // SDHC support
 
@@ -325,7 +325,7 @@ static bool set_scr() {
         }
     }
 
-    uint32_t bsc = EMMC->block_size_count;
+    u32 bsc = EMMC->block_size_count;
     bsc &= ~0xFFF; //mask off bottom bits
     bsc |= 0x200; //set bottom bits to 512
     EMMC->block_size_count = bsc;
@@ -343,11 +343,11 @@ static bool set_scr() {
 
     device.block_size = 512;
 
-    uint32_t scr0 = BSWAP32(device.scr.scr[0]);
+    u32 scr0 = BSWAP32(device.scr.scr[0]);
     device.scr.version = 0xFFFFFFFF;
-    uint32_t spec = (scr0 >> (56 - 32)) & 0xf;
-    uint32_t spec3 = (scr0 >> (47 - 32)) & 0x1;
-    uint32_t spec4 = (scr0 >> (42 - 32)) & 0x1;
+    u32 spec = (scr0 >> (56 - 32)) & 0xf;
+    u32 spec3 = (scr0 >> (47 - 32)) & 0x1;
+    u32 spec4 = (scr0 >> (42 - 32)) & 0x1;
 
     if (spec == 0) {
         device.scr.version = 1;
@@ -380,7 +380,7 @@ static bool select_card() {
 
     // DEBUG("EMMC_DEBUG: Selected Card\n");
 
-    uint32_t status = (device.last_response[0] >> 9) & 0xF;
+    u32 status = (device.last_response[0] >> 9) & 0xF;
 
     if (status != 3 && status != 4) {
         DEBUG("EMMC_ERR: Invalid Status: %d\n", status);
@@ -403,7 +403,7 @@ static bool emmc_card_reset(){
     }
 
     // needed by pi4 for some reason
-    uint32_t c0 = EMMC->control[0];
+    u32 c0 = EMMC->control[0];
     c0 |= (0x0F << 8);
     EMMC->control[0] = c0;
     timer_sleep(3);
@@ -481,7 +481,7 @@ bool emmc_init(){
     return success;
 }
 
-bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) {
+bool do_data_command(bool write, u8 *b, u32 bsize, u32 block_no) {
     if (!device.sdhc) {
         block_no *= 512;
     }
@@ -531,7 +531,7 @@ bool do_data_command(bool write, uint8_t *b, uint32_t bsize, uint32_t block_no) 
     return TRUE;
 }
 
-int do_read(uint8_t *b, uint32_t bsize, uint32_t block_no) {
+int do_read(u8 *b, u32 bsize, u32 block_no) {
     //TODO: ENSURE DATA MODE...
 
     if (!do_data_command( FALSE, b, bsize, block_no)) {
@@ -543,13 +543,13 @@ int do_read(uint8_t *b, uint32_t bsize, uint32_t block_no) {
 }
 
 
-int emmc_read(uint8_t *buffer, uint32_t size) {
+int emmc_read(u8 *buffer, u32 size) {
     if (device.offset % 512 != 0) {
         kprintf("EMMC_ERR: INVALID OFFSET: %d\n", device.offset);
         return -1;
     }
 
-    uint32_t block = device.offset / 512;
+    u32 block = device.offset / 512;
 
     int r = do_read( buffer, size, block);
 
@@ -561,10 +561,10 @@ int emmc_read(uint8_t *buffer, uint32_t size) {
     return size;
 }
 
-void emmc_seek(uint64_t _offset) {
+void emmc_seek(u64 _offset) {
     device.offset = _offset;
 }
 
-void emmc_seek_sector(uint64_t _sector) {
+void emmc_seek_sector(u64 _sector) {
     device.offset = _sector * 512;
 }

@@ -5,18 +5,18 @@
 #define TXD 14
 #define RXD 15
 
-static BOOT_FN void gpio_pin_set_func_lo(uint8_t pinNumber, GpioFunc_t func){
-    uint8_t bit_start = (pinNumber * 3) % 30;
-    uint8_t reg = pinNumber / 10;
+static BOOT_FN void gpio_pin_set_func_lo(u8 pinNumber, GpioFunc_t func){
+    u8 bit_start = (pinNumber * 3) % 30;
+    u8 reg = pinNumber / 10;
 
-    uint32_t selector = REGS_GPIO_LO->func_select[reg];
+    u32 selector = REGS_GPIO_LO->func_select[reg];
     selector &= ~(7 << bit_start);
     selector |= (func << bit_start);
 
     REGS_GPIO_LO->func_select[reg] = selector;
 }
 
-static BOOT_FN void gpio_pin_enable_lo(uint8_t pinNumber){
+static BOOT_FN void gpio_pin_enable_lo(u8 pinNumber){
     REGS_GPIO_LO->pupd_enable = 0;
     delay_lo(150);
     REGS_GPIO_LO->pupd_clocks_enable[pinNumber / 32] = 1 << (pinNumber % 32);

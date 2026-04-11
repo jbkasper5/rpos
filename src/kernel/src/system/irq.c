@@ -31,7 +31,7 @@ const char entry_error_messages[16][32] = {
 	"ERROR_INVALID_EL0_32"	
 };
 
-void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t instruction, uint64_t address){
+void show_invalid_entry_message(u32 type, u64 esr, u64 instruction, u64 address){
 	ERROR("%s\n", entry_error_messages[type]);
 	ERROR("\tException: 0x%x\n", esr);
 	ERROR("\tFaulting instruction: 0x%x\n", instruction);
@@ -49,12 +49,12 @@ void enable_interrupt_controller() {
 }
 
 
-void handle_irq(uint64_t reg_addr, uint8_t el){
+void handle_irq(u64 reg_addr, u8 el){
 	DEBUG("Handling IRQ from EL %d\n", el);
 	// DEBUG("Handling IRQ (context: 0x%x)...\n", reg_addr);
 
-    uint32_t irq = REGS_BCMIRQ->irq0_pending_0;
-	uint32_t gic_irq = REGS_GICC->gicc_iar;
+    u32 irq = REGS_BCMIRQ->irq0_pending_0;
+	u32 gic_irq = REGS_GICC->gicc_iar;
 
 	DEBUG("BCM IRQ: %d, GIC IRQ: %d\n", irq, gic_irq);
     while(irq){

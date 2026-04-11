@@ -22,8 +22,8 @@ pcb_t* procalloc(){
     process->registers.ttbr = alloc_page_table();
 
     // 8 KiB stack -> 2 pages -> order 1
-    uint32_t stack_size = PAGE_SIZE * 2;
-    uint64_t stack_base = buddy_alloc(stack_size); // stack base page address = 3FFD5000
+    u32 stack_size = PAGE_SIZE * 2;
+    u64 stack_base = buddy_alloc(stack_size); // stack base page address = 3FFD5000
 
     // map the virtual stack to the process (0x7ffffe000 -> 3FFD5000)
     map(USER_STACK_TOP - stack_size, va_to_pa(stack_base), 1, MAP_USER | MAP_READ | MAP_WRITE, process->registers.ttbr);
@@ -35,6 +35,16 @@ pcb_t* procalloc(){
     process->fds[STDOUT].file_ops = &stdout_ops;
     process->fds[STDERR].file_ops = &stdout_ops;
     
+    return process;
+}
+
+pcb_t* clone_active_proc(){
+    pcb_t* process = (pcb_t*) kmalloc(sizeof(pcb_t));
+
+    // copy parent process data into child process
+    memcpy(process, &proclist.proclist[active_process], sizeof(pcb_t));
+
+    // return copied child process
     return process;
 }
 

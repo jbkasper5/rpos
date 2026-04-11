@@ -2,16 +2,16 @@
 #include "memory/mmap.h"
 
 uintptr_t kheap_start = 0xFFFF0000;
-uint64_t kheap_size = 0;
+u64 kheap_size = 0;
 
 cache kcaches[CACHES];
 
 #define MIN_SLAB_ORDER      5
 #define MAX_SLAB_ORDER      11
 
-static void* _slab_alloc(uint32_t order){
+static void* _slab_alloc(u32 order){
     // get new physical page from buddy allocator
-    uint64_t phys_page = buddy_alloc(PAGE_SIZE * (order + 1));
+    u64 phys_page = buddy_alloc(PAGE_SIZE * (order + 1));
 
     // the ownership changed hands to the slab
     set_page_owner(phys_page, PAGE_SLAB);
@@ -20,7 +20,7 @@ static void* _slab_alloc(uint32_t order){
     if(!phys_page) panic();
 
     // map the page into memory
-    map(phys_page, va_to_pa(phys_page), 0, MAP_KERNEL, L0_TABLE);
+    map(phys_page, va_to_pa(phys_page), order, MAP_KERNEL, L0_TABLE);
 
     // for now, convert this to virtual later
     return phys_page;
@@ -41,8 +41,8 @@ static void* _addr_from_slab(slab* s){
     // we also need to check if 
 
     for(int i = 0; i < s->total; i++){
-        uint8_t byte = i / 8;
-        uint8_t offset = i % 8;
+        u8 byte = i / 8;
+        u8 offset = i % 8;
         if(!(s->bitmap[byte] & (1 << offset))){
             INFO("Found free block at index %d\n", i);
             s->bitmap[byte] |= (1 << offset);
@@ -58,19 +58,19 @@ static void* _addr_from_slab(slab* s){
 
 void* kmalloc(size_t bytes){
     size_t aligned_bytes = 1;
-    uint32_t shift = 1;
+    u32 shift = 1;
 
     // align the requested number of bytes to the nearest slab_order
     while (aligned_bytes < bytes) aligned_bytes <<= 1;
     aligned_bytes = MAX(aligned_bytes, (1 << MIN_SLAB_ORDER));
     DEBUG("Allocating %d bytes...\n", aligned_bytes);
 
-    uint32_t log2 = log2_pow2(aligned_bytes);
-    uint32_t cache_idx = log2 - MIN_SLAB_ORDER;
+    u32 log2 = log2_pow2(aligned_bytes);
+    u32 cache_idx = log2 - MIN_SLAB_ORDER;
 
     // if aligned_bytes >= 4096, then log2 >= 12
     if(log2 > MAX_SLAB_ORDER){
-        uint64_t pages = buddy_alloc(aligned_bytes);
+        u64 pages = buddy_alloc(aligned_bytes);
 
         // need to map the page(s) into memory first
         map(pages, va_to_pa(pages), log2 - PAGE_SHIFT, MAP_KERNEL, L0_TABLE);
@@ -82,12 +82,13 @@ void* kmalloc(size_t bytes){
     // no slabs yet
     if(list_empty(&kcaches[cache_idx].partial_slabs)){
         // allocate new slab (should be 1 page)
-        slab* new_slab = (slab*) _slab_alloc(0);
+        u64 order = (log2 > 9) ? log2 - 9 : 0;
+        slab* new_slab = (slab*) _slab_alloc(order);
 
         // zero the slab bitmap
         for(int i = 0; i < 8; i++) new_slab->bitmap[i] = 0;
         new_slab->inuse = 0;
-        new_slab->total = (PAGE_SIZE - ALIGN_UP(sizeof(slab), aligned_bytes)) / aligned_bytes;
+        new_slab->total = ((PAGE_SIZE << order) - ALIGN_UP(sizeof(slab), aligned_bytes)) / aligned_bytes;
         new_slab->slab_order = log2;
 
         // add it to kcache partial slab list

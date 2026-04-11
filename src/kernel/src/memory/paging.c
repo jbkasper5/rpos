@@ -11,15 +11,15 @@ static list_head_t buddy_lists[MAX_ORDER + 1];
 static page_frame_t* frame_metadata;
 
 // split a higher order block in 2
-uintptr_t _split_down(uint8_t req_order, uint8_t curr_order){
+uintptr_t _split_down(u8 req_order, u8 curr_order){
     // get the page frame number in the larger array
     page_frame_t* og_frame = list_entry(buddy_lists[curr_order].next, page_frame_t, list);
     if(req_order == curr_order){
         // placeholder
         return (uintptr_t) &og_frame->list;
     }
-    uint32_t pfn = og_frame - frame_metadata;
-    uint32_t buddy_pfn = pfn + (1UL << (curr_order - 1));
+    u32 pfn = og_frame - frame_metadata;
+    u32 buddy_pfn = pfn + (1UL << (curr_order - 1));
     DEBUG("PFN: %d\n", pfn);
     DEBUG("Buddy PFN: %d\n", buddy_pfn);
 
@@ -35,7 +35,7 @@ uintptr_t _split_down(uint8_t req_order, uint8_t curr_order){
 }
 
 
-uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
+uintptr_t _alloc_and_return(list_head_t* head, u32 req_order){
     // get the correctly sized frame from the buddy list
     page_frame_t* block = list_entry(buddy_lists[req_order].next, page_frame_t, list);
 
@@ -49,7 +49,7 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
     block->flags.bits.state = PAGE_BUDDY;
 
     // convert the relative coordinate of the block within the frame metadata to a physical page address
-    uint64_t pfn = block - frame_metadata;
+    u64 pfn = block - frame_metadata;
 
 
     // mark the following pages as tail pages and define their offset from the head pfn
@@ -104,7 +104,7 @@ void buddy_free(void* page){
     // then add the new block to the higher order buddy list
 
     // get the frame from the page address
-    uint64_t pfn = va_to_pa(page) >> 12;
+    u64 pfn = va_to_pa(page) >> 12;
     page_frame_t* frame = &frame_metadata[pfn];
 
     // step 1: mark the frame as free
@@ -128,12 +128,12 @@ void buddy_free(void* page){
  * @param bytes     Number of bytes to allocate 
  * @return          Address of the header page   
  */
-uint64_t buddy_alloc(uint64_t bytes){
+u64 buddy_alloc(u64 bytes){
     // round bytes up to the nearest page granule
-    uint32_t n_pages = (bytes + 4095) >> 12;  // For 4 KiB pages
+    u32 n_pages = (bytes + 4095) >> 12;  // For 4 KiB pages
 
     // convert number of pages into minimum order
-    uint8_t requested_order = 0;
+    u8 requested_order = 0;
     while ((1U << requested_order) < n_pages) requested_order++;
 
     if(!list_empty(&buddy_lists[requested_order])) return _alloc_and_return(&buddy_lists[requested_order], requested_order);
@@ -153,14 +153,14 @@ uint64_t buddy_alloc(uint64_t bytes){
  * @brief Allocates and zeroes a single page for a page table   
  * @return          Address of the page      
  */
-uint64_t buddy_alloc_pt(){
+u64 buddy_alloc_pt(){
     uintptr_t pt = buddy_alloc(PAGE_SIZE);
     memset((void*) pt, 0, PAGE_SIZE);
     return pt;
 }
 
 void set_page_owner(void* page_addr, page_state new_owner){
-    uint64_t pfn = va_to_pa(page_addr) >> 12;
+    u64 pfn = va_to_pa(page_addr) >> 12;
 
     if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
         // if it's a tail page, get the head page first
@@ -172,7 +172,7 @@ void set_page_owner(void* page_addr, page_state new_owner){
 }
 
 page_state get_page_owner(void* page_addr){
-    uint64_t pfn = va_to_pa(page_addr) >> 12;
+    u64 pfn = va_to_pa(page_addr) >> 12;
 
     if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
         // if it's a tail page, get the head page first
@@ -184,7 +184,7 @@ page_state get_page_owner(void* page_addr){
 }
 
 void* head_from_page(void* page_addr){
-    uint64_t pfn = va_to_pa(page_addr) >> 12;
+    u64 pfn = va_to_pa(page_addr) >> 12;
 
     page_frame_t* pf = &frame_metadata[pfn];
 
@@ -203,9 +203,9 @@ void* head_from_page(void* page_addr){
     return (void*) pa_to_va(((pfn - offset_from_head) << 12));
 }
 
-static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t available_pages){
+static void _initialize_buddy_allocator(u64 start_page_addr, u64 available_pages){
     DEBUG("Initializing buddy allocator for 0x%x available pages...\n", available_pages)
-    uint64_t curr_pfn = start_page_addr >> 12;
+    u64 curr_pfn = start_page_addr >> 12;
     page_frame_flags_t base_flags = {
         .bits.state = PAGE_FREE,
         .bits.flags = PAGE_BUDDY_HEAD
@@ -221,26 +221,26 @@ static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t avail
     }
 }
 
-uint8_t get_block_order(uint64_t addr){
+u8 get_block_order(u64 addr){
     if(addr & 0xFFF){
         return -1;
     }
 
-    uint64_t pfn = addr >> 12;
+    u64 pfn = addr >> 12;
     return frame_metadata[pfn].order;
 }
 
-uint64_t initialize_page_frame_array(){
+u64 initialize_page_frame_array(){
     for(int i = 0; i <= MAX_ORDER; i++) INIT_LIST_HEAD(&buddy_lists[i]);
     frame_metadata = (page_frame_t*) (page_frame_array_start());
-    uint64_t reserved_memory = (uint64_t) va_to_pa(static_page_region_end());
-    uint64_t reserved_pages = (reserved_memory + 0xFFF) >> 12;
+    u64 reserved_memory = (u64) va_to_pa(static_page_region_end());
+    u64 reserved_pages = (reserved_memory + 0xFFF) >> 12;
 
     // this is now the physical address
-    uint64_t start_page_addr = (reserved_memory + 0xFFF) & (~0xFFF);
+    u64 start_page_addr = (reserved_memory + 0xFFF) & (~0xFFF);
 
     // stay in the lower 1 GiB for now
-    uint64_t available_pages = (1ULL << 18) - reserved_pages;
+    u64 available_pages = (1ULL << 18) - reserved_pages;
 
     // zero out the page frame metadata (which internally sets the state to free and )
     // for 1 GiB of RAM, there are 2^18 pages

@@ -187,7 +187,7 @@ static void emit_string(char* s){
 }
 
 static int expand(char* s, va_list* args){
-    uint32_t consumed_chars = 1;
+    u32 consumed_chars = 1;
     switch(*s){
         case 'd':
             parse_and_emit_int(va_arg(*args, int)); break;

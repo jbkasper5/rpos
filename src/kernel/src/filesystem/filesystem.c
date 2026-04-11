@@ -41,11 +41,12 @@ static ext4_inode* resolve_path(const char* pathname){
     kfree(buf);
 }
 
-uint8_t check_vfs(char* path){
-    return trie_get(device_trie, path);
+u8 check_vfs(char* path){
+    // return trie_get(device_trie, path);
+    return FALSE;
 }
 
-void* open(const char* pathname, uint32_t flags){
+void* open(const char* pathname, u32 flags){
     INFO("Opening path '%s'\n", pathname);
     ext4_inode* inode = resolve_path(pathname);
 
@@ -91,13 +92,13 @@ int close(file_t* file){
 }
 
 
-static uint32_t read_file_block(file_t* file, void* buf, uint64_t count, uint32_t blockno){
-    uint32_t block_offset = file->pos % 4096;
-    uint32_t bytes_to_read = MIN(count, 4096 - block_offset);
+static u32 read_file_block(file_t* file, void* buf, u64 count, u32 blockno){
+    u32 block_offset = file->pos % 4096;
+    u32 bytes_to_read = MIN(count, 4096 - block_offset);
 
     // if the block is empty, just fill it with 0s
     if(!blockno){
-        memset((uint8_t*) buf, 0, bytes_to_read);
+        memset((u8*) buf, 0, bytes_to_read);
         file->pos += bytes_to_read;
         return bytes_to_read;
     }
@@ -106,10 +107,10 @@ static uint32_t read_file_block(file_t* file, void* buf, uint64_t count, uint32_
     read_block(rootfs.block_buf, blockno);
 
     // advance the pointer to the offset in the block
-    uint8_t* ptr = UNSCALED_POINTER_ADD(rootfs.block_buf->data, block_offset);
+    u8* ptr = UNSCALED_POINTER_ADD(rootfs.block_buf->data, block_offset);
 
     // copy the data from the block into the buffer
-    memcpy((uint8_t*) buf, ptr, bytes_to_read);
+    memcpy((u8*) buf, ptr, bytes_to_read);
 
     // advance the file position 
     file->pos += bytes_to_read;
@@ -119,12 +120,12 @@ static uint32_t read_file_block(file_t* file, void* buf, uint64_t count, uint32_
 }
 
 
-static uint64_t read_direct(file_t* file, void* buf, uint64_t count){
-    uint32_t block_no = file->pos / 4096;
-    uint32_t block_offset = file->pos % 4096;
+static u64 read_direct(file_t* file, void* buf, u64 count){
+    u32 block_no = file->pos / 4096;
+    u32 block_offset = file->pos % 4096;
 
-    uint64_t bytes_read = 0;
-    uint64_t bytes_to_read = count;
+    u64 bytes_read = 0;
+    u64 bytes_to_read = count;
     for(int i = block_no; i < 15; i++){
         void* buf_advanced = UNSCALED_POINTER_ADD(buf, bytes_read);
         bytes_read += read_file_block(file, buf_advanced, count - bytes_read, file->inode->i_block[i]);
@@ -139,19 +140,19 @@ static uint64_t read_direct(file_t* file, void* buf, uint64_t count){
     return bytes_read;
 }
 
-static uint64_t read_single_indirect(file_t* file, void* buf, uint64_t count, uint64_t offset){
+static u64 read_single_indirect(file_t* file, void* buf, u64 count, u64 offset){
     // get the indirect block index from the file pointer
-    uint64_t single_indirect_blockno = file->inode->i_block[12];
+    u64 single_indirect_blockno = file->inode->i_block[12];
 
     // load in the list of direct blocks
-    uint32_t* blocks = (uint32_t*) kmalloc(sizeof(ext4_block));
+    u32* blocks = (u32*) kmalloc(sizeof(ext4_block));
     read_block(blocks, single_indirect_blockno);
 
     // get the proper start direct block
-    uint32_t new_blockno = blocks[offset];
+    u32 new_blockno = blocks[offset];
 
 
-    uint64_t bytes_read = 0;
+    u64 bytes_read = 0;
     while(bytes_read < count){
         
         // auto-advances file->pos
@@ -173,28 +174,28 @@ static uint64_t read_single_indirect(file_t* file, void* buf, uint64_t count, ui
     return bytes_read;
 }
 
-static uint64_t read_double_indirect(file_t* file, void* buf, uint64_t count, uint64_t offset){
-    uint64_t double_indirect_blockno = file->inode->i_block[13];
-    uint32_t* blocks = (uint32_t) rootfs.block_buf;
+static u64 read_double_indirect(file_t* file, void* buf, u64 count, u64 offset){
+    u64 double_indirect_blockno = file->inode->i_block[13];
+    u32* blocks = (u32) rootfs.block_buf;
     read_block(blocks, double_indirect_blockno);
 }
 
-static uint64_t read_triple_indirect(file_t* file, void* buf, uint64_t count, uint64_t offset){
+static u64 read_triple_indirect(file_t* file, void* buf, u64 count, u64 offset){
     
 }
 
 
 
-uint64_t read(file_t* file, void* buf, uint64_t count){
+u64 read(file_t* file, void* buf, u64 count){
     if(!file || !buf){
         return -1;
     }
 
-    uint64_t entries_per_block = (1 << 10);
-    uint64_t entries_per_double_indirect = entries_per_block * entries_per_block;
-    uint64_t entries_per_triple_indirect = entries_per_double_indirect* entries_per_block;
+    u64 entries_per_block = (1 << 10);
+    u64 entries_per_double_indirect = entries_per_block * entries_per_block;
+    u64 entries_per_triple_indirect = entries_per_double_indirect* entries_per_block;
 
-    uint32_t blockno = file->pos / (1 << 12);
+    u32 blockno = file->pos / (1 << 12);
     if (blockno < 12) {
         return read_direct(file, buf, count);
     }
@@ -213,7 +214,7 @@ uint64_t read(file_t* file, void* buf, uint64_t count){
 }
 
 
-int seek(file_t* file, uint64_t offset, int whence){
+int seek(file_t* file, u64 offset, int whence){
     if(whence == SEEK_SET){
         file->pos = offset;
     }else if(whence == SEEK_CUR){

@@ -59,7 +59,7 @@ static size_t gc_descriptor_size;
 static ext4_group_desc_t* group_descriptor_table;
 
 static void print_dir(ext4_dir_entry* dir){
-    uint32_t offset = 0;
+    u32 offset = 0;
     while (offset < 4096) {
         ext4_dir_entry *entry = (char*)dir + offset;
 
@@ -89,17 +89,17 @@ static void print_dir(ext4_dir_entry* dir){
 }
 
 static size_t inode_to_sector(size_t inode_num, size_t* offset){
-    uint32_t group = (inode_num - 1) / inodes_per_group;
-    uint32_t index = (inode_num - 1) % inodes_per_group;
+    u32 group = (inode_num - 1) / inodes_per_group;
+    u32 index = (inode_num - 1) % inodes_per_group;
 
-    uint64_t inode_offset = index * inode_size;
-    uint64_t inode_block_offset = inode_offset / block_size;
-    uint64_t inode_offset_in_block = inode_offset % block_size;
+    u64 inode_offset = index * inode_size;
+    u64 inode_block_offset = inode_offset / block_size;
+    u64 inode_offset_in_block = inode_offset % block_size;
 
     *offset = inode_offset_in_block;
 
     ext4_group_desc_t* ptr = group_descriptor_table + group;
-    uint32_t inode_table_block = ptr->bg_inode_table_lo;
+    u32 inode_table_block = ptr->bg_inode_table_lo;
     size_t inode_sector = FS_START_SECTOR + ((inode_table_block + inode_block_offset) * 8);
 
     return inode_sector;
@@ -109,8 +109,8 @@ static size_t inode_to_sector(size_t inode_num, size_t* offset){
     // ext4_inode* inode = (ext4_inode*) UNSCALED_POINTER_ADD(block_buf, inode_offset_in_block);
 
     // // ignore for now -> but do necessary inode iblock parsing
-    // uint32_t dirblock = inode->i_block[0];
-    // uint32_t dirsector = FS_START_SECTOR + dirblock * 8;
+    // u32 dirblock = inode->i_block[0];
+    // u32 dirsector = FS_START_SECTOR + dirblock * 8;
 }   
 
 
@@ -120,11 +120,11 @@ static size_t inode_to_sector(size_t inode_num, size_t* offset){
  */
 static size_t read_superblock(){
     // each block is 8 sectors, so this should be block 1
-    uint64_t root_block = rootfs.root_inode[1].i_block[0];
-    uint64_t root_dir_start_sector = (FS_START_SECTOR) + (root_block * 8);
+    u64 root_block = rootfs.root_inode[1].i_block[0];
+    u64 root_dir_start_sector = (FS_START_SECTOR) + (root_block * 8);
 
     emmc_seek_sector(root_dir_start_sector);
-    emmc_read((uint8_t*)rootfs.block_buf, sizeof(ext4_block));
+    emmc_read((u8*)rootfs.block_buf, sizeof(ext4_block));
 
     ext4_dir_entry* dir = (ext4_dir_entry*) rootfs.block_buf;
 
@@ -146,8 +146,8 @@ size_t read_dir(size_t sector_num){
 
     ext4_inode* inode = (ext4_inode*) UNSCALED_POINTER_ADD(rootfs.block_buf, offset);
 
-    uint32_t dirblock = inode->i_block[0];
-    uint32_t dirsector = FS_START_SECTOR + dirblock * 8;
+    u32 dirblock = inode->i_block[0];
+    u32 dirsector = FS_START_SECTOR + dirblock * 8;
 
     emmc_seek_sector(dirsector);
     emmc_read(rootfs.block_buf, sizeof(ext4_block));
@@ -158,13 +158,13 @@ size_t read_dir(size_t sector_num){
 }
 
 
-void read_block(void* buf, uint32_t block_num){
-    uint64_t block_start_sector = FS_START_SECTOR + (block_num * 8);
+void read_block(void* buf, u32 block_num){
+    u64 block_start_sector = FS_START_SECTOR + (block_num * 8);
     emmc_seek_sector(block_start_sector);
-    emmc_read((uint8_t*)buf, sizeof(ext4_block));
+    emmc_read((u8*)buf, sizeof(ext4_block));
 }
 
-void read_inode(void* buf, uint32_t inode_num){
+void read_inode(void* buf, u32 inode_num){
     size_t offset;
     size_t inode_sector = inode_to_sector(inode_num, &offset);
 
@@ -176,8 +176,8 @@ void read_inode(void* buf, uint32_t inode_num){
     memcpy(buf, inode, inode_size);
 }
 
-static uint64_t inode_from_directory(ext4_dir_entry* dir, const char* name){
-    uint32_t offset = 0;
+static u64 inode_from_directory(ext4_dir_entry* dir, const char* name){
+    u32 offset = 0;
     while (offset < 4096) {
         ext4_dir_entry *entry = (char*)dir + offset;
 
@@ -217,9 +217,9 @@ ext4_inode* lookup(ext4_inode* dirnode, char* name){
     INFO("Looking up '%s'...\n", name);
 
     for(int i = 0; i < 16; i++){
-        uint64_t block = dirnode->i_block[i];
+        u64 block = dirnode->i_block[i];
         read_block(rootfs.block_buf, block);
-        uint64_t inode_num = inode_from_directory((ext4_dir_entry*)rootfs.block_buf, name);
+        u64 inode_num = inode_from_directory((ext4_dir_entry*)rootfs.block_buf, name);
         if(inode_num != NULL){
             INFO("Found inode number: %d\n", inode_num);
             ext4_inode* buf = (ext4_inode*) kmalloc(inode_size);
@@ -236,7 +236,7 @@ ext4_inode* lookup(ext4_inode* dirnode, char* name){
 }
 
 void filesystem_init(){
-    uint64_t test = (uint64_t) kmalloc(sizeof(ext4_block));
+    u64 test = (u64) kmalloc(sizeof(ext4_block));
     rootfs.block_buf = (ext4_block*) test;
     rootfs.superblock = (ext_superblock*) kmalloc(sizeof(sector) * 2);
     rootfs.root_inode = (ext4_inode*) kmalloc(inode_size);
@@ -261,13 +261,13 @@ void filesystem_init(){
     INFO("INODES PER BLOCK: %d\n", block_size / inode_size);
 
     emmc_seek_sector(GROUP_DESC_SECTOR);
-    emmc_read((uint8_t*)group_descriptor_table, sizeof(ext4_block) * 8);
+    emmc_read((u8*)group_descriptor_table, sizeof(ext4_block) * 8);
 
     // 8 sectors per block
-    uint64_t inode_start_sector = (FS_START_SECTOR) + (group_descriptor_table->bg_inode_table_lo * 8);
+    u64 inode_start_sector = (FS_START_SECTOR) + (group_descriptor_table->bg_inode_table_lo * 8);
 
     emmc_seek_sector(inode_start_sector);
-    emmc_read((uint8_t*)rootfs.block_buf, sizeof(ext4_block));
+    emmc_read((u8*)rootfs.block_buf, sizeof(ext4_block));
     memcpy(rootfs.root_inode, UNSCALED_POINTER_ADD(rootfs.block_buf, inode_size), inode_size);
 }
 /*

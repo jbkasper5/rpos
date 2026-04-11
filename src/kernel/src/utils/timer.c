@@ -5,11 +5,11 @@
 #include "system/scheduler.h"
 #include "utils/timer.h"
 
-const uint32_t interval_1 = CLOCKHZ;
-uint32_t curr_val_1 = 0;
+const u32 interval_1 = CLOCKHZ;
+u32 curr_val_1 = 0;
 
-const uint32_t interval_3 = CLOCKHZ / 4;
-uint32_t curr_val_3 = 0;
+const u32 interval_3 = CLOCKHZ / 4;
+u32 curr_val_3 = 0;
 
 pqnode_t heap_storage[MAX_PROCESSES];
 pq_t sleep_timer_queue = {
@@ -55,7 +55,7 @@ void handle_virtual_timer(){
     // element is the integer proclist index that finished the timer request
     pqnode_t node = pq_pop(&sleep_timer_queue);
 
-    reschedule((uint64_t) node.element);
+    reschedule((u64) node.element);
 
     if(sleep_timer_queue.items){
         DEBUG("Items remaining in queue: %d\n", sleep_timer_queue.items);
@@ -68,26 +68,26 @@ void handle_virtual_timer(){
     }
 }
 
-uint64_t timer_get_ticks(){
-    uint32_t hi = REGS_TIMER->counter_hi;
-    uint32_t lo = REGS_TIMER->counter_lo;
+u64 timer_get_ticks(){
+    u32 hi = REGS_TIMER->counter_hi;
+    u32 lo = REGS_TIMER->counter_lo;
 
     if(hi != REGS_TIMER->counter_hi){
         hi = REGS_TIMER->counter_hi;
         lo = REGS_TIMER->counter_lo;
     }
 
-    return ((uint64_t) hi << 32) | lo;
+    return ((u64) hi << 32) | lo;
 }
 
-void timer_sleep(uint32_t milliseconds){
-    uint64_t start = timer_get_ticks();
+void timer_sleep(u32 milliseconds){
+    u64 start = timer_get_ticks();
     while(timer_get_ticks() < start + (milliseconds * 1000));
 }
 
-void timer_nanosleep(uint64_t nanoseconds){
+void timer_nanosleep(u64 nanoseconds){
     // TODO: CLOCKHZ needs tuning, nanoseconds don't properly convert to seconds
-    uint64_t timer_request = ((nanoseconds * CLOCKHZ) / 1000000000ULL) + read_virtual_timer();
+    u64 timer_request = ((nanoseconds * CLOCKHZ) / 1000000000ULL) + read_virtual_timer();
 
     // priority = absolute timer request, element = active process
     pq_add(&sleep_timer_queue, timer_request, active_process);

@@ -16,10 +16,10 @@ typedef enum _GpioFunc {
     GFAlt5 = 2
 } GpioFunc_t;
 
-void gpio_pin_set_func(uint8_t pinNumber, GpioFunc_t func);
-void gpio_pin_enable(uint8_t pinNumber);
-void gpio_set_pin_high(uint8_t pinNumber);
-void gpio_set_pin_low(uint8_t pinNumber);
-void pulse(uint32_t pin, bool on);
+void gpio_pin_set_func(u8 pinNumber, GpioFunc_t func);
+void gpio_pin_enable(u8 pinNumber);
+void gpio_set_pin_high(u8 pinNumber);
+void gpio_set_pin_low(u8 pinNumber);
+void pulse(u32 pin, bool on);
 
 #endif

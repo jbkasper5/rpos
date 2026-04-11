@@ -8,7 +8,7 @@ void readelf(file_t* file){
     read(file, block, sizeof(ext4_block));
 
     elf64_header* header = (elf64_header*) block->data;
-    uint32_t magic = *(uint32_t*) header->e_ident;
+    u32 magic = *(u32*) header->e_ident;
 
     // check magic
     if(magic != ELF_MAGIC){
@@ -31,8 +31,8 @@ void readelf(file_t* file){
     INFO("  Section header entry count: %d\n", header->e_shnum);
     INFO("  Section header string table index: %d\n", header->e_shstrndx);
 
-    uint32_t section_header_count = header->e_shnum;
-    uint32_t string_table_section_header = header->e_shstrndx;
+    u32 section_header_count = header->e_shnum;
+    u32 string_table_section_header = header->e_shstrndx;
 
     // allocate process metadata
     // should now have a valid L0 page table and stack
@@ -51,14 +51,14 @@ void readelf(file_t* file){
         INFO("  Virtual address: 0x%x\n", program_header->p_vaddr);
 
         // if the section requires allocation, then allocate it
-        uint64_t flags = MAP_USER;
+        u64 flags = MAP_USER;
         if(program_header->p_flags & PF_R) flags |= MAP_READ;
         if(program_header->p_flags & PF_W) flags |= MAP_WRITE;
         if(program_header->p_flags & PF_X) flags |= MAP_EXEC;
 
-        uint16_t order = log2_pow2(program_header->p_memsz / 4096);
+        u16 order = log2_pow2(program_header->p_memsz / 4096);
 
-        uint64_t phys_block = buddy_alloc(program_header->p_memsz); // 3ffd7000
+        u64 phys_block = buddy_alloc(program_header->p_memsz); // 3ffd7000
 
         // map physical block into kernel memory so we can set up the process
         map(phys_block, va_to_pa(phys_block), order, MAP_KERNEL | MAP_WRITE, L0_TABLE);
@@ -66,7 +66,7 @@ void readelf(file_t* file){
         seek(file, program_header->p_offset, SEEK_SET);
         read(file, rootfs.block_buf, program_header->p_filesz);
 
-        uint64_t in_page_offset = program_header->p_vaddr % PAGE_SIZE;
+        u64 in_page_offset = program_header->p_vaddr % PAGE_SIZE;
 
         memcpy(UNSCALED_POINTER_ADD(phys_block, in_page_offset), rootfs.block_buf, program_header->p_filesz);
 
@@ -89,7 +89,7 @@ void readelf(file_t* file){
     read(file, string_table, (section_header + string_table_section_header)->sh_size);
 
     section_header = (elf64_section_header*) block;
-    uint8_t requires_allocation;
+    u8 requires_allocation;
     for(int i = 0; i < section_header_count; i++){
         requires_allocation = section_header->sh_flags & SHF_ALLOC ? TRUE : FALSE;
         INFO("Section header %d: \n", i + 1);

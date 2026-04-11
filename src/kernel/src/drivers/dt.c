@@ -4,15 +4,15 @@
 
 static trie* device_trie;
 
-static inline uint32_t swap_endianness_32(uint32_t data) {
+static inline u32 swap_endianness_32(u32 data) {
     return __builtin_bswap32(data);
 }
 
-static inline uint64_t swap_endianness_64(uint64_t data) {
+static inline u64 swap_endianness_64(u64 data) {
     return __builtin_bswap64(data);
 }
 
-static uint32_t* parse_property(fdt_header* header, uint32_t* property){
+static u32* parse_property(fdt_header* header, u32* property){
 
     fdt_property prop;
     memcpy(&prop, property, sizeof(fdt_property));
@@ -28,7 +28,7 @@ static uint32_t* parse_property(fdt_header* header, uint32_t* property){
     return UNSCALED_POINTER_ADD(property, skip);
 }
 
-static uint32_t* parse_node(fdt_header* header, uint32_t* ptr){
+static u32* parse_node(fdt_header* header, u32* ptr){
     char* nodename = (char*) ptr;
     INFO("Node: \e[34m%s\e[0m\n", nodename);
 
@@ -36,7 +36,7 @@ static uint32_t* parse_node(fdt_header* header, uint32_t* ptr){
     ptr = UNSCALED_POINTER_ADD(ptr, ALIGN_UP(strlen(nodename), 4));
 
     // aftter the name, we can start parsing the node
-    uint32_t val = swap_endianness_32(*ptr);
+    u32 val = swap_endianness_32(*ptr);
     while(val != FDT_END_NODE){
         if(val == FDT_BEGIN_NODE){
             ptr = parse_node(header, ptr + 1);
@@ -52,8 +52,8 @@ static uint32_t* parse_node(fdt_header* header, uint32_t* ptr){
 }
 
 static void parse_device_tree(fdt_header* header){
-    uint32_t* p = UNSCALED_POINTER_ADD(header, header->off_dt_struct);
-    uint32_t val = swap_endianness_32(*p);
+    u32* p = UNSCALED_POINTER_ADD(header, header->off_dt_struct);
+    u32 val = swap_endianness_32(*p);
     while(val != FDT_END){
         if(val == FDT_BEGIN_NODE){
             p = parse_node(header, p + 1);
@@ -65,7 +65,7 @@ static void parse_device_tree(fdt_header* header){
 }
 
 void device_tree_init(){
-    uint64_t tree = get_device_tree_start();
+    u64 tree = get_device_tree_start();
     INFO("Tree loaded at 0x%x\n", tree);
 
     device_trie = trie_init();

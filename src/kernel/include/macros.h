@@ -4,10 +4,15 @@
 #include <stdint.h>
 #include <stddef.h>
 
-typedef volatile uint32_t reg32_t;
-typedef volatile uint64_t reg64_t;
-typedef uint8_t bool;
-typedef uint16_t pid_t;
+typedef uint64_t u64;
+typedef uint32_t u32;
+typedef uint16_t u16;
+typedef uint8_t u8;
+
+typedef volatile u32 reg32_t;
+typedef volatile u64 reg64_t;
+typedef u8 bool;
+typedef u16 pid_t;
 
 #ifdef DEBUG
 #define DEBUG(...) kprintf("[\e[35mDEBUG\e[0m] "); kprintf(__VA_ARGS__);
@@ -59,7 +64,7 @@ typedef uint16_t pid_t;
 #define ALIGN_UP(addr, align)   (((addr) + ((align) - 1)) & ~((align) - 1))
 
 extern void panic();
-extern uint64_t pa_to_va(uint64_t pa);
-extern uint64_t va_to_pa(uint64_t va);
+extern u64 pa_to_va(u64 pa);
+extern u64 va_to_pa(u64 va);
 
 #endif

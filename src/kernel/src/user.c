@@ -6,10 +6,12 @@
 
 #include "macros.h"
 
-extern int syscall(uint64_t, ...);
+extern int syscall(u64, ...);
+static TEST_FN void process_command(char* cmd);
 
 #define SCREEN_SIZE_BYTES        (800 * 480 * 4)
 
+// Linux KVM
 TEST_FN void user(){
     syscall(SYS_WRITE, STDOUT, "Opening framebuffer device...\n");
 
@@ -19,10 +21,10 @@ TEST_FN void user(){
     syscall(SYS_IOCTL, fd, FBIOGET_VSCREENINFO, &vinfo);
 
     // address, length, prot, flags, fd, offset
-    // uint32_t* framebuffer = syscall(SYS_MMAP, NULL, SCREEN_SIZE_BYTES, PROT_READ | PROT_WRITE, 0, fd, 0);
+    // u32* framebuffer = syscall(SYS_MMAP, NULL, SCREEN_SIZE_BYTES, PROT_READ | PROT_WRITE, 0, fd, 0);
 
     // make the thing black
-    // for(uint32_t i = 0; i < SCREEN_SIZE_BYTES; i++) framebuffer[i] = 0xFF000000;
+    // for(u32 i = 0; i < SCREEN_SIZE_BYTES; i++) framebuffer[i] = 0xFF000000;
     
     char buf[256];
     char c;
@@ -32,17 +34,35 @@ TEST_FN void user(){
         c = syscall(SYS_GETC);
         if(c == '\n' || c == '\r'){
             *cp = '\n';
-            cp++;
-            *cp = '\0';
+            *++cp = '\0';
             cp = buf;
-            break;
+            process_command(buf);
         }else{
-            *cp = c;
-            cp++;
+            *cp++ = c;
         }
     }
 
-    syscall(SYS_WRITE, STDOUT, buf);
-
     syscall(SYS_EXIT_GROUP);
+}
+
+static TEST_FN void process_command(char* cmd){
+    u64 pid = syscall(SYS_FORK);
+
+    char* cp = cmd;
+    while(*cp){
+        if(*cp == ' '){
+            cp++;
+            break;
+        }
+        cp++;
+    }
+
+    // child
+    if(pid == 0){
+        // cp naively points to the character after the first space, or a null terminator
+        syscall(SYS_EXECVE, cmd, cp);
+    }else{
+        // sys_waitpid
+        // syscall()
+    }
 }

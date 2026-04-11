@@ -11,36 +11,36 @@
 extern reglist_t* user_context_ptr;
 
 pcb_list_t proclist;
-uint64_t active_process = 0;
+u64 active_process = 0;
 
 void scheduler_init(){
     // create 2 active processes
     proclist.processes = 0;
 
     // idle process, for when no real user processes are available
-    // proclist.proclist[0].registers.pc = (uint64_t) &idle_proc;
-    // proclist.proclist[0].registers.sp = (uint64_t) (USTACK - (1 << 11) + 128);
+    // proclist.proclist[0].registers.pc = (u64) &idle_proc;
+    // proclist.proclist[0].registers.sp = (u64) (USTACK - (1 << 11) + 128);
     // proclist.proclist[0].registers.spsr = 0;
     // proclist.proclist[0].state = PROCESS_READY;
 
     // first user process program counter will point to the function do user things
     // proclist.processes++;
-    // proclist.proclist[1].registers.pc = (uint64_t) &do_user_things;
-    // proclist.proclist[1].registers.sp = (uint64_t) USTACK;
+    // proclist.proclist[1].registers.pc = (u64) &do_user_things;
+    // proclist.proclist[1].registers.sp = (u64) USTACK;
     // proclist.proclist[1].registers.spsr = 0;
     // proclist.proclist[1].state = PROCESS_READY;
 
     // // second user process will point to the other user function
     // proclist.processes++;
-    // proclist.proclist[2].registers.pc = (uint64_t) &do_user_things_2;
-    // proclist.proclist[2].registers.sp = (uint64_t) (USTACK - (1 << 11));
+    // proclist.proclist[2].registers.pc = (u64) &do_user_things_2;
+    // proclist.proclist[2].registers.sp = (u64) (USTACK - (1 << 11));
     // proclist.proclist[2].registers.spsr = 0;
     // proclist.proclist[2].state = PROCESS_READY;
 
     // third user process will lead to assembly for testing purposes
     // proclist.processes++;
-    // proclist.proclist[3].registers.pc = (uint64_t) &do_user_things_2;
-    // proclist.proclist[3].registers.sp = (uint64_t) (USTACK - (1 << 11));
+    // proclist.proclist[3].registers.pc = (u64) &do_user_things_2;
+    // proclist.proclist[3].registers.sp = (u64) (USTACK - (1 << 11));
     // proclist.proclist[3].registers.spsr = 0;
     // proclist.proclist[3].state = PROCESS_READY;
 }
@@ -110,8 +110,8 @@ void scheduler(reglist_t* reg_addr){
     prime_physical_timer();
 }
 
-static uint64_t get_current_daif() {
-    uint64_t daif;
+static u64 get_current_daif() {
+    u64 daif;
     asm volatile ("mrs %0, daif" : "=r" (daif));
     return daif;
 }
@@ -120,10 +120,10 @@ static uint64_t get_current_daif() {
 static void idle(){
     asm volatile("msr daifclr, #0xf");
 
-    uint64_t daif = get_current_daif();
+    u64 daif = get_current_daif();
 
-    uint64_t gicd_base = 0xFFFF8000FF841000;
-    uint32_t pending = *(uint32_t*)(gicd_base + 0x20C);
+    u64 gicd_base = 0xFFFF8000FF841000;
+    u32 pending = *(u32*)(gicd_base + 0x20C);
     
     while(TRUE){
         uart_putc(uart_getc());
@@ -135,10 +135,10 @@ void start_scheduler(){
     active_process = 0;
     proclist.proclist[active_process].state = PROCESS_RUNNING;
 
-    uint64_t sp = proclist.proclist[active_process].registers.sp;
-    uint64_t pc = proclist.proclist[active_process].registers.pc;
-    uint64_t spsr = proclist.proclist[active_process].registers.spsr;
-    uint64_t ttbr = proclist.proclist[active_process].registers.ttbr;
+    u64 sp = proclist.proclist[active_process].registers.sp;
+    u64 pc = proclist.proclist[active_process].registers.pc;
+    u64 spsr = proclist.proclist[active_process].registers.spsr;
+    u64 ttbr = proclist.proclist[active_process].registers.ttbr;
     drop_to_user(sp, pc, spsr, ttbr);
 }
 
@@ -155,7 +155,7 @@ void deschedule(){
     scheduler(user_context_ptr);
 }
 
-void reschedule(uint64_t procnum){
+void reschedule(u64 procnum){
     DEBUG("Rescheduling %d\n", procnum);
     proclist.proclist[procnum].state = PROCESS_READY;
     // scheduler(user_context_ptr);
@@ -170,22 +170,24 @@ void add_to_schedule(pcb_t* proc){
 }
 
 // placeholder for now
-void reap(uint64_t procnum){
+void reap(u64 procnum){
     // deschedule();
     reschedule(procnum);
 }
 
+extern TEST_FN void user();
+void* user_ptr = (void*)user;
 
 void add_test_section_to_scheduler(){
     pcb_t* proc = procalloc();
-    uint64_t test_phys = get_phys_test_region();
-    uint64_t test_virt = get_virt_test_region();
-    uint64_t test_size = get_test_size();
-    uint16_t order = log2_pow2(test_size / 4096);
+    u64 test_phys = get_phys_test_region();
+    u64 test_virt = get_virt_test_region();
+    u64 test_size = get_test_size();
+    u16 order = log2_pow2(test_size / 4096);
 
     map(test_virt, test_phys, order, MAP_USER | MAP_READ | MAP_EXEC, proc->registers.ttbr);
 
-    proc->registers.pc = test_virt;
+    proc->registers.pc = user_ptr;
 
     add_to_schedule(proc);
 }

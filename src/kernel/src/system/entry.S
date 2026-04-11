@@ -226,6 +226,9 @@ handle_el0_svc:
     // the syscall handler
     mov x6, x8
 
+    // sp contains the register file for the user process
+    mov x7, sp
+
     // handle the system call
     bl handle_syscall
 

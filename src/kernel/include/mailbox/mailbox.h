@@ -7,9 +7,9 @@
 #include "io/kprintf.h"
 
 #define MAILBOX_BASE   (PBASE + 0xB880)
-#define MAILBOX_READ   ((volatile uint32_t *)(MAILBOX_BASE + 0x00))
-#define MAILBOX_STATUS ((volatile uint32_t *)(MAILBOX_BASE + 0x18))
-#define MAILBOX_WRITE  ((volatile uint32_t *)(MAILBOX_BASE + 0x20))
+#define MAILBOX_READ   ((volatile u32 *)(MAILBOX_BASE + 0x00))
+#define MAILBOX_STATUS ((volatile u32 *)(MAILBOX_BASE + 0x18))
+#define MAILBOX_WRITE  ((volatile u32 *)(MAILBOX_BASE + 0x20))
 
 #define MAILBOX_FULL   0x80000000
 #define MAILBOX_EMPTY  0x40000000
@@ -42,32 +42,32 @@ typedef struct {
 } mailbox_regs_t;
 
 typedef struct {
-    uint32_t id;
-    uint32_t buffer_size;
-    uint32_t value_length;
+    u32 id;
+    u32 buffer_size;
+    u32 value_length;
 } mailbox_tag;
 
 typedef struct {
-    uint32_t size;
+    u32 size;
     void *tag;
 } mailbox_command;
 
 typedef struct {
     mailbox_tag tag;
-    uint32_t id;
-    uint32_t value;
+    u32 id;
+    u32 value;
 } mailbox_generic;
 
 typedef struct {
     mailbox_tag tag;
-    uint32_t id;
-    uint32_t state;
+    u32 id;
+    u32 state;
 } mailbox_power;
 
 typedef struct {
     mailbox_tag tag;
-    uint32_t id;
-    uint32_t rate;
+    u32 id;
+    u32 rate;
 } mailbox_clock;
 
 typedef enum {
@@ -210,11 +210,12 @@ enum rpi_firmware_property_tag {
 	RPI_FIRMWARE_GET_DMA_CHANNELS =                       0x00060001,
 };
 
-uint32_t mailbox_clock_rate(clock_type ct);
-bool mailbox_generic_command(uint32_t tag_id, uint32_t id, uint32_t *value);
-bool mailbox_power_check(uint32_t type);
-bool mailbox_process(mailbox_tag *tag, uint32_t tag_size);
-void mailbox_write(uint8_t channel, uint64_t data);
-uint32_t mailbox_read(uint8_t channel);
+u32 mailbox_clock_rate(clock_type ct);
+bool mailbox_generic_command(u32 tag_id, u32 id, u32 *value);
+bool mailbox_power_check(u32 type);
+bool mailbox_process(mailbox_tag *tag, u32 tag_size);
+void mailbox_write(u8 channel, u64 data);
+u32 mailbox_read(u8 channel);
+bool mailbox_pcie_usb_power_on();
 
 #endif

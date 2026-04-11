@@ -1,6 +1,6 @@
 #include "utils/utils.h"
 
-int log2_pow2(uint64_t num){
+int log2_pow2(u64 num){
     int ret = 0;
     if(!num) return ret;
     while(num >> ret) ret++;
