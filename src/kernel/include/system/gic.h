@@ -11,6 +11,7 @@
 #define GICD_CTRLR      ((volatile u32*)(GICD_BASE + 0x000))
 #define GICD_IGROUPR    ((volatile u32*)(GICD_BASE + 0x080))
 #define GICD_ISENABLER  ((volatile u32*)(GICD_BASE + 0x100))
+#define GICD_ISPENDR    ((volatile u32*)(GICD_BASE + 0x200))
 #define GICD_IPRIORITYR ((volatile u8*)(GICD_BASE + 0x400))    
 #define GICD_ITARGETSR  ((volatile u8*)(GICD_BASE + 0x800))
 

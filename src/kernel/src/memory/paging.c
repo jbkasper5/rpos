@@ -20,6 +20,8 @@ uintptr_t _split_down(u8 req_order, u8 curr_order){
     }
     u32 pfn = og_frame - frame_metadata;
     u32 buddy_pfn = pfn + (1UL << (curr_order - 1));
+
+    // BUG: buddy PFN metadata never allocated, needs fix later
     DEBUG("PFN: %d\n", pfn);
     DEBUG("Buddy PFN: %d\n", buddy_pfn);
 
@@ -48,15 +50,18 @@ uintptr_t _alloc_and_return(list_head_t* head, u32 req_order){
     // declare ownership of the block to the buddy allocator
     block->flags.bits.state = PAGE_BUDDY;
 
+    // make it a head page
+    block->flags.bits.flags |= PAGE_BUDDY_HEAD;
+
     // convert the relative coordinate of the block within the frame metadata to a physical page address
     u64 pfn = block - frame_metadata;
 
 
-    // mark the following pages as tail pages and define their offset from the head pfn
+    // mark the following pages as tail pages and define what the head PFN is
     for(int i = 1; i < (1U << req_order); i++){
         frame_metadata[pfn + i].flags.bits.flags = PAGE_BUDDY_TAIL;
         frame_metadata[pfn + i].refcount = 1;
-        frame_metadata[pfn + i].order = i;
+        frame_metadata[pfn + i].order = pfn;
     }
 
     // return the pointer to the start of the allocated page
@@ -176,7 +181,7 @@ page_state get_page_owner(void* page_addr){
 
     if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
         // if it's a tail page, get the head page first
-        pfn -= frame_metadata[pfn].order;
+        pfn = frame_metadata[pfn].order;
     }
 
     page_frame_t* pf = &frame_metadata[pfn];
@@ -188,19 +193,18 @@ void* head_from_page(void* page_addr){
 
     page_frame_t* pf = &frame_metadata[pfn];
 
-    // if we don't belong to the buddy or the slab, it wasn't allocated so we can't compute the head
-    if (pf->flags.bits.state != PAGE_BUDDY && pf->flags.bits.state != PAGE_SLAB) {
+    // if we're a tail page, we can find the head through the order property
+    if(pf->flags.bits.flags = PAGE_BUDDY_TAIL){
+        pfn = pf->order;
+        pf = &frame_metadata[pfn];
+    }
+
+    // if the page is a head, return it
+    if(pf->flags.bits.flags | PAGE_BUDDY_HEAD){
+        return pa_to_va(pfn << 12);
+    }else{
         return NULL;
     }
-
-    // if the page is already a head, return it
-    if(pf->flags.bits.flags & PAGE_BUDDY_HEAD){
-        return page_addr;
-    }
-
-    // otherwise, use the order to compute the head address
-    size_t offset_from_head = pf->order;
-    return (void*) pa_to_va(((pfn - offset_from_head) << 12));
 }
 
 static void _initialize_buddy_allocator(u64 start_page_addr, u64 available_pages){

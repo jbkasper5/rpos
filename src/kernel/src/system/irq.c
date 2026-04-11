@@ -62,7 +62,7 @@ void handle_irq(u64 reg_addr, u8 el){
             irq &= ~AUX_IRQ;
 
             while((REGS_AUX->mu_iir & 4) == 4){
-                DEBUG("UART Recv: ");
+                DEBUG("UART Recv BCM: ");
                 uart_putc(uart_getc());
                 DEBUG("\n");
             }
@@ -104,7 +104,7 @@ void handle_irq(u64 reg_addr, u8 el){
 			uart_putc(uart_getc());
 			DEBUG("\n");
 		}else if(gic_irq == 89){
-			DEBUG("UART Recv: ");
+			DEBUG("Mini UART Recv: ");
 			uart_putc(uart_getc());
 			DEBUG("\n");
 		}

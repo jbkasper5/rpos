@@ -12,9 +12,9 @@
 #define MAX_OPEN_FILES 32
 
 enum PROC_STATE{
-    PROCESS_RUNNING,
-    PROCESS_READY,
     PROCESS_BLOCKED,
+    PROCESS_READY,
+    PROCESS_RUNNING,
 };
 
 typedef struct reglist_s{

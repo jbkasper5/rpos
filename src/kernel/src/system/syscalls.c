@@ -15,13 +15,13 @@ u64 handle_syscall(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 syscall_n
     reglist_t* user_regs = (reglist_t*) regfile;
 
     if(syscall_table[syscall_number]){
-        return syscall_table[syscall_number](x0, x1, x2, x3, x4, x5);
+        return syscall_table[syscall_number](x0, x1, x2, x3, x4, x5, regfile);
     }else{
         return -1;
     }
 }
 
-u64 sys_write(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3){
+u64 sys_write(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3, u64 regfile){
     // write a buffer to a file descriptor
     // get fd
     if(proclist.proclist[active_process].fds[fd].file_ops->write){
@@ -30,21 +30,21 @@ u64 sys_write(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3)
     return 0;
 }
 
-u64 sys_read(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3){
+u64 sys_read(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3, u64 regfile){
     return 0;
 }
 
-u64 sys_nanosleep(u64 ns, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5){
+u64 sys_nanosleep(u64 ns, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
     // slep
     timer_nanosleep(ns);
     return 0;
 }
 
-u64 sys_clock_gettime(u64 clock, u64 kernel_timespec, u64 unused2, u64 unused3, u64 unused4, u64 unused5){
+u64 sys_clock_gettime(u64 clock, u64 kernel_timespec, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
     return 0;
 }
 
-u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset){
+u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset, u64 regfile){
     // TODO: look up the requested memory via the FD
     // TODO: actually use the addr instead of ignoring it like a bum
 
@@ -54,12 +54,12 @@ u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset){
     return 0;
 }
 
-u64 sys_munmap(u64 addr, u64 len, u64 unused1, u64 unused2, u64 unused3, u64 unused4){
+u64 sys_munmap(u64 addr, u64 len, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile){
     // unmap a chunk of memory starting from addr
     return 0;
 }
 
-u64 sys_execve(u64 path, u64 argv, u64 envp, u64 unused1, u64 unused2, u64 unused3){
+u64 sys_execve(u64 path, u64 argv, u64 envp, u64 unused1, u64 unused2, u64 unused3, u64 regfile){
     char* p = (char*) path;
     // read binary from path
     // load binary into program memory
@@ -69,29 +69,29 @@ u64 sys_execve(u64 path, u64 argv, u64 envp, u64 unused1, u64 unused2, u64 unuse
     return (u64) p;
 }
 
-u64 sys_pulse_led(u64 pin_num, u64 turn_on, u64 unused1, u64 unused2, u64 unused3, u64 unused4){
+u64 sys_pulse_led(u64 pin_num, u64 turn_on, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile){
     pulse(pin_num, !turn_on);
     return 0;
 }
 
-u64 sys_io_setup(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6){
+u64 sys_io_setup(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
     return 0;
 }
 
 
-u64 sys_exit_group(u64 status, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5){
+u64 sys_exit_group(u64 status, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
     INFO("Current running process number: %d\n", active_process);
     reap();
     return SYS_SUCCESS;
 }
 
-u64 sys_get_framebuffer(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6){
+u64 sys_get_framebuffer(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
     // return frame.fb;
     return 0;
 }
 
 
-u64 sys_open(u64 path, u64 flags, u64 unused3, u64 unused4, u64 unused5, u64 unused6){
+u64 sys_open(u64 path, u64 flags, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
     return SYS_ERROR;
     if(check_vfs((char*) path)){
         // file to open is virtual, likely looking for a device
@@ -102,7 +102,7 @@ u64 sys_open(u64 path, u64 flags, u64 unused3, u64 unused4, u64 unused5, u64 unu
     return SYS_ERROR;
 }
 
-u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64 unused1, u64 unused2, u64 unused3){
+u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64 unused1, u64 unused2, u64 unused3, u64 regfile){
     INFO("Handling IOCTL Request: fd=%d, cmd=0x%x, arg=0x%x\n", fd, cmd, arg);
     switch(cmd){
         case FBIOGET_VSCREENINFO: 
@@ -123,19 +123,19 @@ u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64 unused1, u64 unused2, u64 unused3){
 }
 
 
-u64 sys_getc(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6){
+u64 sys_getc(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
     char c = uart_getc();
     uart_putc(c);
     return c;
 }
 
 
-u64 sys_clone3(u64 cl_args, u64 size, u64 unused1, u64 unused2, u64 unused3, u64 unused4){
+u64 sys_clone3(u64 cl_args, u64 size, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile){
     return 0;
 }
 
 
-u64 sys_pipe2(u64 fd_rets, u64 flags, u64 unused1, u64 unused2, u64 unused3, u64 unused4){
+u64 sys_pipe2(u64 fd_rets, u64 flags, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile){
     // allocate a pipe buffer of 64KiB (16 pages)
     u64* pipe = buddy_alloc(16 << PAGE_SHIFT);
 
@@ -150,14 +150,26 @@ u64 sys_pipe2(u64 fd_rets, u64 flags, u64 unused1, u64 unused2, u64 unused3, u64
     return 0;
 }
 
-u64 sys_fork(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6){    
+u64 sys_fork(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){ 
+    reglist_t* regs = (reglist_t*) regfile;   
+
     // procalloc
     pcb_t* newproc = clone_active_proc();
 
-    add_to_schedule(newproc);
-
+    // copy over the current register file
+    memcpy(&newproc->registers, regs, sizeof(reglist_t));
 
     // set return value of the new process to be 0, to denote it as the child post-fork
     SET_PCB_REG_NUM(newproc, 0, 0);
-    return 1;
+
+    // add cloned process to the scheduler
+    add_to_schedule(newproc);
+
+    int pid = newproc->pid;
+
+    // free process buffer
+    kfree(newproc);
+
+    // return "fake"
+    return pid;
 }

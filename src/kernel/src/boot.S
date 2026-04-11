@@ -43,7 +43,7 @@ master:
    bl debug_init_lo
    #endif
 
-   # bl initialize_gic
+   bl initialize_gic
 
    // initialize kernel stack for when we enter the trap handler
    ldr x0, =__kstack_top
@@ -55,19 +55,7 @@ master:
    msr CPTR_EL3, x0
 
    // tell kernel to use SP_EL1 instead of SP_EL0
-   # msr SPSel, #1
-
-   // Enable GIC Distributor
-   ldr x0, =0xFF840000           // GICD base
-   mov w1, #1
-   str w1, [x0, #0x000]          // GICD_CTLR = 1
-
-   // Enable CPU Interface
-   ldr x0, =0xFF842000           // GICC base
-   mov w1, #1
-   str w1, [x0, #0x000]          // GICC_CTLR = 1
-   mov w1, #0xFF
-   str w1, [x0, #0x004]          // GICC_PMR = 0xFF (priority mask)
+   msr SPSel, #1
 
    // zero out reigsters
    msr SCTLR_EL2, xzr
@@ -93,8 +81,10 @@ el2_entry:
    mrs x0, HCR_EL2
    ORR x0, x0, #(1<<31) // RW=1 EL1 Execution state is AArch64.
    msr HCR_EL2, x0
-   mov x0, #0b00101 // DAIF=0000
-   msr SPSR_EL2, x0 // M[4:0]=00101 EL1h must match HCR_EL2.RW.
+
+   mov x0, #0x3c5 
+   msr SPSR_EL2, x0
+
    ldr x0, =map_high // very first job of EL1 is to set up the high map kernel
    msr ELR_EL2, x0
 

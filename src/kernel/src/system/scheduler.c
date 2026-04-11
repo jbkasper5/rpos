@@ -165,6 +165,7 @@ void reschedule(u64 procnum){
 void add_to_schedule(pcb_t* proc){
     proc->state = PROCESS_READY;
     proc->registers.spsr = 0x0;
+    proc->pid = proclist.processes;
     memcpy(&proclist.proclist[proclist.processes], proc, sizeof(pcb_t));
     proclist.processes++;
 }

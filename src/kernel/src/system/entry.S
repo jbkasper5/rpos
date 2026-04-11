@@ -238,9 +238,7 @@ handle_el0_svc:
     // restore registers and processor state
     kernel_exit
 
-    // allow IRQs again
-    msr daifclr, #0xf
-
+    // eret will handle the re-enabling of interrupts with the SPSR register
     eret
 
 
@@ -270,11 +268,8 @@ handle_el0_irq:
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     bl handle_irq
+    
     kernel_exit
-
-
-    // allow IRQs again
-    msr daifclr, #0xf
     
     eret
 

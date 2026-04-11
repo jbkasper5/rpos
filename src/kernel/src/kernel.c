@@ -33,18 +33,6 @@ void hardware_init(){
     INFO("Enabling system timers...\n");
     timer_init();
 
-    INFO("Enabling physical timer...\n");
-    physical_timer_enable();
-
-    INFO("Enabling virtual timer...\n");
-    virtual_timer_enable();
-
-    INFO("Priming physical timer...\n");
-    prime_physical_timer();
-
-    INFO("Enabling IRQ interrupts...\n");
-    irq_enable();
-
     INFO("Enabling system scheduler...\n");
     scheduler_init();
 
@@ -63,6 +51,18 @@ void hardware_init(){
     INFO("Initializing device drivers...\n");
     device_tree_init();
 
+    INFO("Enabling physical timer...\n");
+    physical_timer_enable();
+
+    INFO("Enabling virtual timer...\n");
+    virtual_timer_enable();
+
+    INFO("Priming physical timer...\n");
+    prime_physical_timer();
+
+    INFO("Enabling IRQ interrupts...\n");
+    irq_enable();
+
     INFO("Hardware initialization complete.\n\n");
 }
 
@@ -73,6 +73,8 @@ static u64 get_current_daif() {
     return daif;
 }
 
+
+#include "system/gic.h"
 
 int kernel_main(){
     
@@ -90,8 +92,6 @@ int kernel_main(){
     //     readelf(file);
     //     close(file);
     // }
-
-    
     
     // while(TRUE){
     //     uart_putc(uart_getc());

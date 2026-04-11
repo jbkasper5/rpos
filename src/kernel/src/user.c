@@ -30,17 +30,27 @@ TEST_FN void user(){
     char c;
     char* cp = buf;
 
-    while(TRUE){
-        c = syscall(SYS_GETC);
-        if(c == '\n' || c == '\r'){
-            *cp = '\n';
-            *++cp = '\0';
-            cp = buf;
-            process_command(buf);
-        }else{
-            *cp++ = c;
-        }
+    u64 pid = syscall(SYS_FORK);
+
+    if(pid){
+        syscall(SYS_WRITE, STDOUT, "PARENT\n");
+    }else{
+        syscall(SYS_WRITE, STDOUT, "CHILD\n");
     }
+
+    while(TRUE);
+
+    // while(TRUE){
+    //     c = syscall(SYS_GETC);
+    //     if(c == '\n' || c == '\r'){
+    //         *cp = '\n';
+    //         *++cp = '\0';
+    //         cp = buf;
+    //         process_command(buf);
+    //     }else{
+    //         *cp++ = c;
+    //     }
+    // }
 
     syscall(SYS_EXIT_GROUP);
 }
@@ -64,5 +74,6 @@ static TEST_FN void process_command(char* cmd){
     }else{
         // sys_waitpid
         // syscall()
+        return;
     }
 }
