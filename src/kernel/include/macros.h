@@ -43,7 +43,7 @@ typedef u16 pid_t;
 #define UNSCALED_POINTER_SUB(ptr, val)      ((void*)((char*)ptr - val))
 
 
-#define WFI()       __asm__("wfi");
+#define WFI()       asm volatile("wfi")
 #define PACKED      __attribute__((packed))
 #define BOOT_FN     __attribute__((section(".text.boot")))
 #define BOOT_DATA   __attribute__((section(".boot.data")))

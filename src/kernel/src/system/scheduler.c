@@ -8,41 +8,21 @@
 #include "memory/mm.h"
 #include "memory/mmap.h"
 
-extern reglist_t* user_context_ptr;
-
 pcb_list_t proclist;
 u64 active_process = 0;
 
+static void idle(){
+    asm volatile("msr daifclr, #0xf");
+    while(TRUE) WFI();
+}
+
+
 void scheduler_init(){
     // create 2 active processes
-    proclist.processes = 0;
+    proclist.processes = 1;
 
-    // idle process, for when no real user processes are available
-    // proclist.proclist[0].registers.pc = (u64) &idle_proc;
-    // proclist.proclist[0].registers.sp = (u64) (USTACK - (1 << 11) + 128);
-    // proclist.proclist[0].registers.spsr = 0;
-    // proclist.proclist[0].state = PROCESS_READY;
-
-    // first user process program counter will point to the function do user things
-    // proclist.processes++;
-    // proclist.proclist[1].registers.pc = (u64) &do_user_things;
-    // proclist.proclist[1].registers.sp = (u64) USTACK;
-    // proclist.proclist[1].registers.spsr = 0;
-    // proclist.proclist[1].state = PROCESS_READY;
-
-    // // second user process will point to the other user function
-    // proclist.processes++;
-    // proclist.proclist[2].registers.pc = (u64) &do_user_things_2;
-    // proclist.proclist[2].registers.sp = (u64) (USTACK - (1 << 11));
-    // proclist.proclist[2].registers.spsr = 0;
-    // proclist.proclist[2].state = PROCESS_READY;
-
-    // third user process will lead to assembly for testing purposes
-    // proclist.processes++;
-    // proclist.proclist[3].registers.pc = (u64) &do_user_things_2;
-    // proclist.proclist[3].registers.sp = (u64) (USTACK - (1 << 11));
-    // proclist.proclist[3].registers.spsr = 0;
-    // proclist.proclist[3].state = PROCESS_READY;
+    // process 0 is the idle proc
+    proclist.proclist[0].registers.pc = &idle;
 }
 
 void print_reg_file(reglist_t* regfile){
@@ -116,50 +96,32 @@ static u64 get_current_daif() {
     return daif;
 }
 
-
-static void idle(){
-    asm volatile("msr daifclr, #0xf");
-
-    u64 daif = get_current_daif();
-
-    u64 gicd_base = 0xFFFF8000FF841000;
-    u32 pending = *(u32*)(gicd_base + 0x20C);
-    
-    while(TRUE){
-        uart_putc(uart_getc());
-    }
-}
-
 void start_scheduler(){
     // SAFE - start running the idle task and have scheduler switch active process in
-    active_process = 0;
-    proclist.proclist[active_process].state = PROCESS_RUNNING;
+    u32 active = 1;
+    pcb_t* current = &proclist.proclist[active];
 
-    u64 sp = proclist.proclist[active_process].registers.sp;
-    u64 pc = proclist.proclist[active_process].registers.pc;
-    u64 spsr = proclist.proclist[active_process].registers.spsr;
-    u64 ttbr = proclist.proclist[active_process].registers.ttbr;
+    set_current(current);
+
+    current->state = PROCESS_RUNNING;
+
+    u64 sp = current->registers.sp;
+    u64 pc = current->registers.pc;
+    u64 spsr = current->registers.spsr;
+    u64 ttbr = current->registers.ttbr;
     drop_to_user(sp, pc, spsr, ttbr);
 }
 
 void deschedule(){
     // move the current running process to the waiting queue
-    proclist.proclist[active_process].state = PROCESS_BLOCKED;
+    pcb_t* current = get_current();
 
-    DEBUG("Descheduling %d\n", active_process);
-
-    // DEBUG("Context file saved for process %d: \n", active_process);
-    // print_reg_file(user_context_ptr);
-
-    // reschedule now that we changed the state of things
-    scheduler(user_context_ptr);
+    DEBUG("Descheduling %d\n", current->pid);
 }
 
 void reschedule(u64 procnum){
     DEBUG("Rescheduling %d\n", procnum);
     proclist.proclist[procnum].state = PROCESS_READY;
-    // scheduler(user_context_ptr);
-    idle();
 }
 
 void add_to_schedule(pcb_t* proc){

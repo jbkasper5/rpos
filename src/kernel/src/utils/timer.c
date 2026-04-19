@@ -98,5 +98,4 @@ void timer_nanosleep(u64 nanoseconds){
     timer_request = pq_peek(&sleep_timer_queue).priority;
     DEBUG("Timer request value: 0x%x\n", timer_request);
     prime_virtual_timer(timer_request);
-    deschedule();
 }

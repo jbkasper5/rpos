@@ -26,9 +26,10 @@ typedef struct reglist_s{
 }reglist_t;
 
 typedef struct PCB_S{
-    enum PROC_STATE state;
-    u32 pid;
     reglist_t registers;
+    u64 kernel_stack;
+    u32 pid;
+    enum PROC_STATE state;
     file_t fds[MAX_OPEN_FILES];
     // memory information
         // page tables
@@ -46,7 +47,18 @@ typedef struct PCB_LIST_S{
 extern pcb_list_t proclist;
 extern u64 active_process;
 
+static inline pcb_t* get_current() {
+    u64 pcb_addr;
+    asm volatile("mrs %0, TPIDR_EL1" : "=r"(pcb_addr));
+    return (pcb_t*)pcb_addr;
+}
+
+static inline void set_current(pcb_t* pcb) {
+    asm volatile("msr TPIDR_EL1, %0" : : "r"(pcb));
+}
+
 pcb_t* procalloc();
 pcb_t* clone_active_proc();
+u32 atomic_increment(u64 address, u32 increment);
 
 #endif

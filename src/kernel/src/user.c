@@ -32,13 +32,12 @@ TEST_FN void user(){
 
     u64 pid = syscall(SYS_FORK);
 
-    if(pid){
-        syscall(SYS_WRITE, STDOUT, "PARENT\n");
-    }else{
-        syscall(SYS_WRITE, STDOUT, "CHILD\n");
+    while(TRUE){
+        if(pid){
+            syscall(SYS_NANOSLEEP, 10000000);
+            syscall(SYS_WRITE, STDOUT, "PARENT\n");
+        }
     }
-
-    while(TRUE);
 
     // while(TRUE){
     //     c = syscall(SYS_GETC);

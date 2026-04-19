@@ -11,7 +11,7 @@
 #include "memory/mmap.h"
 
 u64 handle_syscall(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 syscall_number, u64 regfile){
-    DEBUG("Syscall Number: %d\n", syscall_number);
+    // DEBUG("Syscall Number: %d\n", syscall_number);
     reglist_t* user_regs = (reglist_t*) regfile;
 
     if(syscall_table[syscall_number]){
@@ -37,6 +37,8 @@ u64 sys_read(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3, 
 u64 sys_nanosleep(u64 ns, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
     // slep
     timer_nanosleep(ns);
+    deschedule();
+
     return 0;
 }
 

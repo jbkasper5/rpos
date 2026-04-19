@@ -8,6 +8,8 @@
 #include "system/scheduler.h"
 #include "peripherals/gic.h"
 
+#define IRQ_DEBUG
+
 
 const char entry_error_messages[16][32] = {
 	"SYNC_INVALID_EL1t",
@@ -50,13 +52,15 @@ void enable_interrupt_controller() {
 
 
 void handle_irq(u64 reg_addr, u8 el){
-	DEBUG("Handling IRQ from EL %d\n", el);
-	// DEBUG("Handling IRQ (context: 0x%x)...\n", reg_addr);
-
     u32 irq = REGS_BCMIRQ->irq0_pending_0;
 	u32 gic_irq = REGS_GICC->gicc_iar;
 
+	#ifdef IRQ_DEBUG
+	DEBUG("Handling IRQ from EL %d\n", el);
+	DEBUG("Handling IRQ (context: 0x%x)...\n", reg_addr);
 	DEBUG("BCM IRQ: %d, GIC IRQ: %d\n", irq, gic_irq);
+	#endif
+	
     while(irq){
         if(irq & AUX_IRQ){
             irq &= ~AUX_IRQ;
