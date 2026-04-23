@@ -54,7 +54,6 @@ pc_string:
 
     // store user page table base into the stack as well as kernel stack for current process
     mrs x0, TTBR0_EL1
-    mrs x1, SP_EL1
     str x0, [sp, 16 * 17]
 
     // reload x0 and x1 to preserve the parameters passed to the kernel

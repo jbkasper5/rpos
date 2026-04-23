@@ -101,9 +101,9 @@ void start_scheduler(){
     u32 active = 1;
     pcb_t* current = &proclist.proclist[active];
 
-    set_current(current);
-
     current->state = PROCESS_RUNNING;
+
+    set_current(current);
 
     u64 sp = current->registers.sp;
     u64 pc = current->registers.pc;

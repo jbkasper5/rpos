@@ -14,6 +14,13 @@ const fileops_t stdout_ops = {
     .ioctl = NULL,
 };
 
+static void* initialize_proc_kstack(){
+    u64 kstack_base = buddy_alloc(PAGE_SIZE * 2);
+    map(kstack_base - PAGE_SIZE, va_to_pa(kstack_base), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);   
+
+    return kstack_base;
+}
+
 u32 generate_pid(){
     return atomic_increment(&pidcounter, 1);
 }
@@ -35,8 +42,8 @@ pcb_t* procalloc(){
     // map the virtual stack to the process (0x7ffffe000 -> 3FFD5000)
     map(USER_STACK_TOP - stack_size, va_to_pa(stack_base), 1, MAP_USER | MAP_READ | MAP_WRITE, process->registers.ttbr);
 
-    u64 kstack_base = buddy_alloc(PAGE_SIZE * 2);
-    map(kstack_base - PAGE_SIZE, va_to_pa(kstack_base), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);
+    void* kstack = initialize_proc_kstack();
+    process->kernel_stack = kstack;
 
     // subtract 16 since USER_STACK_TOP technically lies outside the 2 page boundary
     process->registers.sp = USER_STACK_TOP - 16;
@@ -54,10 +61,8 @@ pcb_t* clone_active_proc(){
     // copy parent process data into child process
     memcpy(process, &proclist.proclist[active_process], sizeof(pcb_t));
 
+    process->kernel_stack = initialize_proc_kstack();
+
     // return copied child process
     return process;
-}
-
-pcb_t* initialize_stack(pcb_t* proc){
-
 }

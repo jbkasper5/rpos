@@ -36,6 +36,9 @@ TEST_FN void user(){
         if(pid){
             syscall(SYS_NANOSLEEP, 10000000);
             syscall(SYS_WRITE, STDOUT, "PARENT\n");
+        }else{
+            syscall(SYS_NANOSLEEP, 50000000);
+            syscall(SYS_WRITE, STDOUT, "CHILD\n");
         }
     }
 

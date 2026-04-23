@@ -24,8 +24,9 @@ u64 handle_syscall(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 syscall_n
 u64 sys_write(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3, u64 regfile){
     // write a buffer to a file descriptor
     // get fd
-    if(proclist.proclist[active_process].fds[fd].file_ops->write){
-        return proclist.proclist[active_process].fds[fd].file_ops->write(proclist.proclist[active_process].fds, buf, count);
+    pcb_t* current = get_current();
+    if(current->fds[fd].file_ops->write){
+        return current->fds[fd].file_ops->write(current->fds, buf, count);
     }
     return 0;
 }

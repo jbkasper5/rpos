@@ -97,7 +97,7 @@ int kernel_main(){
     //     uart_putc(uart_getc());
     // }
 
-    add_test_section_to_scheduler();
+    add_test_section_to_scheduler(); 
     start_scheduler();
 
     return 0;
@@ -113,3 +113,8 @@ TODO:
 
 // 0xFFFF800000000000
 // 0xFFFF8000FD500000
+
+
+/*
+100s of temple OS
+*/
