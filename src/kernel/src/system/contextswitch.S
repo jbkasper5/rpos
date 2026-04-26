@@ -5,7 +5,7 @@
 context_switch:
 
     // push callee-saved registers
-    stp x19, x20, [sp, #-16]!
+    stp x19, x20, [sp, #-16]! // subtract 16 from sp, store 19 at offset 0, store 20 at offset 8
     stp x21, x22, [sp, #-16]!
     stp x23, x24, [sp, #-16]!
     stp x25, x26, [sp, #-16]!

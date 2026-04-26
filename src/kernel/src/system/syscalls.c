@@ -153,17 +153,11 @@ u64 sys_pipe2(u64 fd_rets, u64 flags, u64 unused1, u64 unused2, u64 unused3, u64
     return 0;
 }
 
-u64 sys_fork(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){ 
-    reglist_t* regs = (reglist_t*) regfile;   
+u64 sys_fork(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){  
+    // also now need to clone the kstack from the old to the new process
 
     // procalloc
     pcb_t* newproc = clone_active_proc();
-
-    // copy over the current register file
-    memcpy(&newproc->registers, regs, sizeof(reglist_t));
-
-    // set return value of the new process to be 0, to denote it as the child post-fork
-    SET_PCB_REG_NUM(newproc, 0, 0);
 
     // add cloned process to the scheduler
     add_to_schedule(newproc);

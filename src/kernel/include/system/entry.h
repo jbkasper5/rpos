@@ -21,7 +21,7 @@
 #define FIQ_INVALUD_EL0_32          14
 #define ERROR_INVALID_EL0_32        15
 
-// 31 registers, user SP, user PC, CPSR * 8 = (34 * 8) = 272
-#define S_FRAME_SIZE			    272
+// 31 registers, user SP, user PC, CPSR, TTBR * 8 = (34 * 8) = 272
+#define S_FRAME_SIZE			    280
 
 #endif

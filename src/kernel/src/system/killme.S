@@ -8,6 +8,7 @@
     // x1 -> pc
     // x2 -> program state
     // x3 -> user ttbr
+    // x4 -> new kstack
 drop_to_user:
     // surgical clear of TLB mappings for specific ASID
     # mov x5, #0
@@ -29,5 +30,6 @@ drop_to_user:
     msr SP_EL0, x0
     msr ELR_EL1, x1 // EL0 code.
     msr SPSR_EL1, x2
+    mov sp, x4
 
     eret

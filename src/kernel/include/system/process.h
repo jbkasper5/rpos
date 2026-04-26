@@ -18,7 +18,7 @@ enum PROC_STATE{
 };
 
 typedef struct reglist_s{
-    u64 regs[31];
+    u64 regs[11];
     u64 sp;            // stack pointer to use on return
     u64 pc;            // instruction address to return to
     u64 spsr;          // processor state to return to

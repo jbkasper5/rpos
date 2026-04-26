@@ -27,7 +27,7 @@ void scheduler_init(){
 
 void print_reg_file(reglist_t* regfile){
     kprintf("Register file at: 0x%x\n", regfile);
-    for(int i = 0; i < 31; i++){
+    for(int i = 0; i < 11; i++){
         kprintf("\tx%d: 0x%x\n", i, regfile->regs[i]);
     }
     kprintf("\tsp: 0x%x\n", regfile->sp);
@@ -35,7 +35,7 @@ void print_reg_file(reglist_t* regfile){
     kprintf("\tspsr: 0x%x\n\n", regfile->spsr);
 }
 
-void scheduler(reglist_t* reg_addr){
+void scheduler(){
     // switch active processes
     int selected_process = 0;
     int i = active_process;
@@ -62,32 +62,34 @@ void scheduler(reglist_t* reg_addr){
     }
     // at this point, either we found a new process, the active process hasn't changed, or the selected process
     // is the idle process
-
-    // if the selected process differs from the active process, we need to perform a context switch
-    if(selected_process != active_process){
-        // backup process state into proclist
-        // dest, src, # bytes
-        memcpy(&proclist.proclist[active_process].registers, reg_addr, sizeof(reglist_t));
+    if(selected_process == 0){
+        while(TRUE) WFI();
+    }else if(selected_process != active_process){
+        // if the selected process differs from the active process, we need to perform a context switch
 
         // if the process was running, change it back to ready
         if(proclist.proclist[active_process].state == PROCESS_RUNNING){
             proclist.proclist[active_process].state = PROCESS_READY;
         }
 
-        // swap in context of new process
-        memcpy(reg_addr, &proclist.proclist[selected_process].registers, sizeof(reglist_t));
+        uint64_t old_sp_buffer = &proclist.proclist[active_process].kernel_stack;
 
         // update active process
         active_process = selected_process;
 
         // set active process to running
         proclist.proclist[active_process].state = PROCESS_RUNNING;
+
+        uint64_t new_sp = proclist.proclist[active_process].kernel_stack;
+
+        prime_physical_timer();
+
+        context_switch(new_sp, old_sp_buffer);
+
+        // label here!
+    }else{
+        prime_physical_timer();
     }
-
-    DEBUG("Scheduled %d\n", active_process);
-
-    // prime the scheduler timer for another quantum
-    prime_physical_timer();
 }
 
 static u64 get_current_daif() {
@@ -109,7 +111,7 @@ void start_scheduler(){
     u64 pc = current->registers.pc;
     u64 spsr = current->registers.spsr;
     u64 ttbr = current->registers.ttbr;
-    drop_to_user(sp, pc, spsr, ttbr);
+    drop_to_user(sp, pc, spsr, ttbr, current->kernel_stack);
 }
 
 void deschedule(){
@@ -117,6 +119,10 @@ void deschedule(){
     pcb_t* current = get_current();
 
     DEBUG("Descheduling %d\n", current->pid);
+
+    current->state = PROCESS_BLOCKED;
+
+    scheduler();
 }
 
 void reschedule(u64 procnum){

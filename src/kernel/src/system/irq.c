@@ -96,7 +96,7 @@ void handle_irq(u64 reg_addr, u8 el){
 			if(el){
 				prime_physical_timer();
 			}else{
-				scheduler((reglist_t*) reg_addr);
+				scheduler();
 			}
         }else if(gic_irq == 27){
 			DEBUG("Handling interrupt 27...\n");

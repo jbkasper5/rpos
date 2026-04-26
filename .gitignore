@@ -11,3 +11,4 @@ debugging/*
 tutorial/*
 dmp/
 resources/
+*.txt

@@ -140,20 +140,13 @@ sync_invalid_el1h:
     mrs x10, esr_el1
     mrs x11, far_el1
     mrs x12, elr_el1
-    b .   // halt here for GDB to inspect
+sync_invalid_el1h_hold:
+    wfi
+    b sync_invalid_el1h_hold   // halt here for GDB to inspect
 
 # IRQ HANDLER FOR KERNEL MODE
 handle_el1_irq:
     kernel_entry
-
-    #ifdef DEBUG
-    # mrs x1, SPSR_EL1
-    # lsr x1, x1, #2
-    # and x1, x1, #3         // x1 = EL (0, 1, etc.)
-
-    # ldr x0, =my_string_3
-    # bl kprintf
-    #endif
 
     // move context into first param
     mov x0, sp
@@ -162,8 +155,6 @@ handle_el1_irq:
     lsr x1, x1, #2
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
-
-    // don't handle IRQs for EL1->EL1 yet
     bl handle_irq
     kernel_exit
     eret
@@ -276,6 +267,15 @@ error_invalid_el0_32:
     handle_invalid_entry ERROR_INVALID_EL0_32
     b err_hang
 
+
+
+.globl ret_from_fork
+ret_from_fork:
+    // needs to set the stack pointer backs
+    kernel_exit
+
+    eret
+    
 
 .globl err_hang
 err_hang:
