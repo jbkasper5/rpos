@@ -12,6 +12,9 @@ context_switch:
     stp x27, x28, [sp, #-16]!
     stp x29, x30, [sp, #-16]!
 
+    // need to switch user TTBR table
+    // 
+
     // save the current stack pointer into the buffer argument
     mov x19, sp
     str x19, [x1]

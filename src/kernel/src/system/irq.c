@@ -90,14 +90,7 @@ void handle_irq(u64 reg_addr, u8 el){
     if (gic_irq < 1020) {  // 1020 = spurious interrupt ID threshold
         if (gic_irq == 30) {
 			DEBUG("Handling interrupt 30...\n");
-            // Handle ARM physical timer interrupt
-			// if in EL1, just prime the timer
-			// if in EL0, actually jump to scheduler code
-			if(el){
-				prime_physical_timer();
-			}else{
-				scheduler();
-			}
+			scheduler();
         }else if(gic_irq == 27){
 			DEBUG("Handling interrupt 27...\n");
 			

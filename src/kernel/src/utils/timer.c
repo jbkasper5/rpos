@@ -90,7 +90,7 @@ void timer_nanosleep(u64 nanoseconds){
     u64 timer_request = ((nanoseconds * CLOCKHZ) / 1000000000ULL) + read_virtual_timer();
 
     // priority = absolute timer request, element = active process
-    pq_add(&sleep_timer_queue, timer_request, active_process);
+    pq_add(&sleep_timer_queue, timer_request, get_current() - proclist.proclist);
 
     // in case the incoming request is less than that of the existing request, reprogram
     // the timer, since the queue always has the earliest deadline first

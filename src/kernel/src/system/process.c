@@ -2,6 +2,7 @@
 #include "memory/mmap.h"
 #include "filedescriptors/filedescriptors.h"
 
+                       //0x00007fffffff0
 #define USER_STACK_TOP   0x0000800000000ULL
 #define KSTACK_SIZE      PAGE_SIZE
 
@@ -26,7 +27,7 @@ u32 generate_pid(){
     return atomic_increment(&pidcounter, 1);
 }
 
-pcb_t* procalloc(){
+pcb_t* procalloc(u64 entrypoint){
     // allocate new process control block
     pcb_t* process = (pcb_t*) kmalloc(sizeof(pcb_t));
 
@@ -46,6 +47,24 @@ pcb_t* procalloc(){
     void* kstack = initialize_proc_kstack();
     process->kernel_stack = kstack;
 
+    // set the kernel stack to the trap frame defined by the kernel_entry of the parent process
+    process->kernel_stack -= 280;
+
+    // in order to be context switched in later, we need to do an "artificial push" of the x19-x30 registers
+    // in total, there are 12 registers to "push", each 8 bytes, so 96 bytes of context to invent
+    process->kernel_stack -= 96;
+    memset(process->kernel_stack, 0, 96 + 280);
+
+    // set x30 from the context switch to be the trampoline out of the kernel
+    *((u64*) (process->kernel_stack + 8)) = &ret_from_fork;
+
+    u64* trap_frame = (u64*)(process->kernel_stack + 96);
+    trap_frame[31] = USER_STACK_TOP - 16;               // SP_EL0
+    trap_frame[32] = entrypoint;                        // ELR_EL1
+    trap_frame[33] = 0x0;                               // SPSR
+    trap_frame[34] = (u64)process->registers.ttbr;      // TTBR
+
+
     // subtract 16 since USER_STACK_TOP technically lies outside the 2 page boundary
     process->registers.sp = USER_STACK_TOP - 16;
 
@@ -60,7 +79,7 @@ pcb_t* clone_active_proc(){
     pcb_t* process = (pcb_t*) kmalloc(sizeof(pcb_t));
 
     // copy parent process data into child process
-    memcpy(process, &proclist.proclist[active_process], sizeof(pcb_t));
+    memcpy(process, get_current(), sizeof(pcb_t));
 
     process->kernel_stack = initialize_proc_kstack();
 
@@ -74,8 +93,8 @@ pcb_t* clone_active_proc(){
     // copy the kernel stack
     memcpy(ALIGN_DOWN(process->kernel_stack, KSTACK_SIZE),  current_stack_top, PAGE_SIZE);
 
-    // now we need to create a new virtual memory system
-    // new_vm();
+    // now we need to create a new virtual memory system (using the virt address of the page table)
+    process->registers.ttbr = clone_virtual_memory(pa_to_va(get_current()->registers.ttbr));
 
     // set the kernel stack to the trap frame defined by the kernel_entry of the parent process
     process->kernel_stack -= 280;
@@ -87,6 +106,9 @@ pcb_t* clone_active_proc(){
     // in total, there are 12 registers to "push", each 8 bytes, so 96 bytes of context to invent
     process->kernel_stack -= 96;
     memset(process->kernel_stack, 0, 96);
+
+    u64* trap_frame = (u64*)(process->kernel_stack + 96);
+    trap_frame[34] = (u64)process->registers.ttbr;      // set the new TTBR
 
     // set the x30 return address to be the trampoline out of the kernel
     *((u64*) (process->kernel_stack + 8)) = &ret_from_fork;

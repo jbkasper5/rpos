@@ -2,7 +2,12 @@
 #define __UTILS_H__
 
 #include "macros.h"
-#include "system/process.h"
+
+
+struct pcb_s; // Forward declare the struct
+typedef struct pcb_s pcb_t; // If you use the typedef
+
+pcb_t* get_active_pcb();
 
 // assembly functions
 void delay(u64 ticks);
@@ -22,5 +27,7 @@ int strlen(const char* str);
 
 pcb_t* get_active_pcb();
 void set_active_pcb(pcb_t* pcb);
+
+void flush_tlb();
 
 #endif

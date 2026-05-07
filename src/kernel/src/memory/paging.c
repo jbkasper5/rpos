@@ -1,6 +1,7 @@
 #include "memory/paging.h"
 #include "memory/virtual_memory.h"
 #include "memory/mem.h"
+#include "memory/mmap.h"
 
 #include "asm_utils.h"
 
@@ -155,13 +156,19 @@ u64 buddy_alloc(u64 bytes){
 
 
 /**
- * @brief Allocates and zeroes a single page for a page table   
+ * @brief Allocates, maps, zeroes a single page for a page table   
  * @return          Address of the page      
  */
 u64 buddy_alloc_pt(){
-    uintptr_t pt = buddy_alloc(PAGE_SIZE);
-    memset((void*) pt, 0, PAGE_SIZE);
-    return pt;
+    void* new_page = buddy_alloc(PAGE_SIZE);
+    if(!new_page) return NULL;
+
+    // map new page table into kernel memory
+    map(new_page, va_to_pa(new_page), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);
+
+    // zero out the page
+    memset(new_page, 0, PAGE_SIZE);
+    return (u64) new_page;
 }
 
 void set_page_owner(void* page_addr, page_state new_owner){
@@ -252,4 +259,58 @@ u64 initialize_page_frame_array(){
 
     _initialize_buddy_allocator(start_page_addr, available_pages);   
     return reserved_pages;
+}
+
+/**
+ * @brief Recursive cloner to copy an entire virtual memory system
+ * @param bytes     Number of bytes to allocate 
+ * @return          Address of the child's new L0 page table.   
+ */
+static void* clone_page_table(pte* parent_table, u8 level){
+    pte* child_table = NULL;
+    u32 n_entries = PAGE_SIZE / 8;
+    for(int i = 0; i < n_entries; i++){
+        if(!parent_table[i].md.valid) continue;
+
+        if(level < 3 && parent_table[i].td.type == 1) {
+            // This is a table, recurse!
+            u64 new_table_address = clone_page_table(pa_to_va(parent_table[i].td.address << 12), level + 1);
+            if(!child_table) child_table = buddy_alloc_pt();
+            child_table[i].value = parent_table[i].value;
+            child_table[i].td.address = new_table_address >> 12;
+        }else{
+            parent_table[i].md.cow = 1;
+            parent_table[i].md.ap = EL0_RO_EL1_RO;
+            if(!child_table) child_table = buddy_alloc_pt();
+            child_table[i].value = parent_table[i].value;
+        }
+    }
+    return child_table;
+}
+
+/**;o
+ * @brief Clones the virtual memory system for a parent. Marks all writeable memory as read-only and 
+ * marks the copy-on-write bit as pending. 
+ * @param bytes     Number of bytes to allocate 
+ * @return          Address of the child's new L0 page table.   
+ */
+void* clone_virtual_memory(pte* parent_table){
+    // step 1: need to walk the entire page table
+    pte* new_l0_table = buddy_alloc_pt();
+    u32 n_entries = PAGE_SIZE / 8;
+    for(int i = 0; i < n_entries; i++){
+        if(parent_table[i].td.valid){
+            // clone the table entry
+            new_l0_table[i].value = parent_table[i].value;
+
+            // convert the page table entry address to a virtual address for the kernel
+            u64 new_table_address = clone_page_table(pa_to_va(parent_table[i].td.address << 12), 1);
+            if(new_table_address){
+                new_l0_table[i].td.address = va_to_pa(new_table_address) >> 12;
+            }else{
+                WARNING("NO VALID ENTRIES TO CLONE");
+            }
+        }
+    }
+    flush_tlb();
 }

@@ -118,6 +118,26 @@ set_active_pcb:
     msr TPIDR_EL1, x0
     ret
 
+
+.globl flush_tlb
+flush_tlb:
+    // 1. Invalidate the TLB
+    // 'vaae1is' means: Virtual Address, All ASIDs, EL1&0, Inner Shareable (all cores)
+    // If you want to flush the whole thing:
+    tlbi vmalle1is 
+
+    // 2. Data Synchronization Barrier
+    // Ensures the TLB invalidation completes before any further instructions run
+    dsb sy
+
+    // 3. Instruction Synchronization Barrier
+    // Flushes the pipeline so the CPU fetches instructions using the new mapping rules
+    isb
+
+    
+    ret
+
+
 .globl panic
 panic:
     brk #0xBEEF

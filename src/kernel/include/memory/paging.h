@@ -4,6 +4,7 @@
 #include "utils/datastructures.h"
 #include "macros.h"
 #include "io/kprintf.h"
+#include "memory/mmu.h"
 
 typedef enum {
     PAGE_FREE = 0,
@@ -62,5 +63,7 @@ u8 get_block_order(u64 addr);
 void* head_from_page(void* page_addr);
 page_state get_page_owner(void* page_addr);
 void set_page_owner(void* page_addr, page_state new_owner);
+
+void* clone_virtual_memory(pte* parent_table);
 
 #endif

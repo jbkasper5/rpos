@@ -36,7 +36,7 @@ void readelf(file_t* file){
 
     // allocate process metadata
     // should now have a valid L0 page table and stack
-    pcb_t* process = procalloc();
+    pcb_t* process = procalloc((u64) header->e_entry);
 
     // set process's entrypoint
     process->registers.pc = header->e_entry;

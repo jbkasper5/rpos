@@ -83,7 +83,7 @@ u64 sys_io_setup(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5
 
 
 u64 sys_exit_group(u64 status, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
-    INFO("Current running process number: %d\n", active_process);
+    INFO("Current running process number: %d\n", get_current() - proclist.proclist);
     reap();
     return SYS_SUCCESS;
 }

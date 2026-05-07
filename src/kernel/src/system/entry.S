@@ -187,6 +187,15 @@ handle_el0_svc:
     # bl kprintf
     #endif
 
+    mrs x0, esr_el1
+
+    // extract the exception class from ESR
+    lsr x1, x0, #26
+
+    cmp x1, #0x24
+
+    b.eq handle_el0_fault_staging
+
     // prepare arguments for the system call
     ldp x0, x1, [sp, #16 * 0]
     ldp x2, x3, [sp, #16 * 1]
@@ -206,6 +215,17 @@ handle_el0_svc:
     // write the return value from handle_syscall into the x0 value of the 
     str x0, [sp, #16 * 0]
 
+    // jump to the exit label
+    b handle_el0_irq_exit
+
+handle_el0_fault_staging:
+    // move the faulting address into the parameter register
+    mrs x0, far_el1
+
+    // branch and link to the fault handler
+    bl handle_el0_fault
+
+handle_el0_irq_exit:
     // restore registers and processor state
     kernel_exit
 

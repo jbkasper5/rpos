@@ -98,9 +98,9 @@ static mem_descriptor_t parse_block_flags(u64 flags, bool is_page){
     if(flags & MAP_USER){
         md.bits.ng = 1;
         if(flags & MAP_READ && flags & MAP_WRITE){
-            md.bits.ap = 0b01;
+            md.bits.ap = EL0_RW_EL1_RW;
         }else if(flags & MAP_READ){
-            md.bits.ap = 0b11;
+            md.bits.ap = EL0_RO_EL1_RO;
         }
     }
 

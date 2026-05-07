@@ -9,20 +9,36 @@
 #include "memory/mmap.h"
 
 pcb_list_t proclist;
-u64 active_process = 0;
+
+#define KSTACK_SIZE PAGE_SIZE
 
 static void idle(){
-    asm volatile("msr daifclr, #0xf");
     while(TRUE) WFI();
 }
 
+static void* initialize_proc_kstack(){
+    u64 range = buddy_alloc(KSTACK_SIZE + PAGE_SIZE);
+    map(range + PAGE_SIZE, va_to_pa(range + PAGE_SIZE), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);   
+
+    return range + (KSTACK_SIZE + PAGE_SIZE) - 0x10;
+}
 
 void scheduler_init(){
-    // create 2 active processes
+    // idle process in index 0
     proclist.processes = 1;
 
     // process 0 is the idle proc
     proclist.proclist[0].registers.pc = &idle;
+
+    // empty out SP and TTBR since the idle process does exactly nothing
+    proclist.proclist[0].registers.sp = NULL;
+    proclist.proclist[0].registers.ttbr = NULL;
+
+    // set up the idle proc to run in EL1 with interrupts enabled
+    proclist.proclist[0].registers.spsr = 0x345;
+
+    // initialize the idle process' kernel stack
+    proclist.proclist[0].kernel_stack = initialize_proc_kstack();
 }
 
 void print_reg_file(reglist_t* regfile){
@@ -38,6 +54,7 @@ void print_reg_file(reglist_t* regfile){
 void scheduler(){
     // switch active processes
     int selected_process = 0;
+    int active_process = get_current() - proclist.proclist;
     int i = active_process;
     for(int idx = 0; idx < proclist.processes; idx++){
 
@@ -62,9 +79,7 @@ void scheduler(){
     }
     // at this point, either we found a new process, the active process hasn't changed, or the selected process
     // is the idle process
-    if(selected_process == 0){
-        while(TRUE) WFI();
-    }else if(selected_process != active_process){
+    if(selected_process != active_process){
         // if the selected process differs from the active process, we need to perform a context switch
 
         // if the process was running, change it back to ready
@@ -82,11 +97,11 @@ void scheduler(){
 
         uint64_t new_sp = proclist.proclist[active_process].kernel_stack;
 
+        set_current(&proclist.proclist[active_process]);
+
         prime_physical_timer();
 
         context_switch(new_sp, old_sp_buffer);
-
-        // label here!
     }else{
         prime_physical_timer();
     }
@@ -99,9 +114,7 @@ static u64 get_current_daif() {
 }
 
 void start_scheduler(){
-    // SAFE - start running the idle task and have scheduler switch active process in
-    u32 active = 1;
-    pcb_t* current = &proclist.proclist[active];
+    pcb_t* current = &proclist.proclist[0];
 
     current->state = PROCESS_RUNNING;
 
@@ -148,7 +161,7 @@ extern TEST_FN void user();
 void* user_ptr = (void*)user;
 
 void add_test_section_to_scheduler(){
-    pcb_t* proc = procalloc();
+    pcb_t* proc = procalloc((u64) user_ptr);
     u64 test_phys = get_phys_test_region();
     u64 test_virt = get_virt_test_region();
     u64 test_size = get_test_size();

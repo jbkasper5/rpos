@@ -25,7 +25,7 @@ typedef struct reglist_s{
     u64 ttbr;          // page table base for the process
 }reglist_t;
 
-typedef struct PCB_S{
+typedef struct pcb_s {
     reglist_t registers;
     u64 kernel_stack;
     u32 pid;
@@ -45,7 +45,6 @@ typedef struct PCB_LIST_S{
 } pcb_list_t;
 
 extern pcb_list_t proclist;
-extern u64 active_process;
 
 static inline pcb_t* get_current() {
     u64 pcb_addr;
@@ -57,7 +56,7 @@ static inline void set_current(pcb_t* pcb) {
     asm volatile("msr TPIDR_EL1, %0" : : "r"(pcb));
 }
 
-pcb_t* procalloc();
+pcb_t* procalloc(u64 entrypoint);
 pcb_t* clone_active_proc();
 u32 atomic_increment(u64 address, u32 increment);
 
