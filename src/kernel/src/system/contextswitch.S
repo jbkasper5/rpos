@@ -1,6 +1,6 @@
 .section .text
 
-// void context_switch(u64* new_kernel_stack, u64* old_kernel_stack_save_point)
+// void context_switch(u64* new_kernel_stack, u64* old_kernel_stack_save_point, void* new_ttbr)
 .globl context_switch
 context_switch:
 
@@ -12,9 +12,6 @@ context_switch:
     stp x27, x28, [sp, #-16]!
     stp x29, x30, [sp, #-16]!
 
-    // need to switch user TTBR table
-    // 
-
     // save the current stack pointer into the buffer argument
     mov x19, sp
     str x19, [x1]
@@ -22,6 +19,13 @@ context_switch:
     // load the new context stack pointer
     mov sp, x0
 
+    // need to switch user TTBR table
+    msr ttbr0_el1, x2       // Switch to the new process's memory map
+    tlbi vmalle1            // Wipe the TLB (mandatory since no ASID)
+    dsb sy                  // Wait for TLB wipe to complete
+    isb                     // Flush pipeline
+
+    // load registers back on new kernel stack
     ldp x29, x30, [sp], #16
     ldp x27, x28, [sp], #16
     ldp x25, x26, [sp], #16

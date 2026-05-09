@@ -1,6 +1,7 @@
 #include "system/process.h"
 #include "memory/mmap.h"
 #include "filedescriptors/filedescriptors.h"
+#include "system/entry.h"
 
                        //0x00007fffffff0
 #define USER_STACK_TOP   0x0000800000000ULL
@@ -48,7 +49,7 @@ pcb_t* procalloc(u64 entrypoint){
     process->kernel_stack = kstack;
 
     // set the kernel stack to the trap frame defined by the kernel_entry of the parent process
-    process->kernel_stack -= 280;
+    process->kernel_stack -= S_FRAME_SIZE;
 
     // in order to be context switched in later, we need to do an "artificial push" of the x19-x30 registers
     // in total, there are 12 registers to "push", each 8 bytes, so 96 bytes of context to invent
@@ -62,7 +63,6 @@ pcb_t* procalloc(u64 entrypoint){
     trap_frame[31] = USER_STACK_TOP - 16;               // SP_EL0
     trap_frame[32] = entrypoint;                        // ELR_EL1
     trap_frame[33] = 0x0;                               // SPSR
-    trap_frame[34] = (u64)process->registers.ttbr;      // TTBR
 
 
     // subtract 16 since USER_STACK_TOP technically lies outside the 2 page boundary
@@ -97,7 +97,7 @@ pcb_t* clone_active_proc(){
     process->registers.ttbr = clone_virtual_memory(pa_to_va(get_current()->registers.ttbr));
 
     // set the kernel stack to the trap frame defined by the kernel_entry of the parent process
-    process->kernel_stack -= 280;
+    process->kernel_stack -= S_FRAME_SIZE;
 
     // set process's return value to 0, for child PID
     *((u64*) (process->kernel_stack)) = 0;
@@ -108,7 +108,6 @@ pcb_t* clone_active_proc(){
     memset(process->kernel_stack, 0, 96);
 
     u64* trap_frame = (u64*)(process->kernel_stack + 96);
-    trap_frame[34] = (u64)process->registers.ttbr;      // set the new TTBR
 
     // set the x30 return address to be the trampoline out of the kernel
     *((u64*) (process->kernel_stack + 8)) = &ret_from_fork;

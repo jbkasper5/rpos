@@ -15,10 +15,10 @@ static TEST_FN void process_command(char* cmd);
 TEST_FN void user(){
     syscall(SYS_WRITE, STDOUT, "Opening framebuffer device...\n");
 
-    int fd = syscall(SYS_OPEN, "/dev/fb0");
+    // int fd = syscall(SYS_OPEN, "/dev/fb0");
 
-    fb_var_screeninfo vinfo;
-    syscall(SYS_IOCTL, fd, FBIOGET_VSCREENINFO, &vinfo);
+    // fb_var_screeninfo vinfo;
+    // syscall(SYS_IOCTL, fd, FBIOGET_VSCREENINFO, &vinfo);
 
     // address, length, prot, flags, fd, offset
     // u32* framebuffer = syscall(SYS_MMAP, NULL, SCREEN_SIZE_BYTES, PROT_READ | PROT_WRITE, 0, fd, 0);
@@ -30,16 +30,18 @@ TEST_FN void user(){
     char c;
     char* cp = buf;
 
-    u64 pid = syscall(SYS_FORK);
+    // u64 pid = syscall(SYS_FORK);
 
     while(TRUE){
-        if(pid){
-            syscall(SYS_NANOSLEEP, 1000000000);
-            syscall(SYS_WRITE, STDOUT, "PARENT\n");
-        }else{
-            syscall(SYS_NANOSLEEP, 5000000000);
-            syscall(SYS_WRITE, STDOUT, "CHILD\n");
-        }
+        // if(pid){
+            // syscall(SYS_NANOSLEEP, 1000000000);
+            // syscall(SYS_WRITE, STDOUT, "PARENT\n");
+        // }else{
+            // should be 10x sleeps
+            // syscall(SYS_NANOSLEEP, 10000000000);
+            // syscall(SYS_WRITE, STDOUT, "CHILD\n");
+            // while(1);
+        // }
     }
 
     // while(TRUE){

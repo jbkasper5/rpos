@@ -277,7 +277,7 @@ static void* clone_page_table(pte* parent_table, u8 level){
             u64 new_table_address = clone_page_table(pa_to_va(parent_table[i].td.address << 12), level + 1);
             if(!child_table) child_table = buddy_alloc_pt();
             child_table[i].value = parent_table[i].value;
-            child_table[i].td.address = new_table_address >> 12;
+            child_table[i].td.address = va_to_pa(new_table_address) >> 12;
         }else{
             parent_table[i].md.cow = 1;
             parent_table[i].md.ap = EL0_RO_EL1_RO;
@@ -313,4 +313,6 @@ void* clone_virtual_memory(pte* parent_table){
         }
     }
     flush_tlb();
+
+    return (void*) va_to_pa(new_l0_table);
 }

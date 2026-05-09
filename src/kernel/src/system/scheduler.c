@@ -13,7 +13,11 @@ pcb_list_t proclist;
 #define KSTACK_SIZE PAGE_SIZE
 
 static void idle(){
-    while(TRUE) WFI();
+    while(TRUE){
+        WFI();
+        kprintf(".\n");
+        scheduler();
+    }
 }
 
 static void* initialize_proc_kstack(){
@@ -87,7 +91,7 @@ void scheduler(){
             proclist.proclist[active_process].state = PROCESS_READY;
         }
 
-        uint64_t old_sp_buffer = &proclist.proclist[active_process].kernel_stack;
+        u64 old_sp_buffer = &proclist.proclist[active_process].kernel_stack;
 
         // update active process
         active_process = selected_process;
@@ -95,13 +99,15 @@ void scheduler(){
         // set active process to running
         proclist.proclist[active_process].state = PROCESS_RUNNING;
 
-        uint64_t new_sp = proclist.proclist[active_process].kernel_stack;
+        u64 new_sp = proclist.proclist[active_process].kernel_stack;
+
+        u64 new_ttbr = proclist.proclist[active_process].registers.ttbr;
 
         set_current(&proclist.proclist[active_process]);
 
         prime_physical_timer();
 
-        context_switch(new_sp, old_sp_buffer);
+        context_switch(new_sp, old_sp_buffer, new_ttbr);
     }else{
         prime_physical_timer();
     }

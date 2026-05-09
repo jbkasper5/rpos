@@ -52,10 +52,6 @@ pc_string:
     mrs x1, SPSR_EL1
     stp x0, x1, [sp, #16 * 16]
 
-    // store user page table base into the stack as well as kernel stack for current process
-    mrs x0, TTBR0_EL1
-    str x0, [sp, 16 * 17]
-
     // reload x0 and x1 to preserve the parameters passed to the kernel
     ldp x0, x1, [sp, #16 * 0]
 .endm
@@ -84,10 +80,6 @@ pc_string:
     ldp x0, x1, [sp, #16 * 16]
     msr ELR_EL1, x0
     msr SPSR_EL1, x1
-
-    // restore user page table base from stack
-    ldr x0, [sp, #16 * 17]
-    msr TTBR0_EL1, x0
 
     ldp x0, x1, [sp, #16 * 0]
     add sp, sp, #S_FRAME_SIZE
@@ -291,6 +283,7 @@ error_invalid_el0_32:
 
 .globl ret_from_fork
 ret_from_fork:
+
     // needs to set the stack pointer backs
     kernel_exit
 
