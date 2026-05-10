@@ -21,6 +21,9 @@ void initialize_gic() {
     GICD_ISENABLER[PHYS_TIMER / 32] |= (1 << (PHYS_TIMER % 32));
     GICD_ISENABLER[VIRT_TIMER / 32] |= (1 << (VIRT_TIMER % 32));
 
+    // GICD_NSACR[PHYS_TIMER / 32] |= (1 << (PHYS_TIMER % 32));
+    // GICD_NSACR[VIRT_TIMER / 32] |= (1 << (VIRT_TIMER % 32));
+
     *GICD_CTRLR = 3;
     *GICC_CTRLR = 3;
 }

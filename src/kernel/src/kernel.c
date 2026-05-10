@@ -92,10 +92,6 @@ int kernel_main(){
     //     readelf(file);
     //     close(file);
     // }
-    
-    // while(TRUE){
-    //     uart_putc(uart_getc());
-    // }
 
     add_test_section_to_scheduler(); 
     start_scheduler();

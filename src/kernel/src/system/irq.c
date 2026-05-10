@@ -7,6 +7,7 @@
 #include "utils/timer.h"
 #include "system/scheduler.h"
 #include "peripherals/gic.h"
+#include "system/gic.h"
 
 #define IRQ_DEBUG
 
@@ -86,11 +87,11 @@ void handle_irq(u64 reg_addr, u8 el){
     }
 
 	// DEBUG("GIC IRQ: %d\n", gic_irq);
-
+	bool invoke_scheduler = FALSE;
     if (gic_irq < 1020) {  // 1020 = spurious interrupt ID threshold
         if (gic_irq == 30) {
 			DEBUG("Handling interrupt 30...\n");
-			scheduler();
+			invoke_scheduler = TRUE;
         }else if(gic_irq == 27){
 			DEBUG("Handling interrupt 27...\n");
 			
@@ -107,5 +108,6 @@ void handle_irq(u64 reg_addr, u8 el){
 		}
         // Acknowledge end of interrupt
         REGS_GICC->gicc_eoir = gic_irq;
+		if(invoke_scheduler) scheduler();
     }
 }

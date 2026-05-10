@@ -43,6 +43,9 @@ void scheduler_init(){
 
     // initialize the idle process' kernel stack
     proclist.proclist[0].kernel_stack = initialize_proc_kstack();
+
+    // set the idle process as the current "user" process
+    set_current(&proclist.proclist[0]);
 }
 
 void print_reg_file(reglist_t* regfile){

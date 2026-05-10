@@ -14,6 +14,7 @@
 #define GICD_ISPENDR    ((volatile u32*)(GICD_BASE + 0x200))
 #define GICD_IPRIORITYR ((volatile u8*)(GICD_BASE + 0x400))    
 #define GICD_ITARGETSR  ((volatile u8*)(GICD_BASE + 0x800))
+#define GICD_NSACR      ((volatile u32*)(GICD_BASE + 0xE00))
 
 // CPU Interface Registers
 #define GICC_CTRLR      ((volatile u32*)(GICC_BASE + 0x000))
