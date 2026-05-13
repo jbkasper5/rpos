@@ -30,18 +30,17 @@ TEST_FN void user(){
     char c;
     char* cp = buf;
 
-    // u64 pid = syscall(SYS_FORK);
+    u64 pid = syscall(SYS_FORK);
 
     while(TRUE){
-        // if(pid){
-            // syscall(SYS_NANOSLEEP, 1000000000);
-            // syscall(SYS_WRITE, STDOUT, "PARENT\n");
-        // }else{
-            // should be 10x sleeps
-            // syscall(SYS_NANOSLEEP, 10000000000);
-            // syscall(SYS_WRITE, STDOUT, "CHILD\n");
-            // while(1);
-        // }
+        if(pid){
+            syscall(SYS_NANOSLEEP, 1000000000);
+            syscall(SYS_WRITE, STDOUT, "PARENT\n");
+        }else{
+            // should be 2 sleeps
+            syscall(SYS_NANOSLEEP, 100000000000);
+            syscall(SYS_WRITE, STDOUT, "CHILD\n");
+        }
     }
 
     // while(TRUE){

@@ -54,7 +54,7 @@ pcb_t* procalloc(u64 entrypoint){
     // in order to be context switched in later, we need to do an "artificial push" of the x19-x30 registers
     // in total, there are 12 registers to "push", each 8 bytes, so 96 bytes of context to invent
     process->kernel_stack -= 96;
-    memset(process->kernel_stack, 0, 96 + 280);
+    memset(process->kernel_stack, 0, 96 + S_FRAME_SIZE);
 
     // set x30 from the context switch to be the trampoline out of the kernel
     *((u64*) (process->kernel_stack + 8)) = &ret_from_fork;
