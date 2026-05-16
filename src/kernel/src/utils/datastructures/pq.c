@@ -27,6 +27,8 @@ pqnode_t pq_pop(pq_t* pq){
     _pq_swap(pq, 0, pq->items - 1);  // swap root with actual last valid item
     pq->items--;                       // then shrink
     _pq_sink(pq, 0);
+
+    return node;
 }
 
 pqnode_t pq_peek(pq_t* pq){
@@ -40,9 +42,9 @@ void _pq_sink(pq_t* pq, int idx) {
         int rchild = RCHILD(idx);
         int largest = idx;
 
-        if (lchild < n && pq->heap[lchild].priority > pq->heap[largest].priority)
+        if (lchild < n && pq->heap[lchild].priority < pq->heap[largest].priority)
             largest = lchild;
-        if (rchild < n && pq->heap[rchild].priority > pq->heap[largest].priority)
+        if (rchild < n && pq->heap[rchild].priority < pq->heap[largest].priority)
             largest = rchild;
 
         if (largest == idx)
@@ -56,7 +58,7 @@ void _pq_sink(pq_t* pq, int idx) {
 void _pq_swim(pq_t* pq, int idx) {
     while (idx > 0) {
         int parent_idx = PARENT(idx);
-        if (pq->heap[parent_idx].priority >= pq->heap[idx].priority)
+        if (pq->heap[parent_idx].priority <= pq->heap[idx].priority)
             break;
         _pq_swap(pq, parent_idx, idx);
         idx = parent_idx;

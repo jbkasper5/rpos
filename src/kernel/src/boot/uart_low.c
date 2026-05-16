@@ -59,7 +59,8 @@ BOOT_FN void uart_init_lo(){
     REGS_AUX_LO->enables = 1;
     REGS_AUX_LO->mu_control = 0;
 
-    REGS_AUX_LO->mu_ier = 0x3;
+    // 0x1 -> Read interrupts only, 0x3 -> read and write interrupts
+    REGS_AUX_LO->mu_ier = 0x1;
     REGS_AUX_LO->mu_lcr = 3;
     REGS_AUX_LO->mu_mcr = 0;
     REGS_AUX_LO->mu_baud_rate = 541;

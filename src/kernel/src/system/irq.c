@@ -66,11 +66,11 @@ void handle_irq(u64 reg_addr, u8 el){
         if(irq & AUX_IRQ){
             irq &= ~AUX_IRQ;
 
-            while((REGS_AUX->mu_iir & 4) == 4){
-                DEBUG("UART Recv BCM: ");
-                uart_putc(uart_getc());
-                DEBUG("\n");
-            }
+            // while((REGS_AUX->mu_iir & 4) == 4){
+            //     DEBUG("UART Recv BCM: ");
+            //     uart_putc(uart_getc());
+            //     DEBUG("\n");
+            // }
         }
 
 		if (irq & SYS_TIMER_IRQ_1){
@@ -100,9 +100,10 @@ void handle_irq(u64 reg_addr, u8 el){
 			// handle the timer sleep stack
 			handle_virtual_timer();
 		}else if(gic_irq == 125){
-			DEBUG("Mini UART Recv: ");	
-			uart_putc(uart_getc());
-			DEBUG("\n");
+			uint32_t iir = REGS_AUX->mu_iir;
+			DEBUG("IIR: %x\n", iir);
+			char c = REGS_AUX->mu_io & 0xFF;  // read clears the interrupt
+			DEBUG("Mini UART Recieved interrupt 125: %c\n", c);	
 		}else if(gic_irq == 89){
 			DEBUG("Mini UART Recv: ");
 			uart_putc(uart_getc());
