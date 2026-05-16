@@ -93,6 +93,8 @@ int kernel_main(){
     //     close(file);
     // }
 
+    // seconds_since_boot();
+
     add_test_section_to_scheduler(); 
     start_scheduler();
 

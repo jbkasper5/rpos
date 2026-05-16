@@ -34,12 +34,13 @@ TEST_FN void user(){
 
     while(TRUE){
         if(pid){
-            syscall(SYS_NANOSLEEP, 1000000000);
+            // roughly 2.6 seconds
             syscall(SYS_WRITE, STDOUT, "PARENT\n");
+            syscall(SYS_NANOSLEEP, 5000000000);
         }else{
-            // should be 2 sleeps
-            syscall(SYS_NANOSLEEP, 100000000000);
+            // about 4.5 seconds on 100ms quantum
             syscall(SYS_WRITE, STDOUT, "CHILD\n");
+            syscall(SYS_NANOSLEEP, 40000000000);
         }
     }
 

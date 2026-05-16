@@ -24,12 +24,9 @@ pqnode_t pq_pop(pq_t* pq){
     if(!pq->items) return node;
     node = pq->heap[0];
 
-    // copy last item into index 0
-    _pq_swap(pq, 0, --pq->items);
-
-    // sink
+    _pq_swap(pq, 0, pq->items - 1);  // swap root with actual last valid item
+    pq->items--;                       // then shrink
     _pq_sink(pq, 0);
-    return node;
 }
 
 pqnode_t pq_peek(pq_t* pq){

@@ -4,7 +4,7 @@
 #include "peripherals/irq.h"
 #include "macros.h"
 
-#define CLOCKHZ         1000000
+#define CLOCKHZ         1000000ULL
 
 struct timer_regs{
     reg32_t control_status;

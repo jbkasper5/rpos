@@ -138,6 +138,22 @@ flush_tlb:
     ret
 
 
+.globl ticks_since_boot
+ticks_since_boot:
+    mrs x0, cntvct_el0
+    ret
+
+.globl seconds_since_boot
+seconds_since_boot:
+    mrs x0, cntvct_el0
+    mrs x1, cntfrq_el0
+
+    scvtf d0, x0            // Signed Convert To Float: Move x0 -> d0 and convert to decimal
+    scvtf d1, x1            // Signed Convert To Float: Move x1 -> d1 and convert to decimal
+    
+    fdiv  d0, d0, d1        // Floating-point divide: d0 = d0 / d1
+    ret
+
 .globl panic
 panic:
     brk #0xBEEF

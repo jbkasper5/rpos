@@ -13,9 +13,10 @@ pcb_list_t proclist;
 #define KSTACK_SIZE PAGE_SIZE
 
 static void idle(){
+    u64 i = 0;
     while(TRUE){
         WFI();
-        kprintf(".\n");
+        kprintf("%d...\n", i++);
         scheduler();
     }
 }
@@ -62,20 +63,24 @@ void scheduler(){
     // switch active processes
     int selected_process = 0;
     int active_process = get_current() - proclist.proclist;
-    int i = active_process;
+    int i = active_process + 1;
     for(int idx = 0; idx < proclist.processes; idx++){
 
         // handle wraparounds
         i %= proclist.processes;
 
+        // ignore the idle process, will be defaulted if selected_process is still 0
+        if(!i){
+            i++;
+            continue;   
+        }
+
         // only look for processes that are ready
         if(proclist.proclist[i].state == PROCESS_READY){
 
-            // if a process is ready and it's not the one currently executing, switch immediately
-            if(i != active_process){
-                selected_process = i;
-                break;
-            }
+            // if we found a ready process, take it and context switch
+            selected_process = i;
+            break;
 
         // if we haven't selected a process yet and the current one is still running, select it
         }else if(proclist.proclist[i].state == PROCESS_RUNNING && !selected_process){
