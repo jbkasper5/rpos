@@ -2,7 +2,7 @@
 #include "memory/mem.h"
 #include "utils/datastructures.h"
 
-static trie* device_trie;
+trie* device_trie;
 
 static inline u32 swap_endianness_32(u32 data) {
     return __builtin_bswap32(data);
@@ -66,15 +66,9 @@ static void parse_device_tree(fdt_header* header){
 
 void device_tree_init(){
     u64 tree = get_device_tree_start();
-    INFO("Tree loaded at 0x%x\n", tree);
-
     device_trie = trie_init();
-
-    INFO("Device trie created at: 0x%x\n", device_trie);
-
     trie_add(device_trie, "/dev/fb0", 1);
-
-    INFO("'/dev/fb0' in trie: %d\n", trie_get(device_trie, "/dev/fb0"));    
+    trie_add(device_trie, "/dev/ttyS1", 55);
 
     if(FALSE){
         fdt_header* header = (fdt_header*) tree;

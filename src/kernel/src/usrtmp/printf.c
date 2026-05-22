@@ -1,7 +1,6 @@
-#include "io/kprintf.h"
-#include "io/lcd.h"
+#include <stdarg.h>
 #include "macros.h"
-#include "io/cli.h"
+#include "uapi/rpos/syscall_macros.h"
 
 typedef enum{
     ANSI_ESCAPE,
@@ -16,6 +15,18 @@ typedef struct{
     int param_len;
     char cmd;
 } ansi_state;
+
+
+typedef struct {
+    char buf[2048];
+    int size;
+    int pos;
+} printbuf;
+
+printbuf buf = {
+    .size = 2048,
+    .pos = 0
+};
 
 static int atoi_until_semicolon(char** pp){
     char* p = *pp;
@@ -37,9 +48,29 @@ static ansi_state state = {
     .param_len = 0
 };
 
+
+static void buf_putc(char c){
+    // at the edge of the buffer, so flush it and set the buffer back
+    if(buf.pos == buf.size - 1){
+        buf.buf[buf.pos] = '\0';
+        syscall(SYS_WRITE, 1, buf.buf);
+        buf.pos = 0;
+    }
+
+    // otherwise, add the character to the buffer
+    buf.buf[buf.pos++] = c;
+
+    // if the character is a newline, flush the buffer
+    if(c == '\n'){
+        buf.buf[buf.pos++] = '\0';
+        syscall(SYS_WRITE, 1, buf.buf);
+        buf.pos = 0;
+    }
+}   
+
 static ANSI_STATE ansi_normal(char c){
     if(c == '\e') return ANSI_ESCAPE;
-    else uart_putc(c);
+    else buf_putc(c);
     return ANSI_NORMAL;
 }
 
@@ -82,36 +113,6 @@ static ANSI_STATE ansi_end_escape(char c){
         params[n++] = atoi_until_semicolon(&p); // parse integer and advance pointer past ';'
     }
 
-    // color directive
-    if(state.cmd == 'm'){
-        for(int i = 0; i < n; i++){
-            switch(params[i]){
-                case 0: 
-                    unset_text_background_color();
-                    unset_text_color();
-                    break;
-                case 30: set_text_color(ANSI_BLACK); break;
-                case 31: set_text_color(ANSI_RED); break;
-                case 32: set_text_color(ANSI_GREEN); break;
-                case 33: set_text_color(ANSI_YELLOW); break;
-                case 34: set_text_color(ANSI_BLUE); break;
-                case 35: set_text_color(ANSI_MAGENTA); break;
-                case 36: set_text_color(ANSI_CYAN); break;
-                case 37: set_text_color(ANSI_WHITE); break;
-
-                case 40: set_text_background_color(ANSI_BLACK); break;
-                case 41: set_text_background_color(ANSI_RED); break;
-                case 42: set_text_background_color(ANSI_GREEN); break;
-                case 43: set_text_background_color(ANSI_YELLOW); break;
-                case 44: set_text_background_color(ANSI_BLUE); break;
-                case 45: set_text_background_color(ANSI_MAGENTA); break;
-                case 46: set_text_background_color(ANSI_CYAN); break;
-                case 47: set_text_background_color(ANSI_WHITE); break;
-                default:
-                    continue;
-            }
-        }
-    }
     return ANSI_NORMAL;
 }
 
@@ -226,7 +227,7 @@ static int expand(char* s, va_list* args){
     return consumed_chars;
 }
 
-void kprintf(char* format_str, ...){
+void printf(char* format_str, ...){
     char* ptr = format_str;
 
     va_list list;

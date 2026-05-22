@@ -58,11 +58,11 @@ SECTIONS {
   . = . + VIRT_BASE;
 
   .text : AT(ADDR(.text) - VIRT_BASE) { 
-    *(EXCLUDE_FILE (*user.o *user_s.o) .text*)
+    *(EXCLUDE_FILE (*user.o *user_s.o *printf.o) .text*)
   } : text
 
   .rodata : AT(ADDR(.rodata) - VIRT_BASE) {
-    *(EXCLUDE_FILE (*user.o *user_s.o) .rodata*)
+    *(EXCLUDE_FILE (*user.o *user_s.o *printf.o) .rodata*)
   } : rodata
 
   . = ALIGN(0x10);
@@ -73,7 +73,7 @@ SECTIONS {
   } : rodata
 
   .data : AT(ADDR(.data) - VIRT_BASE) { 
-    *(.data) 
+    *(EXCLUDE_FILE (*user.o *user_s.o *printf.o) .data*)
   } : data
 
   . = ALIGN(0x8);
@@ -128,8 +128,9 @@ SECTIONS {
   /* 2. Map Test Text - Force VMA to 0x8000000 */
   .text.test TEST_BASE : AT(__test_phys_loc) {
     _test_text_start = .;
-    *user.o(.text*)
-    *user_s.o(.text*)
+    **/usrtmp/printf.o(.text*)
+    **/usrtmp/user.o(.text*)
+    **/usrtmp/user_s.o(.text*)
     . = ALIGN(0x1000);
     _test_text_end = .;
   } : test_text
@@ -137,10 +138,12 @@ SECTIONS {
   /* 3. Map Test Data - Force VMA to stay in the Low-Half (0x800xxxx) */
   /* This 'ADDR(...) + SIZEOF(...)' is the magic that fixes the truncation */
   .test.data ADDR(.text.test) + SIZEOF(.text.test) : AT(LOADADDR(.text.test) + SIZEOF(.text.test)) {
-    *user.o(.rodata*)
-    *user.o(.data*)
-    *user_s.o(.rodata*)
-    *user_s.o(.data*)
+    **/usrtmp/printf.o(.rodata*)
+    **/usrtmp/printf.o(.data*)
+    **/usrtmp/user.o(.rodata*)
+    **/usrtmp/user.o(.data*)
+    **/usrtmp/user_s.o(.rodata*)
+    **/usrtmp/user_s.o(.data*)
     . = ALIGN(0x1000);
   } : test_data
 

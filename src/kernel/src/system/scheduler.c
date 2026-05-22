@@ -15,8 +15,8 @@ pcb_list_t proclist;
 static void idle(){
     u64 i = 0;
     while(TRUE){
+        INTERRUPT_ENABLE();
         WFI();
-        kprintf("%d...\n", i++);
         scheduler();
     }
 }
@@ -148,7 +148,7 @@ void deschedule(){
     DEBUG("Descheduling %d\n", current->pid);
 
     current->state = PROCESS_BLOCKED;
-
+    
     scheduler();
 }
 
@@ -181,7 +181,7 @@ void add_test_section_to_scheduler(){
     u64 test_size = get_test_size();
     u16 order = log2_pow2(test_size / 4096);
 
-    map(test_virt, test_phys, order, MAP_USER | MAP_READ | MAP_EXEC, proc->registers.ttbr);
+    map(test_virt, test_phys, order, MAP_USER | MAP_READ | MAP_WRITE | MAP_EXEC, proc->registers.ttbr);
 
     proc->registers.pc = user_ptr;
 

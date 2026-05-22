@@ -42,8 +42,7 @@ static ext4_inode* resolve_path(const char* pathname){
 }
 
 u8 check_vfs(char* path){
-    // return trie_get(device_trie, path);
-    return FALSE;
+    return trie_get(device_trie, path);
 }
 
 void* open(const char* pathname, u32 flags){

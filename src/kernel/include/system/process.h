@@ -30,7 +30,7 @@ typedef struct pcb_s {
     u64 kernel_stack;
     u32 pid;
     enum PROC_STATE state;
-    file_t fds[MAX_OPEN_FILES];
+    file_t* fds[MAX_OPEN_FILES];
     // memory information
         // page tables
     // file structure information

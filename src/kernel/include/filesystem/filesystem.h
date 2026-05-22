@@ -23,6 +23,7 @@ typedef enum{
 
 
 typedef struct fileops_s{
+    int (*open)(struct file_s* file);   // add this
     int (*read)(struct file_s* file, char* buf, u64 count);
     int (*write)(struct file_s* file, const char* buf, u64 count);
     int (*ioctl)(struct file_s* file, unsigned int cmd, unsigned long arg);

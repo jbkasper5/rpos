@@ -66,6 +66,7 @@ typedef u16 pid_t;
 #define TEST_BSS        __attribute__((section(".test.bss")))
 #define TEST_RODATA     __attribute__((section(".test.rodata")))
 
+#define INTERRUPT_ENABLE()        asm volatile("msr daifclr, #0xf")
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))

@@ -59,7 +59,51 @@ void trie_add(trie* t, const char* key, u64 value){
             t->keys++;
             t->head = result;
         }
+        return;
     }
+
+    trie_node* node = t->head;
+    trie_node* parent = NULL;
+    const char* cp = key;
+    char c = *cp;
+
+    while(c){
+        trie_node* cur = node;
+        trie_node* prev = NULL;
+
+        // search for c in the current level
+        while(cur && cur->c < c){
+            prev = cur;
+            cur = cur->next;
+        }
+
+        if(cur && cur->c == c){
+            // found matching node, go down
+            parent = cur;
+            node = cur->down;
+            c = *(++cp);
+        } else {
+            // character not found, insert a new chain for the rest of the key
+            trie_node* new_node = trie_add_down(cp, value);
+            if(!new_node) return;
+
+            if(!prev){
+                // insert before cur at this level
+                new_node->next = cur;
+                if(parent) parent->down = new_node;
+                else t->head = new_node;
+            } else {
+                // insert after prev
+                new_node->next = cur;
+                prev->next = new_node;
+            }
+            t->keys++;
+            return;
+        }
+    }
+
+    // reached end of key, set value on current node
+    if(parent) parent->value = value;
 }
 
 void trie_remove(trie* t, const char* key){
@@ -74,11 +118,6 @@ u64 trie_get(trie* t, const char* key){
     trie_node* node = t->head;
     trie_node* prevnode = node;
     while(c){
-        // skip over the '/' character in dev paths to save space
-        // if(*cp == '/'){
-        //     cp++;
-        //     continue;
-        // }
 
         if(!node) return NULL;
 

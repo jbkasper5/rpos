@@ -168,7 +168,7 @@ handle_el0_svc:
     // backup all user registers and processor state
     kernel_entry
 
-    msr daifclr, #0xf
+    # msr daifclr, #0xf
 
     #ifdef DEBUG
     # mrs x1, SPSR_EL1

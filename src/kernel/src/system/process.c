@@ -17,6 +17,15 @@ const fileops_t stdout_ops = {
     .ioctl = NULL,
 };
 
+const file_t stdio_file = {
+    .file_ops = &stdout_ops,
+    .flags = 0,
+    .inode = NULL,
+    .pos = 0,
+    .private_data = NULL,
+    .refcount = 1
+};
+
 static void* initialize_proc_kstack(){
     u64 range = buddy_alloc(KSTACK_SIZE + PAGE_SIZE);
     map(range + PAGE_SIZE, va_to_pa(range + PAGE_SIZE), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);   
@@ -26,6 +35,17 @@ static void* initialize_proc_kstack(){
 
 u32 generate_pid(){
     return atomic_increment(&pidcounter, 1);
+}
+
+int fd_alloc(pcb_t* proc, file_t* file) {
+    for(int i = 0; i < MAX_OPEN_FILES; i++) {
+        if(!proc->fds[i]) {
+            proc->fds[i] = file;
+            return i;
+        }
+    }
+    return -1;
+    // return -EMFILE;  // too many open files
 }
 
 pcb_t* procalloc(u64 entrypoint){
@@ -68,10 +88,20 @@ pcb_t* procalloc(u64 entrypoint){
     // subtract 16 since USER_STACK_TOP technically lies outside the 2 page boundary
     process->registers.sp = USER_STACK_TOP - 16;
 
-    process->fds[STDIN].file_ops = &stdout_ops;
-    process->fds[STDOUT].file_ops = &stdout_ops;
-    process->fds[STDERR].file_ops = &stdout_ops;
-    
+    file_t* stdin_f  = kmalloc(sizeof(file_t));
+    file_t* stdout_f = kmalloc(sizeof(file_t));
+    file_t* stderr_f = kmalloc(sizeof(file_t));
+
+    // struct copy
+    *stdin_f  = stdio_file;
+    *stdout_f = stdio_file;
+    *stderr_f = stdio_file;
+
+    // set the defaults for all processes
+    process->fds[STDIN] = stdin_f;
+    process->fds[STDOUT] = stdout_f;
+    process->fds[STDERR] = stderr_f;
+
     return process;
 }
 

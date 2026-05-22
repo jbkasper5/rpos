@@ -25,21 +25,27 @@ u64 sys_write(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3,
     // write a buffer to a file descriptor
     // get fd
     pcb_t* current = get_current();
-    if(current->fds[fd].file_ops->write){
-        return current->fds[fd].file_ops->write(current->fds, buf, count);
+    if(current->fds[fd] && current->fds[fd]->file_ops->write){
+        return current->fds[fd]->file_ops->write(current->fds, buf, count);
     }
     return 0;
 }
 
 u64 sys_read(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3, u64 regfile){
-    return 0;
+    // deschedule the process until a key press is received over the IRQ
+    // deschedule();
+
+    // once we get back here, it means the process was woken by the IRQ handler for the keyboard
+    pcb_t* current = get_current();
+
+    // read data from the file descriptor
+    // current->fds[fd].file_ops->read();
 }
 
 u64 sys_nanosleep(u64 ns, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
     // slep
     timer_nanosleep(ns);
     deschedule();
-
     return 0;
 }
 
@@ -95,10 +101,19 @@ u64 sys_get_framebuffer(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 
 
 
 u64 sys_open(u64 path, u64 flags, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
-    return SYS_ERROR;
-    if(check_vfs((char*) path)){
-        // file to open is virtual, likely looking for a device
-        return 3;
+    file_t* fd = (file_t*) check_vfs((char*) path);
+    if(fd){
+        pcb_t* current = get_current();
+
+        // stuff it in 4 for now
+        file_t* new_fd = &current->fds[4];
+
+        
+        memcpy(new_fd, fd, sizeof(file_t));
+
+        // invoke the open procedure for the filedescriptor
+        new_fd->file_ops->open(fd);
+        return 4;
     }else{
         open((const char*) path, flags);
     }

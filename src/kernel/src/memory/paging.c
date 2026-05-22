@@ -201,7 +201,7 @@ void* head_from_page(void* page_addr){
     page_frame_t* pf = &frame_metadata[pfn];
 
     // if we're a tail page, we can find the head through the order property
-    if(pf->flags.bits.flags = PAGE_BUDDY_TAIL){
+    if(pf->flags.bits.flags == PAGE_BUDDY_TAIL){
         pfn = pf->order;
         pf = &frame_metadata[pfn];
     }
