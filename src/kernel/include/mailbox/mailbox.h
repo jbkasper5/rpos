@@ -208,6 +208,11 @@ enum rpi_firmware_property_tag {
 
 	RPI_FIRMWARE_GET_COMMAND_LINE =                       0x00050001,
 	RPI_FIRMWARE_GET_DMA_CHANNELS =                       0x00060001,
+
+	/* Pi 4B: tells the GPU to (re-)upload the VL805 xHCI controller
+	 * firmware over I2C after we've toggled PERST on the PCIe link.
+	 * Request body is a single u32 = (bus << 20) | (dev << 15) | (fn << 12). */
+	RPI_FIRMWARE_NOTIFY_XHCI_RESET =                      0x00030058,
 };
 
 u32 mailbox_clock_rate(clock_type ct);

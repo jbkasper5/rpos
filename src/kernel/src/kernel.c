@@ -16,6 +16,7 @@
 #include "memory/kmalloc.h"
 #include "filesystem/elf.h"
 #include "drivers/dt.h"
+#include "drivers/usb.h"
 
 void hardware_init(){
 
@@ -50,6 +51,9 @@ void hardware_init(){
 
     INFO("Initializing device drivers...\n");
     device_tree_init();
+
+    INFO("Initializing USB...\n");
+    usb_init();
 
     INFO("Enabling physical timer...\n");
     physical_timer_enable();

@@ -4,17 +4,11 @@ debug_str:
     .asciz "HERE!\n"
 
 .section .text
-.equ TCR_EL1_VALUE, \
-    ((16 << 0)   | /* T0SZ = 48-bit VA space */ \
-     (0b01 << 8) | /* IRGN0 = Write-back, Write-allocate */ \
-     (0b01 << 10)| /* ORGN0 = Write-back, Write-allocate */ \
-     (0b11 << 12)| /* SH0 = Inner Shareable */ \
-     (0b00 << 14)| /* TG0 = 4KB granule */ \
-     (16 << 16)  | /* T1SZ = 48-bit VA space */ \
-     (0b01 << 24)| /* IRGN1 */ \
-     (0b01 << 26)| /* ORGN1 */ \
-     (0b11 << 28)| /* SH1 = Inner Shareable */ \
-     (0b10 << 30)) /* TG1 = 4KB granule */
+/* NOTE: The real TCR_EL1 value is loaded as a literal in boot/highhalf.S
+ * (0x2B5103510). This symbol used to live here for reference but was
+ * confusing because it looked like the live config when nothing actually
+ * referenced it. Removed.
+ */
 
 .globl walk
 walk:

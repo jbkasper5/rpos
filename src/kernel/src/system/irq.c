@@ -8,6 +8,8 @@
 #include "system/scheduler.h"
 #include "peripherals/gic.h"
 #include "system/gic.h"
+#include "drivers/xhci.h"
+#include "drivers/pcie.h"
 
 // #define IRQ_DEBUG
 
@@ -108,6 +110,9 @@ void handle_irq(u64 reg_addr, u8 el){
 			DEBUG("Mini UART Recv: ");
 			uart_putc(uart_getc());
 			DEBUG("\n");
+		}else if(gic_irq == PCIE_INTID_LEGACY){
+			/* PCIe legacy INTA/B/C/D - on Pi 4B that's the VL805. */
+			xhci_handle_irq();
 		}
         // Acknowledge end of interrupt
         REGS_GICC->gicc_eoir = gic_irq;

@@ -6,11 +6,19 @@ enable_mmu:
     ldr x2, =((0xFF << 0) | (0x04 << 8))
     msr MAIR_EL1, x2
 
-    // 2. Setup TCR (40-bit IPS, 4KB Granules, Inner-Shareable WB/WA)
-    # ldr x2, =((16 << 0)  | (16 << 16) | (2 << 30) | (3 << 12) | \
-    #           (3 << 28)  | (1 << 8)   | (1 << 10) | (1 << 24) | \
-    #           (1 << 26)  | (2 << 32))
-    ldr x2, =0x80100010
+    // 2. Setup TCR. Pre-OR'd into one 64-bit literal:
+    //      T0SZ=16            (48-bit VA, low half)        0x10
+    //      IRGN0=01,ORGN0=01  (cacheable walks)            0x100|0x400
+    //      SH0=11             (inner shareable)            0x3000
+    //      T1SZ=16            (48-bit VA, high half)       0x100000
+    //      IRGN1=01,ORGN1=01,SH1=11                        0x1000000|0x4000000|0x30000000
+    //      TG1=10             (4KB granule, TTBR1)         0x80000000
+    //      IPS=010            (40-bit PA - covers PCIe @ 24GiB) 0x200000000
+    //
+    //    The previous value 0x80100010 only set T0SZ/T1SZ/TG1; IPS was 0,
+    //    capping output PAs at 32 bits and breaking any mapping above 4
+    //    GiB (such as the PCIe outbound window at 0x600000000).
+    ldr x2, =0x2B5103510
     msr TCR_EL1, x2
     isb
 

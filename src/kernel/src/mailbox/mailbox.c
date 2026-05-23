@@ -89,53 +89,42 @@ bool mailbox_power_check(u32 type) {
     return p.state && p.state != ~0;
 }
 
-static bool pcie_clock_on(){
-    mailbox_clock mbx;
-    mbx.tag.id = RPI_FIRMWARE_SET_CLOCK_STATE;
-    mbx.tag.buffer_size = 8;
-    mbx.tag.value_length = 8;
-    
-    mbx.id = 0x9;    // PCIe Clock ID
-    mbx.rate = 0x1;  // State: On
-    
-    return mailbox_process((mailbox_tag *)&mbx, sizeof(mbx));
-}
-
 bool mailbox_pcie_usb_power_on(){
-    u64* testptr = 0xFFFF8000FD50406C;
-    u64* testptr2 = 0xFFFF8000FD504068;
-
-    u64 test = *testptr;
-    u64 test2 = *testptr2;
-
-    int ret = pcie_clock_on();
-
+    /* On Pi 4B the PCIe and USB blocks share a single power-rail "domain"
+     * that the GPU firmware tracks under the SET_DOMAIN_STATE tag (0x38030).
+     *
+     * Two important nits:
+     *   - Don't use SET_POWER_STATE (0x28001). That tag's IDs are device
+     *     IDs (SD=0, UART0=1, UART1=2, USB HCD=3, I2C0=4, I2C1=5, I2C2=6,
+     *     SPI=7, ...). The number "6" there is I2C2, NOT USB.
+     *   - There is no PCIe clock exposed via SET_CLOCK_STATE on BCM2711;
+     *     PCIe clocking is internal to the SoC. Don't try to "turn it on".
+     *
+     * If start4.elf has already powered the rail (the typical case on a
+     * stock-bootloader Pi 4B), the firmware just reports back "still on"
+     * and we're done.
+     */
     mailbox_power mbx;
-
-    mbx.tag.id = RPI_FIRMWARE_SET_POWER_STATE;
-    mbx.tag.buffer_size = 8;   // We are sending 8 bytes of data (id + state)
-    mbx.tag.value_length = 8;  // We expect 8 bytes back (request bit 31 is 0)
-
-    mbx.id = 3; // RPI_POWER_DOMAIN_VIDEO_SCALER
-    mbx.state = 0x3; 
-    mailbox_process((mailbox_tag *)&mbx, sizeof(mbx));
-
-    // Then try ID 6 again
-    mbx.id = 6; // RPI_POWER_DOMAIN_USB
-    mbx.state = 0x3;
-    mailbox_process((mailbox_tag *)&mbx, sizeof(mbx));
+    mbx.tag.id           = RPI_FIRMWARE_SET_DOMAIN_STATE;
+    mbx.tag.buffer_size  = 8;
+    mbx.tag.value_length = 8;
+    mbx.id    = 6;       /* RPI_POWER_DOMAIN_USB on BCM2711 */
+    mbx.state = 0x3;     /* bit0 = on, bit1 = wait-until-stable */
 
     if (!mailbox_process((mailbox_tag *)&mbx, sizeof(mbx))) {
         WARNING("USB Power: Mailbox call failed\n");
         return FALSE;
     }
 
-    // 4. Verify: The VC updates the state field with the actual status
-    // Bit 1 of the returned state indicates if it's powered (1 = On)
+    /* Returned state.bit0 = 1 => powered. If bit0 is 0 the firmware
+     * refused, which on Pi 4B usually means the GPU bootloader wasn't
+     * told to expose PCIe (check config.txt). */
     if (!(mbx.state & 0x1)) {
-        WARNING("USB Power: Hardware refused to wake up (State: %x)\n", mbx.state);
+        WARNING("USB Power: domain still off after request (state=0x%x)\n",
+                mbx.state);
         return FALSE;
     }
 
+    DEBUG("USB Power: domain on (state=0x%x)\n", mbx.state);
     return TRUE;
 }
