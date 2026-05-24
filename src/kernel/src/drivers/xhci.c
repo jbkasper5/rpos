@@ -631,6 +631,23 @@ bool xhci_init(u64 mmio_virt, u32 mmio_size) {
     INFO("xhci: HCIVERSION 0x%x, CAPLENGTH 0x%x, HCSPARAMS1 0x%x\n",
          ver, caplen, hcs1);
 
+    /* Sanity-check the cap regs before we trust them. If the VL805 isn't
+     * responding to MMIO TLPs, the BCM2711 RC synthesises 0xDEADxxxx for
+     * every read after its completion timeout (~50-100 ms per access).
+     * Continuing past this point computes xhci.op = mmio_virt + caplen with
+     * a garbage caplen, and the first MMIO load on Device memory will
+     * alignment-fault (ESR.DFSC=0x21). Bail loudly instead. */
+    if (ver == 0xDEAD || ver == 0xFFFF || ver == 0x0000
+        || caplen < 0x20 || caplen > 0x80 || (caplen & 0x3)
+        || hcs1 == 0xFFFFFFFFu || hcs1 == 0xDEADDEADu) {
+        ERROR("xhci: cap regs look like garbage (ver=0x%x caplen=0x%x "
+              "hcs1=0x%x). VL805 not responding to MMIO - PCIe link is "
+              "up but TLP completions are timing out. Check that the "
+              "VL805 firmware reload succeeded and that BAR0 / outbound "
+              "window addresses match.\n", ver, caplen, hcs1);
+        return FALSE;
+    }
+
     xhci.op        = (xhci_op_regs_t*)(mmio_virt + caplen);
     xhci.ir0       = (xhci_intr_regs_t*)(mmio_virt + (rtsoff & ~0x1Fu) + 0x20);
     xhci.doorbells = (volatile u32*)(mmio_virt + (dboff & ~0x3u));

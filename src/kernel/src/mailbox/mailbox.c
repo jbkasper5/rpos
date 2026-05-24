@@ -46,6 +46,37 @@ bool mailbox_process(mailbox_tag *tag, u32 tag_size) {
     return TRUE;
 }
 
+/*
+ * Strict variant: returns TRUE only if the GPU acknowledges BOTH the request
+ * (buff->code == SUCCESS) AND the specific tag (tag->value_length high bit
+ * set). Use this when you genuinely care whether the firmware did anything,
+ * e.g. for NOTIFY_XHCI_RESET where silent failure leaves the VL805 dead.
+ *
+ * Kept separate from mailbox_process() because many existing callers in the
+ * kernel rely on the always-TRUE return semantics (framebuffer, clocks,
+ * power-domain readback) - tightening the contract universally caused
+ * downstream callers to mishandle the new failure path and reset the SoC
+ * before kernel_main returned.
+ */
+bool mailbox_process_strict(mailbox_tag *tag, u32 tag_size) {
+    if (!mailbox_process(tag, tag_size)) return FALSE;
+
+    property_buffer *buff = (property_buffer *)property_data;
+    if (buff->code != RPI_FIRMWARE_STATUS_SUCCESS) {
+        DEBUG("mailbox: buffer code = 0x%x (request id=0x%x)\n",
+              buff->code, tag->id);
+        return FALSE;
+    }
+    if (!(tag->value_length & 0x80000000u)) {
+        DEBUG("mailbox: tag 0x%x not processed (value_length=0x%x) - "
+              "the GPU firmware probably doesn't support this tag\n",
+              tag->id, tag->value_length);
+        return FALSE;
+    }
+    tag->value_length &= 0x7FFFFFFFu;
+    return TRUE;
+}
+
 bool mailbox_generic_command(u32 tag_id, u32 id, u32 *value) {
     mailbox_generic mbx;
     mbx.tag.id = tag_id;

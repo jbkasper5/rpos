@@ -219,6 +219,12 @@ u32 mailbox_clock_rate(clock_type ct);
 bool mailbox_generic_command(u32 tag_id, u32 id, u32 *value);
 bool mailbox_power_check(u32 type);
 bool mailbox_process(mailbox_tag *tag, u32 tag_size);
+/* Like mailbox_process but actually inspects buff->code and the tag's
+ * response bit. Returns FALSE if the GPU rejected the request or silently
+ * ignored the tag (unrecognised ID). Use this only when you can sensibly
+ * handle a FALSE return - most existing callers rely on the loose
+ * always-TRUE semantics of mailbox_process. */
+bool mailbox_process_strict(mailbox_tag *tag, u32 tag_size);
 void mailbox_write(u8 channel, u64 data);
 u32 mailbox_read(u8 channel);
 bool mailbox_pcie_usb_power_on();

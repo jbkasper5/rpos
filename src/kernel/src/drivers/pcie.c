@@ -27,7 +27,6 @@
  *     (RPI_FIRMWARE_NOTIFY_XHCI_RESET) after enumeration.
  */
 
-#include "macros.h"
 #include "io/kprintf.h"
 #include "utils/timer.h"
 #include "utils/utils.h"
@@ -35,6 +34,7 @@
 #include "memory/paging.h"
 #include "mailbox/mailbox.h"
 #include "drivers/pcie.h"
+#include "macros.h"
 
 /* ---- Tiny MMIO wrappers ------------------------------------------------- *
  * Centralised so we can drop in barriers as needed. xHCI on Pi 4B is
@@ -135,6 +135,24 @@ static bool brcm_pcie_setup(void) {
     ctrl &= ~PCIE_MISC_MISC_CTRL_SCB0_SIZE_MASK;
     ctrl |=  (15u << PCIE_MISC_MISC_CTRL_SCB0_SIZE_SHIFT);
     wr32(RC(PCIE_MISC_MISC_CTRL), ctrl);
+
+    /* VL805-specific workaround: CLKREQ_DEBUG_ENABLE.
+     *
+     * The VL805 doesn't drive PCIe CLKREQ# correctly. Without this bit
+     * set, the BCM2711 RC's power management can park the link in a
+     * state where config-space transactions still complete (they go
+     * through a different RC path) but memory-space TLPs get dropped
+     * without completion - which surfaces to us as 0xDEADxxxx reads of
+     * the xHCI BAR via the RC's TLP completion timeout. Linux's
+     * brcm-pcie driver sets this unconditionally on BCM2711.
+     *
+     * Bit 0 enables the "debug" override that forces CLKREQ# behaviour
+     * to work even when the downstream device doesn't drive it. */
+    u32 dbg = rd32(RC(PCIE_MISC_HARD_PCIE_HARD_DEBUG));
+    dbg |= (1u << 0);
+    wr32(RC(PCIE_MISC_HARD_PCIE_HARD_DEBUG), dbg);
+    INFO("pcie: HARD_DEBUG = 0x%x (CLKREQ_DEBUG_ENABLE set)\n",
+         rd32(RC(PCIE_MISC_HARD_PCIE_HARD_DEBUG)));
 
     /* --- Inbound (device->memory) window: RC_BAR2.
      * PCIe sees DRAM[0..1 GiB] directly at bus address 0..1 GiB.
@@ -302,6 +320,38 @@ static bool find_and_setup_vl805(pcie_dev_t* out) {
     cmd |= PCI_COMMAND_MEM | PCI_COMMAND_MASTER;
     pci_config_write16(1, 0, 0, PCI_COMMAND, cmd);
 
+    /* Read back the values we just wrote. Logged at INFO so we don't lose
+     * them in DEBUG-stripped builds - this is the data we need when the
+     * xHCI MMIO comes back as 0xDEAD. The low 4 bits of BAR0 are read-only
+     * type bits (0x4 = 64-bit memory BAR, prefetchable=0); the address
+     * portion (bits[31:4]) should match PCIE_MEM_WIN_PCI_ADDR. */
+    u32 bar0_rb   = pci_config_read32(1, 0, 0, PCI_BAR0);
+    u32 bar1_rb   = pci_config_read32(1, 0, 0, PCI_BAR1);
+    u16 cmd_rb    = pci_config_read16(1, 0, 0, PCI_COMMAND);
+    u16 status_rb = pci_config_read16(1, 0, 0, PCI_STATUS);
+    INFO("pcie: VL805 BAR0=0x%x BAR1=0x%x CMD=0x%x STATUS=0x%x\n",
+         bar0_rb, bar1_rb, cmd_rb, status_rb);
+    if ((bar0_rb & ~0xFu) != ((u32)PCIE_MEM_WIN_PCI_ADDR & ~0xFu)) {
+        WARNING("pcie: BAR0 didn't latch the address we wrote "
+                "(wrote 0x%x, reads back 0x%x)\n",
+                (u32)PCIE_MEM_WIN_PCI_ADDR, bar0_rb);
+    }
+    if (!(cmd_rb & PCI_COMMAND_MEM) || !(cmd_rb & PCI_COMMAND_MASTER)) {
+        WARNING("pcie: PCI command register did not latch MEM|MASTER "
+                "(reads back 0x%x)\n", cmd_rb);
+    }
+
+    /* Dump the outbound window programming too. If TLP completions never
+     * come back, the most common cause is the window not actually covering
+     * the BAR's PCIe-side address. */
+    INFO("pcie: outbound WIN0 LO=0x%x HI=0x%x BASE_LIMIT=0x%x "
+         "BASE_HI=0x%x LIMIT_HI=0x%x\n",
+         rd32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_LO)),
+         rd32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_HI)),
+         rd32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_BASE_LIMIT)),
+         rd32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_BASE_HI)),
+         rd32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_LIMIT_HI)));
+
     out->vl805_mmio_virt = PCIE_MEM_WIN_CPU_PHYS | 0xFFFF800000000000UL;
     out->vl805_mmio_size = 0x10000;
     out->bus = 1; out->dev = 0; out->func = 0;
@@ -333,15 +383,29 @@ static bool find_and_setup_vl805(pcie_dev_t* out) {
                      | ((u32)out->dev  << 15)
                      | ((u32)out->func << 12);
 
-        if (!mailbox_process((mailbox_tag *)&mbx, sizeof(mbx))) {
-            WARNING("pcie: NOTIFY_XHCI_RESET mailbox call failed\n");
-            /* Don't bail - on some boards (rev 1.4+) start4.elf already
-             * loaded the firmware and there's nothing more to do; the
-             * mailbox call is harmless / no-op there. */
+        if (!mailbox_process_strict((mailbox_tag *)&mbx, sizeof(mbx))) {
+            ERROR("pcie: NOTIFY_XHCI_RESET (tag 0x30058) was not processed "
+                  "by the GPU firmware. VL805 xHCI firmware was NOT "
+                  "uploaded; the BAR will return 0xDEADxxxx. Fix: update "
+                  "the Pi's bootloader/EEPROM with `rpi-eeprom-update -a` "
+                  "(or copy a current pieeprom.upd / start4.elf onto the "
+                  "boot partition). The mailbox tag was added to the GPU "
+                  "firmware on 2019-09 - older revisions silently ignore "
+                  "it, which is exactly what your firmware is doing.\n");
+            /* Keep going so the xhci_init guard prints its own diagnostic
+             * before we bail at the kernel level. */
         } else {
-            DEBUG("pcie: VL805 firmware reload requested\n");
+            DEBUG("pcie: VL805 firmware reload acknowledged by GPU\n");
         }
     }
+
+    /* The mailbox tag returns as soon as the GPU acknowledges the request,
+     * but the actual firmware upload to the VL805 happens asynchronously
+     * over an I2C side-channel and takes ~200 ms. Reads to xHCI MMIO
+     * before that completes return 0xDEADxxxx (Broadcom's "TLP got no
+     * completion" pattern) and burn ~50 ms each on the RC's completion
+     * timeout. Linux's xhci-pci does the same wait. */
+    timer_sleep(200);
 
     return TRUE;
 }
