@@ -10,22 +10,6 @@
 static u32 pidcounter = 1;
 extern void ret_from_fork();
 
-const fileops_t stdout_ops = {
-    .write = uart_write,
-    .read = uart_read,
-    .close = NULL,
-    .ioctl = NULL,
-};
-
-const file_t stdio_file = {
-    .file_ops = &stdout_ops,
-    .flags = 0,
-    .inode = NULL,
-    .pos = 0,
-    .private_data = NULL,
-    .refcount = 1
-};
-
 static void* initialize_proc_kstack(){
     u64 range = buddy_alloc(KSTACK_SIZE + PAGE_SIZE);
     map(range + PAGE_SIZE, va_to_pa(range + PAGE_SIZE), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);   

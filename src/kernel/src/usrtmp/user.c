@@ -36,8 +36,6 @@ TEST_FN void user(){
     printf("Forkin!\n");
     u64 pid = syscall(SYS_FORK);
 
-
-    // BUG: Race condition with timer somehow
     if(pid){
         // parent
         while(TRUE){
@@ -45,7 +43,7 @@ TEST_FN void user(){
             syscall(SYS_NANOSLEEP, 5000000000);
         }
     }else{
-        // int fd = syscall(SYS_OPEN, "/dev/ttyS1");
+        int fd = syscall(SYS_OPEN, "/dev/ttyS1");
         // child
         while(TRUE){
             // roughly 2.6 seconds
