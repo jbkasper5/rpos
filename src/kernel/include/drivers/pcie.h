@@ -106,8 +106,40 @@
 #define PCIE_MISC_MISC_CTRL_SCB0_SIZE_SHIFT  27
 #define PCIE_MISC_MISC_CTRL_SCB0_SIZE_MASK   (0x1f << 27)
 
-#define PCIE_MISC_PCIE_STATUS_LINKUP         (1u << 4)
+/* PCIE_MISC_PCIE_STATUS (@ 0x4068) bits, per u-boot bcm2711.h:
+ *   bit 4 = PHYLINKUP  : physical layer link is up
+ *   bit 5 = DL_ACTIVE  : data-link layer is active (TLPs can flow)
+ * Both must be set for a usable link. PHYLINKUP alone can be true while
+ * the DLL is still in DL_Init - TLPs won't be acked yet. */
+#define PCIE_MISC_PCIE_STATUS_PHYLINKUP      (1u << 4)
+#define PCIE_MISC_PCIE_STATUS_DL_ACTIVE      (1u << 5)
+#define PCIE_MISC_PCIE_STATUS_LINKUP         \
+    (PCIE_MISC_PCIE_STATUS_PHYLINKUP | PCIE_MISC_PCIE_STATUS_DL_ACTIVE)
 #define PCIE_MISC_PCIE_STATUS_NEG_SPEED      (1u << 0)
+
+/* MSI interrupter registers (we don't use MSI, but mask all sources during
+ * bring-up so no spurious assertions confuse the legacy IRQ path). */
+#define PCIE_MSI_INTR2_CLR_OFF               0x4508
+#define PCIE_MSI_INTR2_MASK_SET_OFF          0x4510
+
+/* HARD_DEBUG bits (PCIE_MISC_HARD_PCIE_HARD_DEBUG @ 0x4204).
+ * Cross-checked against u-boot drivers/pci/pcie_brcmstb.c +
+ * mach-bcm283x/include/mach/acpi/bcm2711.h. */
+#define PCIE_HARD_DEBUG_CLKREQ_DEBUG_ENABLE  (1u << 1)
+#define PCIE_HARD_DEBUG_SERDES_IDDQ          (1u << 27)
+
+/* RC vendor / PRIV1 config space (offsets from PCIE_RC_BASE). */
+#define PCIE_RC_CFG_VENDOR_VENDOR_SPECIFIC_REG1                 0x0188
+#define VENDOR_SPECIFIC_REG1_ENDIAN_MODE_BAR2_MASK              0xCu
+#define VENDOR_SPECIFIC_REG1_LITTLE_ENDIAN                      0x0
+#define PCIE_RC_CFG_PRIV1_ID_VAL3_CLASS_CODE_MASK               0xFFFFFFu
+#define PCIE_RC_CFG_PRIV1_ID_VAL3_BRIDGE_CLASS                  0x060400u
+#define LINK_CAPABILITY_ASPM_SUPPORT_MASK                       0xC00u
+
+/* MEM_WIN0_BASE_LIMIT bit field layout (was incorrectly encoded). */
+#define MEM_WIN0_BASE_LIMIT_BASE_MASK        0xFFF0u        /* bits [15:4]  */
+#define MEM_WIN0_BASE_LIMIT_LIMIT_MASK       0xFFF00000u    /* bits [31:20] */
+#define MEM_WIN0_BASE_LIMIT_BASE_HI_SHIFT    12
 
 #define PCIE_INTR2_PCI_INTA                  (1u << 15)
 #define PCIE_INTR2_PCI_INTB                  (1u << 16)

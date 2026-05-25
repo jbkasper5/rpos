@@ -115,11 +115,33 @@ static bool map_pcie_regions(void) {
  * ----------------------------------------------------------------------- */
 
 static bool brcm_pcie_setup(void) {
+    /* Assert both PERST (downstream link reset) and INIT (RC internal reset). */
     wr32(RC(PCIE_RGR1_SW_INIT_1),
          PCIE_RGR1_SW_INIT_1_PERST_MASK | PCIE_RGR1_SW_INIT_1_INIT_MASK);
     timer_sleep(2);
+
+    /* Deassert INIT only. PERST stays asserted while we configure the RC. */
     wr32(RC(PCIE_RGR1_SW_INIT_1), PCIE_RGR1_SW_INIT_1_PERST_MASK);
-    timer_sleep(2);
+
+    /* CRITICAL: clear SERDES_IDDQ (bit 27) of HARD_DEBUG. This bit, set at
+     * power-on, parks the SerDes PHY in low-power quiescent mode. Link
+     * training still completes superficially and the RC's internal config-
+     * space path (which never touches the SerDes) keeps working - which is
+     * why config TLPs return real VID/DID etc. But every MEMORY-space TLP
+     * gets dropped on the floor without completion, and the RC's TLP-
+     * completion timeout synthesises 0xDEADxxxx. This was the bug.
+     *
+     * Cross-checked against u-boot drivers/pci/pcie_brcmstb.c probe(). */
+    {
+        u32 dbg = rd32(RC(PCIE_MISC_HARD_PCIE_HARD_DEBUG));
+        dbg &= ~PCIE_HARD_DEBUG_SERDES_IDDQ;
+        wr32(RC(PCIE_MISC_HARD_PCIE_HARD_DEBUG), dbg);
+        INFO("pcie: HARD_DEBUG = 0x%x (SERDES_IDDQ cleared)\n",
+             rd32(RC(PCIE_MISC_HARD_PCIE_HARD_DEBUG)));
+    }
+
+    /* Let SerDes stabilise after coming out of quiescent. */
+    timer_sleep(1);
 
     /* MISC_CTRL:
      *  - SCB_ACCESS_EN  : enable inbound memory access at all
@@ -136,24 +158,6 @@ static bool brcm_pcie_setup(void) {
     ctrl |=  (15u << PCIE_MISC_MISC_CTRL_SCB0_SIZE_SHIFT);
     wr32(RC(PCIE_MISC_MISC_CTRL), ctrl);
 
-    /* VL805-specific workaround: CLKREQ_DEBUG_ENABLE.
-     *
-     * The VL805 doesn't drive PCIe CLKREQ# correctly. Without this bit
-     * set, the BCM2711 RC's power management can park the link in a
-     * state where config-space transactions still complete (they go
-     * through a different RC path) but memory-space TLPs get dropped
-     * without completion - which surfaces to us as 0xDEADxxxx reads of
-     * the xHCI BAR via the RC's TLP completion timeout. Linux's
-     * brcm-pcie driver sets this unconditionally on BCM2711.
-     *
-     * Bit 0 enables the "debug" override that forces CLKREQ# behaviour
-     * to work even when the downstream device doesn't drive it. */
-    u32 dbg = rd32(RC(PCIE_MISC_HARD_PCIE_HARD_DEBUG));
-    dbg |= (1u << 0);
-    wr32(RC(PCIE_MISC_HARD_PCIE_HARD_DEBUG), dbg);
-    INFO("pcie: HARD_DEBUG = 0x%x (CLKREQ_DEBUG_ENABLE set)\n",
-         rd32(RC(PCIE_MISC_HARD_PCIE_HARD_DEBUG)));
-
     /* --- Inbound (device->memory) window: RC_BAR2.
      * PCIe sees DRAM[0..1 GiB] directly at bus address 0..1 GiB.
      * Low-5 bits of the LO register encode size as log2(size) - 15. */
@@ -166,12 +170,61 @@ static bool brcm_pcie_setup(void) {
     wr32(RC(PCIE_MISC_RC_BAR1_CONFIG_LO), 0);
     wr32(RC(PCIE_MISC_RC_BAR3_CONFIG_LO), 0);
 
+    /* Defensively mask + clear MSI sources during bring-up so they can't
+     * drive the legacy line we actually use. Matches u-boot. */
+    wr32(RC(PCIE_MSI_INTR2_MASK_SET_OFF), 0xFFFFFFFFu);
+    wr32(RC(PCIE_MSI_INTR2_CLR_OFF),      0xFFFFFFFFu);
+
+    /* Release PERST. The downstream device sees its PERSTN line rise,
+     * comes out of reset, and starts link training. The configuration of
+     * the outbound window, bridge class code, endian mode, and ASPM all
+     * happens AFTER link-up below - this matters because the RC's CFG
+     * space (where class/endian/ASPM live) is reset when the link trains,
+     * so any writes we made before PERST release would be clobbered. This
+     * was the bug. Cross-checked against u-boot pcie_brcmstb.c. */
+    u32 sw = rd32(RC(PCIE_RGR1_SW_INIT_1));
+    sw &= ~PCIE_RGR1_SW_INIT_1_PERST_MASK;
+    wr32(RC(PCIE_RGR1_SW_INIT_1), sw);
+
+    /* PCIe CEM spec section 2.2 requires 100 ms after PERST# deassertion
+     * before any access to the downstream device's config space. */
+    timer_sleep(100);
+
+    /* Poll for full link-up (both PHYLINKUP and DL_ACTIVE). Just PHYLINKUP
+     * is not sufficient - the data-link layer may still be initialising
+     * and TLPs won't be ack'd. */
+    bool link_up = FALSE;
+    for (int i = 0; i < 100; i++) {
+        u32 sts = rd32(RC(PCIE_MISC_PCIE_STATUS));
+        if ((sts & PCIE_MISC_PCIE_STATUS_LINKUP)
+                == PCIE_MISC_PCIE_STATUS_LINKUP) {
+            DEBUG("pcie: link up after CEM delay + %d ms (status=0x%x)\n",
+                  i, sts);
+            link_up = TRUE;
+            break;
+        }
+        timer_sleep(1);
+    }
+    if (!link_up) {
+        WARNING("pcie: link did not come up (status=0x%x)\n",
+                rd32(RC(PCIE_MISC_PCIE_STATUS)));
+        return FALSE;
+    }
+
+    /* ====================================================================
+     * Post-link-up configuration. These registers must be programmed AFTER
+     * the link is up because link training resets the RC's CFG-space view
+     * and would clobber any pre-PERST writes to the class/endian/ASPM
+     * fields.
+     * ==================================================================== */
+
     /* --- Outbound (CPU->device) window 0.
      *  LO         : low 32 bits of the PCIe-side base
-     *  HI         : high 32 bits of the CPU-side base
-     *  BASE_LIMIT : low half = base in MiB, high half = limit in MiB
-     *  BASE_HI    : top 32 bits of the CPU base (for >4 GiB addresses)
-     *  LIMIT_HI   : top 32 bits of the CPU limit                       */
+     *  HI         : high 32 bits of the PCIe-side base
+     *  BASE_LIMIT : BASE  field at bits [15:4]  in MiB units
+     *               LIMIT field at bits [31:20] in MiB units
+     *  BASE_HI    : extra high bits of CPU base (>>12 of MiB count)
+     *  LIMIT_HI   : extra high bits of CPU limit                          */
     u64 cpu_base = PCIE_MEM_WIN_CPU_PHYS;
     u64 cpu_lim  = cpu_base + 0x100000 - 1;
     u32 pci_base = (u32)PCIE_MEM_WIN_PCI_ADDR;
@@ -179,31 +232,50 @@ static bool brcm_pcie_setup(void) {
     wr32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_LO), pci_base);
     wr32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_HI), 0);
 
-    u32 base_limit = ((u32)(cpu_base >> 20) & 0xfff)
-                   | (((u32)(cpu_lim  >> 20) & 0xfff) << 16);
+    u64 base_mb  = cpu_base >> 20;
+    u64 limit_mb = cpu_lim  >> 20;
+
+    u32 base_limit = ((u32)base_mb  << 4)  & MEM_WIN0_BASE_LIMIT_BASE_MASK;
+    base_limit    |= ((u32)limit_mb << 20) & MEM_WIN0_BASE_LIMIT_LIMIT_MASK;
     wr32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_BASE_LIMIT), base_limit);
-    wr32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_BASE_HI),  (u32)(cpu_base >> 32));
-    wr32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_LIMIT_HI), (u32)(cpu_lim  >> 32));
 
-    /* Release PERST. The downstream device sees its PERSTN line rise,
-     * comes out of reset, and starts link training. */
-    u32 sw = rd32(RC(PCIE_RGR1_SW_INIT_1));
-    sw &= ~PCIE_RGR1_SW_INIT_1_PERST_MASK;
-    wr32(RC(PCIE_RGR1_SW_INIT_1), sw);
+    wr32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_BASE_HI),
+         (u32)(base_mb  >> MEM_WIN0_BASE_LIMIT_BASE_HI_SHIFT));
+    wr32(RC(PCIE_MISC_CPU_2_PCIE_MEM_WIN0_LIMIT_HI),
+         (u32)(limit_mb >> MEM_WIN0_BASE_LIMIT_BASE_HI_SHIFT));
 
-    /* Wait up to 100 ms for LINKUP. The VL805 trains in well under that. */
-    for (int i = 0; i < 100; i++) {
-        u32 sts = rd32(RC(PCIE_MISC_PCIE_STATUS));
-        if (sts & PCIE_MISC_PCIE_STATUS_LINKUP) {
-            DEBUG("pcie: link up after %d ms (status=0x%x)\n", i, sts);
-            return TRUE;
-        }
-        timer_sleep(1);
+    /* Set the RC's own class code so it shows up as a PCI-to-PCI bridge
+     * (default after reset is Endpoint mode). Without this the RC won't
+     * forward memory TLPs from bus 0 to bus 1, which means CPU accesses
+     * through the outbound window die silently downstream. This is the
+     * fix that actually unblocks xHCI BAR access. */
+    {
+        u32 v = rd32(RC(PCIE_RC_CFG_PRIV1_ID_VAL3));
+        v = (v & ~PCIE_RC_CFG_PRIV1_ID_VAL3_CLASS_CODE_MASK)
+          | PCIE_RC_CFG_PRIV1_ID_VAL3_BRIDGE_CLASS;
+        wr32(RC(PCIE_RC_CFG_PRIV1_ID_VAL3), v);
+        INFO("pcie: bridge class set; ID_VAL3=0x%x\n",
+             rd32(RC(PCIE_RC_CFG_PRIV1_ID_VAL3)));
     }
 
-    WARNING("pcie: link did not come up (status=0x%x)\n",
-            rd32(RC(PCIE_MISC_PCIE_STATUS)));
-    return FALSE;
+    /* Force little-endian mode for the inbound BAR2 path. */
+    {
+        u32 v = rd32(RC(PCIE_RC_CFG_VENDOR_VENDOR_SPECIFIC_REG1));
+        v &= ~VENDOR_SPECIFIC_REG1_ENDIAN_MODE_BAR2_MASK;
+        v |=  VENDOR_SPECIFIC_REG1_LITTLE_ENDIAN;
+        wr32(RC(PCIE_RC_CFG_VENDOR_VENDOR_SPECIFIC_REG1), v);
+    }
+
+    /* Disable ASPM advertisement so the link doesn't try to enter L0s/L1
+     * power-save states. The VL805 has buggy CLKREQ# handling that makes
+     * ASPM exit unreliable. */
+    {
+        u32 v = rd32(RC(PCIE_RC_CFG_PRIV1_LINK_CAPABILITY));
+        v &= ~LINK_CAPABILITY_ASPM_SUPPORT_MASK;
+        wr32(RC(PCIE_RC_CFG_PRIV1_LINK_CAPABILITY), v);
+    }
+
+    return TRUE;
 }
 
 
@@ -233,6 +305,73 @@ static void brcm_pcie_set_bus_numbers(void) {
     pci_config_write32(0, 0, 0, 0x18, v);
     DEBUG("pcie: set bus numbers (RC[0x18] = 0x%x)\n",
           pci_config_read32(0, 0, 0, 0x18));
+}
+
+
+/* ----------------------------------------------------------------------- *
+ * Configure the bridge's *forwarding* fields.
+ *
+ * The BCM2711 RC is a PCI-to-PCI bridge (Type 1 header). For it to forward
+ * memory TLPs from primary (bus 0) to secondary (bus 1):
+ *
+ *   1. CMD.Memory must be set on the BRIDGE (offset 0x04 of its own config
+ *      space). Without this, the bridge silently drops all memory TLPs
+ *      regardless of the BAR/window programming downstream.
+ *   2. Memory Base / Memory Limit (offset 0x20) must enclose the target
+ *      PCIe address of the TLP. For us, that's PCIE_MEM_WIN_PCI_ADDR
+ *      (0xF8000000) through the end of our 1 MiB window.
+ *   3. CMD.Bus Master enables the bridge to forward upstream (device->CPU)
+ *      DMA traffic - required when the VL805 eventually starts DMA'ing
+ *      into its DCBAA / rings.
+ *
+ * Linux/u-boot get these set by their generic PCI enumeration code; since
+ * we hand-roll enumeration, we have to do it ourselves. This is the piece
+ * that was missing - config TLPs go through a separate RC-internal path
+ * controlled by the Bus Number registers (which we did set), so config
+ * worked even without bridge forwarding being properly armed for memory.
+ *
+ * Memory Base/Limit encoding (PCI spec 3.0 §6.1):
+ *   Register at offset 0x20 is 32 bits, split into two 16-bit halves:
+ *     [15:0]  Memory Base
+ *     [31:16] Memory Limit
+ *   Each half: bits [15:4] = top 12 bits of the 32-bit address; bits [3:0]
+ *   are reserved. The address is 1 MiB-aligned. A range is enabled when
+ *   base <= limit; it's disabled (and ignored) when base > limit.
+ * ----------------------------------------------------------------------- */
+static void brcm_pcie_configure_bridge_forwarding(void) {
+    /* The PCIe-side address range our outbound window covers:
+     *   start = PCIE_MEM_WIN_PCI_ADDR = 0xF8000000
+     *   end   = start + 1 MiB - 1     = 0xF80FFFFF
+     * Memory Base/Limit values (top 12 bits, in bits [15:4] of each half): */
+    u32 base = (u32)PCIE_MEM_WIN_PCI_ADDR & 0xFFF00000u;       /* 0xF8000000 */
+    u32 end  = ((u32)PCIE_MEM_WIN_PCI_ADDR + 0x100000u - 1)
+               & 0xFFF00000u;                                  /* 0xF8000000 */
+
+    u32 mem_base  = (base >> 16);   /* = 0xF800 */
+    u32 mem_limit = (end  >> 16);   /* = 0xF800 */
+    u32 mem_base_limit = (mem_limit << 16) | mem_base;
+    pci_config_write32(0, 0, 0, 0x20, mem_base_limit);
+
+    /* Disable Prefetchable Memory window (we don't have any prefetchable
+     * BARs on the VL805). limit < base => "disabled". */
+    pci_config_write32(0, 0, 0, 0x24, 0x0000FFF0u);   /* base=0xFFF0, limit=0 */
+    pci_config_write32(0, 0, 0, 0x28, 0);             /* base upper 32 = 0 */
+    pci_config_write32(0, 0, 0, 0x2C, 0);             /* limit upper 32 = 0 */
+
+    /* Enable the bridge's CMD.Memory + CMD.Bus Master so memory TLPs are
+     * forwarded in both directions. */
+    u16 cmd = pci_config_read16(0, 0, 0, PCI_COMMAND);
+    cmd |= PCI_COMMAND_MEM | PCI_COMMAND_MASTER;
+    pci_config_write16(0, 0, 0, PCI_COMMAND, cmd);
+
+    /* Read everything back so we can see in the log whether the writes
+     * stuck. The bridge's CMD is the most common silent-failure point;
+     * Memory Base/Limit usually latches without drama. */
+    INFO("pcie: bridge configured: CMD=0x%x  MEM_BASE_LIMIT=0x%x  "
+         "PREF_BASE_LIMIT=0x%x\n",
+         pci_config_read16(0, 0, 0, PCI_COMMAND),
+         pci_config_read32(0, 0, 0, 0x20),
+         pci_config_read32(0, 0, 0, 0x24));
 }
 
 
@@ -465,6 +604,7 @@ bool pcie_init(pcie_dev_t* out) {
     /* The downstream bus is unreachable until we tell the RC's bridge
      * register that bus 1 lives behind it. */
     brcm_pcie_set_bus_numbers();
+    brcm_pcie_configure_bridge_forwarding();
 
     if (!find_and_setup_vl805(out)) return FALSE;
     return TRUE;

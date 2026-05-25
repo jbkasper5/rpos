@@ -95,31 +95,39 @@ static xhci_state_t xhci;
  * regions MAP_NOCACHE in mmap() and remap. Tagged as a TODO too.
  * ----------------------------------------------------------------------- */
 void* xhci_dma_alloc(u32 size, u32 align) {
-    (void)align;     /* page-aligned by virtue of using buddy_alloc */
+    (void)align;     /* page-aligned via kmalloc's buddy path below */
     size = ALIGN_UP(size, PAGE_SIZE);
 
-    u64 va = buddy_alloc(size);
+    /* kmalloc takes the buddy_alloc + map() path for any size > one
+     * slab order (which our PAGE_SIZE-aligned requests always exceed),
+     * so the returned pointer is a kernel-virtual address backed by
+     * a contiguous physical run that has actually been mapped into
+     * the page tables. We need both halves: the CPU touches the
+     * structure via the virtual address, and the HC sees the same
+     * structure at its physical address (after va_to_pa). */
+    void *va = kmalloc(size);
     if (!va) {
-        ERROR("xhci_dma_alloc: buddy_alloc(%d) failed\n", size);
+        ERROR("xhci_dma_alloc: kmalloc(%d) failed\n", size);
         return NULL;
     }
 
     /* Make sure the underlying physical address is within the PCIe
-     * inbound window. If your buddy allocator carves below 1 GiB this
-     * is automatic - on Pi 4B with 4 GiB RAM we may need to restrict
-     * the allocator's pool. Logged loudly so you don't miss it. */
-    u64 pa = va_to_pa(va);
+     * inbound window. On Pi 4B with 4 GiB RAM and our 1 GiB inbound
+     * window, this is automatic if the buddy allocator carves below
+     * 1 GiB. Logged loudly so you don't miss it. */
+    u64 pa = va_to_pa((u64)va);
     if (pa + size > PCIE_DMA_MASK) {
         ERROR("xhci_dma_alloc: phys 0x%x out of PCIe inbound window\n", pa);
         /* We don't have a "free above 1 GiB" path; just continue and let
-         * the device complain. TODO: restrict buddy pool. */
+         * the device complain. TODO: restrict buddy pool, or kfree() and
+         * retry until we get an in-window allocation. */
     }
 
-    /* Zero. The buddy allocator hands out raw pages. */
-    u8* p = (u8*)va;
-    for (u32 i = 0; i < size; i++) p[i] = 0;
+    /* Zero the buffer. kmalloc doesn't guarantee zeroing on the buddy
+     * path - it hands out raw pages. */
+    memset(va, 0, size);
     asm volatile("dsb sy");
-    return (void*)va;
+    return va;
 }
 
 u64 xhci_va_to_dma(void* va) {
