@@ -8,8 +8,12 @@
 #include "system/scheduler.h"
 #include "peripherals/gic.h"
 #include "system/gic.h"
+#include "drivers/kbd.h"
 
 // #define IRQ_DEBUG
+
+// keyboard flag for redirecting keypress IRQs
+u8 kbd_flag = 0;
 
 
 const char entry_error_messages[16][32] = {
@@ -49,6 +53,8 @@ void enable_interrupt_controller() {
 	// interrupts have already been enabled in EL3 before dropping into kernel init
 	REGS_GICC->gicc_ctlr = 0x1;
 	REGS_BCMIRQ->irq0_enable_0 = AUX_IRQ;
+
+
 }
 
 
@@ -103,7 +109,11 @@ void handle_irq(u64 reg_addr, u8 el){
 			uint32_t iir = REGS_AUX->mu_iir;
 			DEBUG("IIR: %x\n", iir);
 			char c = REGS_AUX->mu_io & 0xFF;  // read clears the interrupt
-			DEBUG("Mini UART Recieved interrupt 125: %c\n", c);	
+			// DEBUG("Mini UART Recieved interrupt 125: %c\n", c);	
+
+			// keyboard events now get routed here
+			if(kbd_flag) handle_keyboard_event(c);
+			
 		}else if(gic_irq == 89){
 			DEBUG("Mini UART Recv: ");
 			uart_putc(uart_getc());

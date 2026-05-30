@@ -41,7 +41,7 @@ static ext4_inode* resolve_path(const char* pathname){
     kfree(buf);
 }
 
-u8 check_vfs(char* path){
+u64 check_vfs(char* path){
     return trie_get(device_trie, path);
 }
 

@@ -1,6 +1,7 @@
 #include "drivers/dt.h"
 #include "memory/mem.h"
 #include "utils/datastructures.h"
+#include "filedescriptors/filedescriptors.h"
 
 trie* device_trie;
 
@@ -68,7 +69,7 @@ void device_tree_init(){
     u64 tree = get_device_tree_start();
     device_trie = trie_init();
     trie_add(device_trie, "/dev/fb0", 1);
-    trie_add(device_trie, "/dev/ttyS1", 55);
+    trie_add(device_trie, "/dev/ttyS1", &keyboard_file);
 
     if(FALSE){
         fdt_header* header = (fdt_header*) tree;

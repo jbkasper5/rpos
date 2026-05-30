@@ -26,7 +26,7 @@ u64 sys_write(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3,
     // get fd
     pcb_t* current = get_current();
     if(current->fds[fd] && current->fds[fd]->file_ops->write){
-        return current->fds[fd]->file_ops->write(current->fds, buf, count);
+        return current->fds[fd]->file_ops->write(current->fds[fd], buf, count);
     }
     return 0;
 }
@@ -39,7 +39,9 @@ u64 sys_read(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3, 
     pcb_t* current = get_current();
 
     // read data from the file descriptor
-    // current->fds[fd].file_ops->read();
+    if(current->fds[fd] && current->fds[fd]->file_ops->read){
+        return current->fds[fd]->file_ops->read(current->fds[fd], buf, count);
+    }
 }
 
 u64 sys_nanosleep(u64 ns, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
@@ -105,15 +107,18 @@ u64 sys_open(u64 path, u64 flags, u64 unused3, u64 unused4, u64 unused5, u64 unu
     if(fd){
         pcb_t* current = get_current();
 
-        // stuff it in 4 for now
-        file_t* new_fd = &current->fds[4];
+        u8 new_fd_slot = 3;
 
-        
+        // stuff it in 4 for now
+        file_t* new_fd = (file_t*) kmalloc(sizeof(file_t));
+
         memcpy(new_fd, fd, sizeof(file_t));
 
+        current->fds[new_fd_slot] = new_fd;
+
         // invoke the open procedure for the filedescriptor
-        new_fd->file_ops->open(fd);
-        return 4;
+        new_fd->file_ops->open(new_fd);
+        return new_fd_slot;
     }else{
         open((const char*) path, flags);
     }

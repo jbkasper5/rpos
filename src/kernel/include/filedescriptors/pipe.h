@@ -4,14 +4,14 @@
 #include "memory/virtual_memory.h"
 #include "macros.h"
 
-typedef struct pipe_buffer_s {
-    u8* page;                    // The actual memory page containing data
-    u32 offset;
-    u32 len;             // Location and size of data within the page
-    // const struct pipe_buf_operations *ops; // Table of operations (e.g., release, steal)
-    u32 flags;                   // Buffer-specific flags
-    u64 private;                // Private data for the operations
-} pipe_buffer_t;
+// typedef struct pipe_buffer_s {
+//     u8* page;                    // The actual memory page containing data
+//     u32 offset;
+//     u32 len;             // Location and size of data within the page
+//     // const struct pipe_buf_operations *ops; // Table of operations (e.g., release, steal)
+//     u32 flags;                   // Buffer-specific flags
+//     u64 private;                // Private data for the operations
+// } pipe_buffer_t;
 
 typedef struct pipe_data_s{
     // struct mutex mutex;           // Mutex for serializing access
@@ -22,7 +22,7 @@ typedef struct pipe_data_s{
     u32 ring_size;       // Total number of buffers in the ring
     u32 readers;         // Number of processes reading
     u32 writers;         // Number of processes writing
-    pipe_buffer_t* bufs; // Array of pipe_buffer instances
+    u8* buf;             // page buffer
 } pipe_data_t;
 
 #endif

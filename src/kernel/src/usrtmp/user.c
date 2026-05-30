@@ -44,11 +44,13 @@ TEST_FN void user(){
         }
     }else{
         int fd = syscall(SYS_OPEN, "/dev/ttyS1");
+        char buf[1024];
         // child
         while(TRUE){
             // roughly 2.6 seconds
-            printf("CHILD (opened fd %d)\n", 55);
-            syscall(SYS_NANOSLEEP, 10000000000);
+            printf("CHILD (opened fd %d)\n", fd);
+            syscall(SYS_READ, fd, &buf, 1);
+            printf("%s", buf);
         }
     }
 

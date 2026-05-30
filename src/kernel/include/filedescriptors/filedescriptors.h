@@ -9,39 +9,63 @@
 int pipe_write(struct file_s* file, const char* buf, u64 count);
 int pipe_read(struct file_s* file, char* buf, u64 count);
 int pipe_open(struct file_s* file);
+int pipe_close(struct file_s* file);
+
+int keyboard_open(struct file_s* file);
+int keyboard_close(struct file_s* file);
+
 int uart_write(struct file_s* file, const char* buf, u64 count);
 int uart_read(struct file_s* file, char* buf, u64 count);
 
-const fileops_t stdout_ops = {
+static const fileops_t stdout_ops = {
     .write = uart_write,
-    .read = uart_read,
+    .read  = uart_read,
     .close = NULL,
     .ioctl = NULL,
 };
 
-const fileops_t pipe_ops = {
+static const fileops_t pipe_ops = {
     .write = pipe_write,
-    .read = pipe_read,
-    .close = pipe_open,
-    .ioctl = NULL
+    .read  = pipe_read,
+    .open  = pipe_open,
+    .ioctl = NULL,
 };
 
-const file_t stdio_file = {
-    .file_ops = &stdout_ops,
-    .flags = 0,
-    .inode = NULL,
-    .pos = 0,
-    .private_data = NULL,
-    .refcount = 1
+static const fileops_t keyboard_ops = {
+    .open  = keyboard_open,        /* this is what does the extra work */
+    .read  = pipe_read,       /* generic pipe drainage */
+    .write = NULL,            /* keyboards don't accept writes from userspace */
+    .close = keyboard_close,
+    .ioctl = NULL,
 };
 
-const file_t pipe_file = {
-    .file_ops = &stdout_ops,
-    .flags = 0,
-    .inode = NULL,
-    .pos = 0,
+
+static const file_t stdio_file = {
+    .file_ops     = &stdout_ops,
+    .flags        = 0,
+    .inode        = NULL,
+    .pos          = 0,
     .private_data = NULL,
-    .refcount = 1
+    .refcount     = 1,
 };
+
+static const file_t pipe_file = {
+    .file_ops     = &pipe_ops,
+    .flags        = 0,
+    .inode        = NULL,
+    .pos          = 0,
+    .private_data = NULL,
+    .refcount     = 1,
+};
+
+static const file_t keyboard_file = {
+    .file_ops     = &keyboard_ops,
+    .flags        = 0,
+    .inode        = NULL,
+    .pos          = 0,
+    .private_data = NULL,
+    .refcount     = 1,
+};
+
 
 #endif

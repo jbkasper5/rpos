@@ -3,7 +3,6 @@
 
 #include "macros.h"
 #include "filesystem/disk.h"
-#include "filedescriptors/filedescriptors.h"
 
 typedef struct {
 	// struct page *page;
@@ -22,8 +21,10 @@ typedef enum{
 } seek_whence;
 
 
+struct file_s;
+
 typedef struct fileops_s{
-    int (*open)(struct file_s* file);   // add this
+    int (*open)(struct file_s* file);
     int (*read)(struct file_s* file, char* buf, u64 count);
     int (*write)(struct file_s* file, const char* buf, u64 count);
     int (*ioctl)(struct file_s* file, unsigned int cmd, unsigned long arg);
@@ -31,11 +32,11 @@ typedef struct fileops_s{
 } fileops_t;
 
 typedef struct file_s{
-    ext4_inode* inode;      // inode of the file
-    u64 pos;            // current seek position
-    u32 flags;          // O_RDONLY, O_RDWR, etc.
-    u32 refcount;       // for dup/close
-    fileops_t* file_ops;
+    ext4_inode* inode;        // inode of the file
+    u64 pos;                  // current seek position
+    u32 flags;                // O_RDONLY, O_RDWR, etc.
+    u32 refcount;             // for dup/close
+    const fileops_t* file_ops;
     void* private_data;
 } file_t;
 
@@ -44,6 +45,6 @@ void* open(const char* pathname, u32 flags);
 u64 read(file_t* file, void* buf, u64 count);
 int seek(file_t* file, u64 offset, int whence);
 
-u8 check_vfs(char* path);
+u64 check_vfs(char* path);
 
 #endif
