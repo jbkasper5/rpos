@@ -46,11 +46,23 @@ TEST_FN void user(){
         int fd = syscall(SYS_OPEN, "/dev/ttyS1");
         char buf[1024];
         // child
+        char* bufptr = buf;
         while(TRUE){
             // roughly 2.6 seconds
-            printf("CHILD (opened fd %d)\n", fd);
-            syscall(SYS_READ, fd, &buf, 1);
-            printf("%s", buf);
+            // printf("CHILD (opened fd %d)\n", fd);
+            syscall(SYS_READ, fd, bufptr, 1);
+            // enter key is 0xD or 13 (aka '\r')
+            if(*bufptr == '\r'){
+                *bufptr = '\0';
+                process_command(buf);
+                bufptr = buf;
+            // 0x7F is backspace
+            }else if(*bufptr == 0x7F){
+                // move the pointer back one
+                bufptr = MAX(bufptr - 1, buf);
+            }else{
+                bufptr++;
+            }
         }
     }
 
@@ -58,24 +70,25 @@ TEST_FN void user(){
 }
 
 static TEST_FN void process_command(char* cmd){
-    u64 pid = syscall(SYS_FORK);
+    printf("CMD: '%s'\n", cmd);
+    // u64 pid = syscall(SYS_FORK);
 
-    char* cp = cmd;
-    while(*cp){
-        if(*cp == ' '){
-            cp++;
-            break;
-        }
-        cp++;
-    }
+    // char* cp = cmd;
+    // while(*cp){
+    //     if(*cp == ' '){
+    //         cp++;
+    //         break;
+    //     }
+    //     cp++;
+    // }
 
-    // child
-    if(pid == 0){
-        // cp naively points to the character after the first space, or a null terminator
-        syscall(SYS_EXECVE, cmd, cp);
-    }else{
-        // sys_waitpid
-        // syscall()
-        return;
-    }
+    // // child
+    // if(pid == 0){
+    //     // cp naively points to the character after the first space, or a null terminator
+    //     syscall(SYS_EXECVE, cmd, cp);
+    // }else{
+    //     // sys_waitpid
+    //     // syscall()
+    //     return;
+    // }
 }

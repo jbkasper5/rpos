@@ -112,7 +112,10 @@ void handle_irq(u64 reg_addr, u8 el){
 			// DEBUG("Mini UART Recieved interrupt 125: %c\n", c);	
 
 			// keyboard events now get routed here
-			if(kbd_flag) handle_keyboard_event(c);
+			if(kbd_flag){
+				handle_keyboard_event(c);
+				invoke_scheduler = TRUE;
+			}
 			
 		}else if(gic_irq == 89){
 			DEBUG("Mini UART Recv: ");

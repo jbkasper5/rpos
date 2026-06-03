@@ -14,10 +14,14 @@ int pipe_write(struct file_s* file, const char* buf, u64 count){
 int pipe_read(struct file_s* file, char* buf, u64 count){
     // use file->pos to read from the pipe
     pipe_data_t* pipe_data = (pipe_data_t*) file->private_data;
+    
+    DEFINE_WAIT(waitqueue_entry);
 
     // buffer is empty, nothing to read
     while (pipe_data->head == pipe_data->tail){
-        // deschedule current process, for blocking reads
+        if(list_empty(&pipe_data->rd_wait.head)){
+            list_add(&waitqueue_entry.entry, &pipe_data->rd_wait.head);
+        }
         deschedule();
     }
 
@@ -89,3 +93,5 @@ int uart_write(struct file_s* file, const char* buf, u64 count){
 int uart_read(struct file_s* file, char* buf, u64 count){
     
 }
+
+// 0xffff80003ffcadf0

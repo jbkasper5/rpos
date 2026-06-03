@@ -147,7 +147,7 @@ void deschedule(){
 
     DEBUG("Descheduling %d\n", current->pid);
 
-    current->state = PROCESS_BLOCKED;
+    if(current->state == PROCESS_RUNNING) current->state = PROCESS_BLOCKED;
     
     scheduler();
 }

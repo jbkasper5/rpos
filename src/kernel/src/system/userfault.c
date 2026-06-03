@@ -34,6 +34,7 @@ pte* check_cow(u64 addr){
 
     entry = page_table[idx2];
     if(entry.td.valid){
+        DEBUG("L2 entry: type=%d (1=table, 3=block) value=0x%x\n", entry.td.type, entry.value);
         page_table = (pte*) pa_to_va(entry.td.address << 12);
     }else{
         DEBUG("L2 translation failed.\n");
@@ -42,7 +43,7 @@ pte* check_cow(u64 addr){
 
     entry = page_table[idx3];
     if(entry.md.cow){
-        DEBUG("COW Pending recognized.\n");
+        DEBUG("COW recognized at L3[%d], PTE=0x%x\n", idx3, entry.value);
         return page_table + idx3;
     }else{
         DEBUG("Page not marked for COW.\n");
@@ -52,7 +53,13 @@ pte* check_cow(u64 addr){
 }
 
 void handle_el0_fault(u64 faulting_address){
-    DEBUG("EL0 Exception detected.\n");
+    DEBUG("EL0 fault @ 0x%x (idx0=%d idx1=%d idx2=%d idx3=%d)\n",
+      faulting_address,
+      (faulting_address >> 39) & 0x1FF,
+      (faulting_address >> 30) & 0x1FF,
+      (faulting_address >> 21) & 0x1FF,
+      (faulting_address >> 12) & 0x1FF);
+
     pte* l3_pte = check_cow(faulting_address);
     void* current_ttbr = get_current()->registers.ttbr;
 
@@ -79,5 +86,15 @@ void handle_el0_fault(u64 faulting_address){
         flush_tlb();
     }else{
         // do nothing ig
+
+        u64 esr = READ_SYSREG(esr_el1);
+        u64 elr = READ_SYSREG(elr_el1);
+        u64 far = READ_SYSREG(far_el1);
+
+        ERROR("\tException: 0x%x\n", esr);
+        ERROR("\tFaulting instruction: 0x%x\n", elr);
+        ERROR("\tAddress causing fault: 0x%x\n", far);
+
+        while(TRUE);
     }
 }

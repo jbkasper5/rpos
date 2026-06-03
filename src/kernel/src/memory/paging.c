@@ -281,6 +281,7 @@ static void* clone_page_table(pte* parent_table, u8 level){
         }else{
             parent_table[i].md.cow = 1;
             parent_table[i].md.ap = EL0_RO_EL1_RO;
+            DEBUG("CLONE L%d[%d] marked COW, PTE=0x%x\n", level, i, parent_table[i].value);
             if(!child_table) child_table = buddy_alloc_pt();
             child_table[i].value = parent_table[i].value;
         }

@@ -75,6 +75,12 @@ typedef u16 pid_t;
 #define ALIGN_DOWN(addr, align) ((addr) & ~((align) - 1))
 #define ALIGN_UP(addr, align)   (((addr) + ((align) - 1)) & ~((align) - 1))
 
+#define READ_SYSREG(reg) ({                                  \
+    u64 _v;                                                  \
+    __asm__ volatile("mrs %0, " #reg : "=r"(_v));            \
+    _v;                                                      \
+})
+
 extern void panic();
 extern u64 pa_to_va(u64 pa);
 extern u64 va_to_pa(u64 va);

@@ -3,6 +3,8 @@
 
 #include "memory/virtual_memory.h"
 #include "macros.h"
+#include "synchronization/mutex.h"
+#include "synchronization/wait.h"
 
 // typedef struct pipe_buffer_s {
 //     u8* page;                    // The actual memory page containing data
@@ -14,9 +16,9 @@
 // } pipe_buffer_t;
 
 typedef struct pipe_data_s{
-    // struct mutex mutex;           // Mutex for serializing access
-    // wait_queue_head_t rd_wait;    // Wait queue for readers
-    // wait_queue_head_t wr_wait;    // Wait queue for writers
+    mutex_t mutex;           // Mutex for serializing access
+    wait_queue_head_t rd_wait;    // Wait queue for readers
+    wait_queue_head_t wr_wait;    // Wait queue for writers
     u32 head;            // Pointer to the next slot to write
     u32 tail;            // Pointer to the next slot to read
     u32 ring_size;       // Total number of buffers in the ring
