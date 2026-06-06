@@ -14,81 +14,51 @@ void printf(char* format_str, ...);
 
 // Linux KVM
 TEST_FN void user(){
-    // syscall(SYS_WRITE, STDOUT, "Opening framebuffer device...\n");
 
-    // int fd = syscall(SYS_OPEN, "/dev/fb0");
+    int fd = syscall(SYS_OPEN, "/dev/ttyS1");
+    char buf[1024];
+    // child
+    char* bufptr = buf;
+    while(TRUE){
 
-    // fb_var_screeninfo vinfo;
-    // syscall(SYS_IOCTL, fd, FBIOGET_VSCREENINFO, &vinfo);
+        // blocking read frmo the keyboard device
+        syscall(SYS_READ, fd, bufptr, 1);
 
-    // address, length, prot, flags, fd, offset
-    // u32* framebuffer = syscall(SYS_MMAP, NULL, SCREEN_SIZE_BYTES, PROT_READ | PROT_WRITE, 0, fd, 0);
+        // enter key is 0xD or 13 (aka '\r')
+        if(*bufptr == '\r'){
+            *bufptr = '\0';
+            process_command(buf);
+            bufptr = buf;
 
-    // make the thing black
-    // for(u32 i = 0; i < SCREEN_SIZE_BYTES; i++) framebuffer[i] = 0xFF000000;
+        // 0x7F is backspace
+        }else if(*bufptr == 0x7F){
 
-    // open the keyboard file descriptor
-    // int fd = syscall(SYS_OPEN, "/dev/ttyS1");
+            // move the pointer back one
+            bufptr = MAX(bufptr - 1, buf);
+        }else{
+            // otherwise get ready to receive next character
+            bufptr++;
+        }
+    }
+}
 
-    // pull 1 character from the keyboard
-    // syscall(SYS_READ, fd, &buf, 1);
 
-    printf("Forkin!\n");
+static TEST_FN void process_command(char* cmd){
+    printf("CMD: '%s'\n", cmd);
     u64 pid = syscall(SYS_FORK);
 
     if(pid){
         // parent
-        while(TRUE){
-            printf("PARENT\n");
-            syscall(SYS_NANOSLEEP, 5000000000);
-        }
+        syscall(SYS_WAITID, pid);
+
+
     }else{
-        int fd = syscall(SYS_OPEN, "/dev/ttyS1");
-        char buf[1024];
         // child
-        char* bufptr = buf;
-        while(TRUE){
-            // roughly 2.6 seconds
-            // printf("CHILD (opened fd %d)\n", fd);
-            syscall(SYS_READ, fd, bufptr, 1);
-            // enter key is 0xD or 13 (aka '\r')
-            if(*bufptr == '\r'){
-                *bufptr = '\0';
-                process_command(buf);
-                bufptr = buf;
-            // 0x7F is backspace
-            }else if(*bufptr == 0x7F){
-                // move the pointer back one
-                bufptr = MAX(bufptr - 1, buf);
-            }else{
-                bufptr++;
-            }
-        }
+
+        // should be something like that once things are set up properly
+        // syscall(SYS_EXECVE, cmd);
+
+        // reap the child process once it's done doing it's thing (technically shouldn't need to do this since it'll EXEC)
+        syscall(SYS_EXIT_GROUP);
     }
-
-    syscall(SYS_EXIT_GROUP);
-}
-
-static TEST_FN void process_command(char* cmd){
-    printf("CMD: '%s'\n", cmd);
-    // u64 pid = syscall(SYS_FORK);
-
-    // char* cp = cmd;
-    // while(*cp){
-    //     if(*cp == ' '){
-    //         cp++;
-    //         break;
-    //     }
-    //     cp++;
-    // }
-
-    // // child
-    // if(pid == 0){
-    //     // cp naively points to the character after the first space, or a null terminator
-    //     syscall(SYS_EXECVE, cmd, cp);
-    // }else{
-    //     // sys_waitpid
-    //     // syscall()
-    //     return;
-    // }
 }

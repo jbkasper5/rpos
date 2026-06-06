@@ -22,6 +22,7 @@ u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset, u64 reg
 u64 sys_munmap(u64 addr, u64 len, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile);
 u64 sys_clone3(u64 cl_args, u64 size, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile);
 u64 sys_execve(u64 path, u64 argv, u64 envp, u64 unused1, u64 unused2, u64 unused3, u64 regfile);
+u64 sys_waitid(u64 pid, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile);
 u64 sys_exit_group(u64 status, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile);
 u64 sys_get_framebuffer(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile);
 u64 sys_open(u64 path, u64 flags, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile);
@@ -47,6 +48,7 @@ syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_GETC] = sys_getc,
     [SYS_PIPE2] = sys_pipe2,
     [SYS_FORK] = sys_fork,
+    [SYS_WAITID] = sys_waitid,
 };
 
 #endif
