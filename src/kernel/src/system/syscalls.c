@@ -9,6 +9,10 @@
 #include "uapi/rpos/ioctls.h"
 #include "uapi/rpos/fb.h"
 #include "memory/mmap.h"
+#include "synchronization/mutex.h"
+
+
+void* cacheable_page = NULL;
 
 u64 handle_syscall(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 syscall_number, u64 regfile){
     // DEBUG("Syscall Number: %d\n", syscall_number);
@@ -101,7 +105,6 @@ u64 sys_get_framebuffer(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 
     return 0;
 }
 
-
 u64 sys_open(u64 path, u64 flags, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
     file_t* fd = (file_t*) check_vfs((char*) path);
     if(fd){
@@ -145,18 +148,15 @@ u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64 unused1, u64 unused2, u64 unused3, u
     return SYS_ERROR;
 }
 
-
 u64 sys_getc(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
     char c = uart_getc();
     uart_putc(c);
     return c;
 }
 
-
 u64 sys_clone3(u64 cl_args, u64 size, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile){
     return 0;
 }
-
 
 u64 sys_pipe2(u64 fd_rets, u64 flags, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile){
     // allocate a pipe buffer of 64KiB (16 pages)
@@ -189,4 +189,28 @@ u64 sys_fork(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u6
 
     // return "fake"
     return pid;
+}
+
+u64 sys_test_mutex(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
+
+    mutex_t* m = cacheable_page;
+    if(!cacheable_page){
+        cacheable_page = buddy_alloc(PAGE_SIZE);
+        map(cacheable_page, va_to_pa(cacheable_page), 0, MAP_READ | MAP_WRITE | MAP_CACHE | MAP_KERNEL, L0_TABLE);
+        m = (mutex_t*)cacheable_page;
+        m->owner = MUTEX_UNLOCKED;
+        INIT_LIST_HEAD(&m->wait_list.head);
+    }
+    
+    mutex_acquire(m);
+
+    pcb_t* current = get_current();
+    int pid = current - proclist.proclist;
+
+    INFO("Process %d acquired the mutex. Spinning for a lil while...\n", pid);
+
+    timer_nanosleep(1000000000);
+    deschedule();
+
+    mutex_release(m);
 }

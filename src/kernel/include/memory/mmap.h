@@ -14,7 +14,8 @@
 #define MAP_KERNEL      (1UL << 4)
 #define MAP_DEVICE      (1UL << 5)
 #define MAP_NOCACHE     (1UL << 6)
-#define MAP_WRITE_COMB  (1UL << 7)
+#define MAP_CACHE       (1UL << 7)
+#define MAP_WRITE_COMB  (1UL << 8)
 
 // maps a virtual block to a physical block
 // physical blocks are expected to be returned from the buddy allocator

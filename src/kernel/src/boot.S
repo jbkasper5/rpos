@@ -43,6 +43,12 @@ master:
    bl debug_init_lo
    #endif
 
+   mrs x0, S3_1_C15_C2_1    // CPUECTLR_EL1
+   orr x0, x0, #(1 << 6)    // SMPEN
+   msr S3_1_C15_C2_1, x0
+   isb
+
+
    bl initialize_gic
 
    // initialize kernel stack for when we enter the trap handler
@@ -109,6 +115,9 @@ _infinite:
 .section .text
 .globl el1_entry
 el1_entry:
+
+   bl snapshot_sysregs
+
    ldr x0, =bss_begin
    ldr x1, =bss_end
    sub x1, x1, x0
@@ -133,5 +142,15 @@ el1_entry:
 
    ldr x0, =__kstack_top_hi
    mov sp, x0
+
+   at s1e1r, x0
+   isb
+   mrs x1, par_el1
+
+
+   # ldr x0, =kernel_main
+   # at s1e1x, x0
+   # isb
+   # mrs x1, par_el1
 
    bl kernel_main

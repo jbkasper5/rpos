@@ -16,6 +16,12 @@ extern u64 pa_to_va(u64 va);
 
 // }
 
+static inline void clean_pte(void *addr) {
+    asm volatile("dsb ish" ::: "memory");
+    asm volatile("dc cvac, %0" :: "r"(addr) : "memory");   // clean to PoC
+}
+
+
 uintptr_t alloc_page_table(){
     if(allocated_pages >= static_page_region_pages()){
         panic();
@@ -24,6 +30,13 @@ uintptr_t alloc_page_table(){
     uintptr_t page_addr = static_page_region_start() + (PAGE_SIZE * allocated_pages);
     allocated_pages++;
     memset(page_addr, 0, PAGE_SIZE);
+
+    // page tables are cacheable; clean the freshly-zeroed table to DRAM so the
+    // non-cacheable walker sees zeros in the entries we don't explicitly write.
+    asm volatile("dsb ish" ::: "memory");
+    for (u64 off = 0; off < PAGE_SIZE; off += 64)   // 64 = cache line
+        asm volatile("dc cvac, %0" :: "r"((u8*)page_addr + off) : "memory");
+    asm volatile("dsb ish" ::: "memory");
 
     return va_to_pa(page_addr);
 }
@@ -85,6 +98,8 @@ static mem_descriptor_t parse_block_flags(u64 flags, bool is_page){
     if (flags & MAP_DEVICE){
         md.bits.attr_index = 1;
         md.bits.sh = 0;
+    }else if(flags & MAP_CACHE){
+        md.bits.attr_index = 2;
     }
 
     if(flags & MAP_EXEC){
@@ -144,28 +159,33 @@ bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_bas
         if(!l0_table[idx0].bits.valid){
             ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
+            clean_pte(&l0_table[idx0]);
         }
         l1_table = (table_descriptor_t*) (((u64) l0_table[idx0].bits.address << PAGE_SHIFT) + virt_base());
         if (!l1_table[idx1].bits.valid) {
             ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
+            clean_pte(&l1_table[idx1]);
         }
 
         l2_table = (table_descriptor_t*) (((u64) l1_table[idx1].bits.address << PAGE_SHIFT) + virt_base());
         if (!l2_table[idx2].bits.valid) {
             ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l2_table[idx2] = ptte;
+            clean_pte(&l2_table[idx2]);
         }
 
         l3_table = (mem_descriptor_t*) (((u64) l2_table[idx2].bits.address << PAGE_SHIFT) + virt_base());
         if (!l3_table[idx3].bits.valid) {
             ptme.bits.address = (pa >> PAGE_SHIFT);
             l3_table[idx3] = ptme;
+            clean_pte(&l3_table[idx3]);
         }
 
         va += PAGE_SIZE;
         pa += PAGE_SIZE;
     }
+    asm volatile("dsb ish" ::: "memory");
     return TRUE;
 }
 
@@ -204,17 +224,20 @@ bool map_blocks(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_ba
         if(!l0_table[idx0].bits.valid){
             ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
+            clean_pte(&l0_table[idx0]);
         }
         l1_table = (table_descriptor_t*) (((u64) l0_table[idx0].bits.address << PAGE_SHIFT) + virt_base());
         if (!l1_table[idx1].bits.valid) {
             ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
+            clean_pte(&l1_table[idx1]);
         }
 
         l2_table = (mem_descriptor_t*) (((u64) l1_table[idx1].bits.address << PAGE_SHIFT) + virt_base());
         if (!l2_table[idx2].bits.valid) {
             ptme.bits.address = (pa >> PAGE_SHIFT);
             l2_table[idx2] = ptme;
+            clean_pte(&l2_table[idx2]);
         }
 
         va += BLOCK_SIZE;

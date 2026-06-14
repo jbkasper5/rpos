@@ -3,7 +3,7 @@
 .globl enable_mmu
 enable_mmu:
     // 1. Setup MAIR (Index 0 = Normal WB/WA/RA)
-    ldr x2, =((0xFF << 0) | (0x04 << 8))
+    ldr x2, =((0x44 << 0) | (0x04 << 8) | (0xFF << 16))
     msr MAIR_EL1, x2
 
     // 2. Setup TCR (40-bit IPS, 4KB Granules, Inner-Shareable WB/WA)
@@ -11,6 +11,7 @@ enable_mmu:
     #           (3 << 28)  | (1 << 8)   | (1 << 10) | (1 << 24) | \
     #           (1 << 26)  | (2 << 32))
     ldr x2, =0x80100010
+    # ldr x2, =0xB5103510
     msr TCR_EL1, x2
     isb
 
@@ -27,21 +28,20 @@ enable_mmu:
     dsb ish
     isb
 
+    // 4.5. Invalidate the dcache
+    bl __asm_invalidate_dcache_all
+
+    mov x0, #0
+    mov x1, #0x1000000     // low 16 MiB: covers kernel, page-frame array, page tables
+    bl  __asm_invalidate_dcache_range
+
     // 5. Enable MMU
     mrs x2, sctlr_el1
-    orr x2, x2, #(1 << 0)       // M (MMU enable)
+    orr x2, x2, #(1 << 0)    // M
+    orr x2, x2, #(1 << 2)    // C
+    # orr x2, x2, #(1 << 12)   // I
     msr sctlr_el1, x2
     isb
-
-    ldr x0, =0xFFFF8000FF841000
-    at s1e1r, x0
-    isb
-    mrs x1, par_el1 // 0x80F
-
-    ldr x0, =0xFFFF8000FF842000
-    at s1e1r, x0
-    isb
-    mrs x1, par_el1 // 0x80F
 
     ldr x0, =__kstack_top_hi
     mov sp, x0

@@ -14,59 +14,16 @@ void printf(char* format_str, ...);
 
 // Linux KVM
 TEST_FN void user(){
-    // syscall(SYS_WRITE, STDOUT, "Opening framebuffer device...\n");
-
-    // int fd = syscall(SYS_OPEN, "/dev/fb0");
-
-    // fb_var_screeninfo vinfo;
-    // syscall(SYS_IOCTL, fd, FBIOGET_VSCREENINFO, &vinfo);
-
-    // address, length, prot, flags, fd, offset
-    // u32* framebuffer = syscall(SYS_MMAP, NULL, SCREEN_SIZE_BYTES, PROT_READ | PROT_WRITE, 0, fd, 0);
-
-    // make the thing black
-    // for(u32 i = 0; i < SCREEN_SIZE_BYTES; i++) framebuffer[i] = 0xFF000000;
-
-    // open the keyboard file descriptor
-    // int fd = syscall(SYS_OPEN, "/dev/ttyS1");
-
-    // pull 1 character from the keyboard
-    // syscall(SYS_READ, fd, &buf, 1);
-
-    printf("Forkin!\n");
-    u64 pid = syscall(SYS_FORK);
-
+    printf("Starting mutex experiment...\n");
+    int pid = syscall(SYS_FORK);
     if(pid){
         // parent
-        while(TRUE){
-            printf("PARENT\n");
-            syscall(SYS_NANOSLEEP, 5000000000);
-        }
+        while(TRUE) syscall(SYS_TEST_MUTEX);
     }else{
-        int fd = syscall(SYS_OPEN, "/dev/ttyS1");
-        char buf[1024];
         // child
-        char* bufptr = buf;
-        while(TRUE){
-            // roughly 2.6 seconds
-            // printf("CHILD (opened fd %d)\n", fd);
-            syscall(SYS_READ, fd, bufptr, 1);
-            // enter key is 0xD or 13 (aka '\r')
-            if(*bufptr == '\r'){
-                *bufptr = '\0';
-                process_command(buf);
-                bufptr = buf;
-            // 0x7F is backspace
-            }else if(*bufptr == 0x7F){
-                // move the pointer back one
-                bufptr = MAX(bufptr - 1, buf);
-            }else{
-                bufptr++;
-            }
-        }
+        syscall(SYS_NANOSLEEP, 10000000000);
+        while(TRUE) syscall(SYS_TEST_MUTEX);
     }
-
-    syscall(SYS_EXIT_GROUP);
 }
 
 static TEST_FN void process_command(char* cmd){

@@ -43,6 +43,11 @@ pc_string:
     stp x26, x27, [sp, #16 * 13]
     stp x28, x29, [sp, #16 * 14]
 
+    /*
+    stp v0, v1
+    
+    */
+
     // save SP_EL0 context
     mrs x0, SP_EL0
     stp x30, x0, [sp, #16 * 15]
@@ -128,7 +133,7 @@ error_invalid_el1t:
 
 # ERROR HANDLER FOR KERNEL MODE
 sync_invalid_el1h:
-    handle_invalid_entry SYNC_INVALID_EL1H
+    # handle_invalid_entry SYNC_INVALID_EL1H
     mrs x10, esr_el1
     mrs x11, far_el1
     mrs x12, elr_el1
