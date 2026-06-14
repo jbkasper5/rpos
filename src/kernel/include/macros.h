@@ -14,6 +14,9 @@ typedef volatile u64 reg64_t;
 typedef u8 bool;
 typedef u16 pid_t;
 
+double seconds_since_boot();
+u64 ticks_since_boot();
+
 // #ifdef DEBUG
 // #define DEBUG(...) kprintf("[\e[35mDEBUG\e[0m] "); kprintf(__VA_ARGS__);
 // #else
@@ -25,14 +28,14 @@ typedef u16 pid_t;
 // #define ERROR(...) kprintf("[\e[31mERROR\e[0m] "); kprintf(__VA_ARGS__);
 
 #ifdef DEBUG
-#define DEBUG(...) kprintf("[\e[35mDEBUG %d\e[0m] ", ticks_since_boot()); kprintf(__VA_ARGS__);
+#define DEBUG(...) kprintf("[\e[35mDEBUG %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
 #else
 #define DEBUG(...)
 #endif
 
-#define INFO(...) kprintf("[\e[32mINFO %d\e[0m] ", ticks_since_boot()); kprintf(__VA_ARGS__);
-#define WARNING(...) kprintf("[\e[33mWARNING %d\e[0m] ", ticks_since_boot()); kprintf(__VA_ARGS__);
-#define ERROR(...) kprintf("[\e[31mERROR %d\e[0m] ", ticks_since_boot()); kprintf(__VA_ARGS__);
+#define INFO(...) kprintf("[\e[32mINFO %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
+#define WARNING(...) kprintf("[\e[33mWARNING %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
+#define ERROR(...) kprintf("[\e[31mERROR %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
 
 
 #ifdef NULL

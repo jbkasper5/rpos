@@ -146,7 +146,7 @@ ticks_since_boot:
 .globl seconds_since_boot
 seconds_since_boot:
     mrs x0, cntvct_el0
-    mrs x1, cntfrq_el0
+    ldr x1, =2812500
 
     scvtf d0, x0            // Signed Convert To Float: Move x0 -> d0 and convert to decimal
     scvtf d1, x1            // Signed Convert To Float: Move x1 -> d1 and convert to decimal

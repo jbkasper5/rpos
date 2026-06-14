@@ -41,4 +41,5 @@
 #define SYS_GETC                    294
 #define SYS_FORK                    295
 
+#define SYS_TEST_MUTEX              296
 #endif

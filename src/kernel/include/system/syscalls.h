@@ -30,6 +30,8 @@ u64 sys_getc(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u6
 u64 sys_pipe2(u64 fd_rets, u64 flags, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile);
 u64 sys_fork(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile);
 
+u64 sys_test_mutex(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile);
+
 syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_IOCTL] = sys_ioctl,
     [SYS_IO_SETUP] = sys_io_setup,
@@ -48,6 +50,7 @@ syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_GETC] = sys_getc,
     [SYS_PIPE2] = sys_pipe2,
     [SYS_FORK] = sys_fork,
+    [SYS_TEST_MUTEX] = sys_test_mutex,
     [SYS_WAITID] = sys_waitid,
 };
 

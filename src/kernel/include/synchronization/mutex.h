@@ -4,6 +4,7 @@
 #include "spinlock.h"
 #include "utils/datastructures.h"
 #include "synchronization/atomic.h"
+#include "synchronization/wait.h"
 
 // linux mutex structure
 typedef struct mutex {
@@ -12,7 +13,7 @@ typedef struct mutex {
 // #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
 // 	struct optimistic_spin_queue osq; /* Spinner MCS lock */
 // #endif
-	list_head_t	wait_list;
+	wait_queue_head_t	wait_list;
 // #ifdef CONFIG_DEBUG_MUTEXES
 // 	void			*magic;
 // #endif
@@ -34,7 +35,7 @@ typedef struct mutex {
 #define MUTEX_UNLOCKED 		0
 
 mutex_t* mutex_init();
-u64 mutex_acquire(mutex_t* mutex);
-u64 mutex_release(mutex_t* mutex);
+void mutex_acquire(mutex_t* mutex);
+void mutex_release(mutex_t* mutex);
 
 #endif

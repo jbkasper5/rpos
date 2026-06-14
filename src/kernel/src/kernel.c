@@ -70,53 +70,9 @@ void hardware_init(){
     INFO("Hardware initialization complete.\n\n");
 }
 
-
-static u64 get_current_daif() {
-    u64 daif;
-    asm volatile ("mrs %0, daif" : "=r" (daif));
-    return daif;
-}
-
-
-#include "system/gic.h"
-
 int kernel_main(){
-    
-    // DEBUG("Raspberry PI Baremetal OS Initializing...\n");
     hardware_init();
-
-    // mailbox_pcie_usb_power_on();
-
-    // file_t* file = open("/bin/pwd", 0);
-    // ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
-    // if(!file){
-    //     ERROR("Failed to open file.\n");
-    // }else{
-    //     INFO("Successfully opened file. FP: 0x%x. Starting ELF parsing.\n", file);
-    //     readelf(file);
-    //     close(file);
-    // }
-
-    // seconds_since_boot();
-
     add_test_section_to_scheduler(); 
     start_scheduler();
-
     return 0;
 }
-
-/*
-TODO:
-    - Maintain the reference counter
-        - To know when pages can be delivered back to the buddy allocator
-    - Finish buddy free
-*/
-
-
-// 0xFFFF800000000000
-// 0xFFFF8000FD500000
-
-
-/*
-100s of temple OS
-*/

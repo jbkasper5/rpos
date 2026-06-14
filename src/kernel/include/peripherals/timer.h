@@ -4,7 +4,14 @@
 #include "peripherals/irq.h"
 #include "macros.h"
 
+
 #define CLOCKHZ         1000000ULL
+
+// CPU Runs on 1.5GHz
+#define CPUHZ           15000000000
+
+// arm timers operate on a 54MHz timer
+#define TIMERHZ         2812500ULL
 
 struct timer_regs{
     reg32_t control_status;
