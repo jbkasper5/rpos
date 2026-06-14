@@ -22,6 +22,8 @@
 #define SYS_WRITE                   64
 #define SYS_EXIT                    93
 #define SYS_EXIT_GROUP              94
+#define SYS_WAITID                  95
+
 #define SYS_NANOSLEEP               101
 #define SYS_CLOCK_GETTIME           113
 #define SYS_KILL                    129
@@ -32,6 +34,7 @@
 #define SYS_CLONE3                  220
 #define SYS_EXECVE                  221
 #define SYS_MMAP                    222
+#define SYS_WAIT4                   222
 
 #define SYS_PULSE_LED               292
 #define SYS_GET_FRAMEBUFFER         293

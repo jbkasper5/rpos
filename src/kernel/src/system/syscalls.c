@@ -214,3 +214,8 @@ u64 sys_test_mutex(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unuse
 
     mutex_release(m);
 }
+
+u64 sys_waitid(u64 pid, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
+
+    return -1;
+}

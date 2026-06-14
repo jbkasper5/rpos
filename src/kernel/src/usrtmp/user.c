@@ -14,38 +14,51 @@ void printf(char* format_str, ...);
 
 // Linux KVM
 TEST_FN void user(){
-    printf("Starting mutex experiment...\n");
-    int pid = syscall(SYS_FORK);
-    if(pid){
-        // parent
-        while(TRUE) syscall(SYS_TEST_MUTEX);
-    }else{
-        // child
-        syscall(SYS_NANOSLEEP, 10000000000);
-        while(TRUE) syscall(SYS_TEST_MUTEX);
+
+    int fd = syscall(SYS_OPEN, "/dev/ttyS1");
+    char buf[1024];
+    // child
+    char* bufptr = buf;
+    while(TRUE){
+
+        // blocking read frmo the keyboard device
+        syscall(SYS_READ, fd, bufptr, 1);
+
+        // enter key is 0xD or 13 (aka '\r')
+        if(*bufptr == '\r'){
+            *bufptr = '\0';
+            process_command(buf);
+            bufptr = buf;
+
+        // 0x7F is backspace
+        }else if(*bufptr == 0x7F){
+
+            // move the pointer back one
+            bufptr = MAX(bufptr - 1, buf);
+        }else{
+            // otherwise get ready to receive next character
+            bufptr++;
+        }
     }
 }
 
+
 static TEST_FN void process_command(char* cmd){
     printf("CMD: '%s'\n", cmd);
-    // u64 pid = syscall(SYS_FORK);
+    u64 pid = syscall(SYS_FORK);
 
-    // char* cp = cmd;
-    // while(*cp){
-    //     if(*cp == ' '){
-    //         cp++;
-    //         break;
-    //     }
-    //     cp++;
-    // }
+    if(pid){
+        // parent
+        syscall(SYS_WAITID, pid);
 
-    // // child
-    // if(pid == 0){
-    //     // cp naively points to the character after the first space, or a null terminator
-    //     syscall(SYS_EXECVE, cmd, cp);
-    // }else{
-    //     // sys_waitpid
-    //     // syscall()
-    //     return;
-    // }
+
+    }else{
+        // child
+
+        // should be something like that once things are set up properly
+        // syscall(SYS_EXECVE, cmd);
+
+        // reap the child process once it's done doing it's thing (technically shouldn't need to do this since it'll EXEC)
+        syscall(SYS_EXIT_GROUP);
+    }
 }
