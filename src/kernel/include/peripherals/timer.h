@@ -11,7 +11,7 @@
 #define CPUHZ           15000000000
 
 // arm timers operate on a 54MHz timer
-#define TIMERHZ         54000000ULL
+#define TIMERHZ         2812500ULL
 
 struct timer_regs{
     reg32_t control_status;
