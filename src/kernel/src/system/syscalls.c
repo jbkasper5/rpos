@@ -10,22 +10,22 @@
 #include "uapi/rpos/fb.h"
 #include "memory/mmap.h"
 #include "synchronization/mutex.h"
+#include "filesystem/disk.h"
 
 
 void* cacheable_page = NULL;
 
-u64 handle_syscall(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 syscall_number, u64 regfile){
+u64 handle_syscall(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 syscall_number){
     // DEBUG("Syscall Number: %d\n", syscall_number);
-    reglist_t* user_regs = (reglist_t*) regfile;
 
     if(syscall_table[syscall_number]){
-        return syscall_table[syscall_number](x0, x1, x2, x3, x4, x5, regfile);
+        return syscall_table[syscall_number](x0, x1, x2, x3, x4, x5);
     }else{
         return -1;
     }
 }
 
-u64 sys_write(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3, u64 regfile){
+u64 sys_write(u64 fd, u64 buf, u64 count, u64, u64, u64){
     // write a buffer to a file descriptor
     // get fd
     pcb_t* current = get_current();
@@ -35,7 +35,7 @@ u64 sys_write(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3,
     return 0;
 }
 
-u64 sys_read(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3, u64 regfile){
+u64 sys_read(u64 fd, u64 buf, u64 count, u64, u64, u64){
     // deschedule the process until a key press is received over the IRQ
     // deschedule();
 
@@ -48,18 +48,18 @@ u64 sys_read(u64 fd, u64 buf, u64 count, u64 unused1, u64 unused2, u64 unused3, 
     }
 }
 
-u64 sys_nanosleep(u64 ns, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
+u64 sys_nanosleep(u64 ns, u64, u64, u64, u64, u64){
     // slep
     timer_nanosleep(ns);
     deschedule();
     return 0;
 }
 
-u64 sys_clock_gettime(u64 clock, u64 kernel_timespec, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
+u64 sys_clock_gettime(u64 clock, u64 kernel_timespec, u64, u64, u64, u64){
     return 0;
 }
 
-u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset, u64 regfile){
+u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset){
     // TODO: look up the requested memory via the FD
     // TODO: actually use the addr instead of ignoring it like a bum
 
@@ -69,12 +69,12 @@ u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset, u64 reg
     return 0;
 }
 
-u64 sys_munmap(u64 addr, u64 len, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile){
+u64 sys_munmap(u64 addr, u64 len, u64, u64, u64, u64){
     // unmap a chunk of memory starting from addr
     return 0;
 }
 
-u64 sys_execve(u64 path, u64 argv, u64 envp, u64 unused1, u64 unused2, u64 unused3, u64 regfile){
+u64 sys_execve(u64 path, u64 argv, u64 envp, u64, u64, u64){
     char* p = (char*) path;
     // read binary from path
     // load binary into program memory
@@ -84,51 +84,63 @@ u64 sys_execve(u64 path, u64 argv, u64 envp, u64 unused1, u64 unused2, u64 unuse
     return (u64) p;
 }
 
-u64 sys_pulse_led(u64 pin_num, u64 turn_on, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile){
+u64 sys_pulse_led(u64 pin_num, u64 turn_on, u64, u64, u64, u64){
     pulse(pin_num, !turn_on);
     return 0;
 }
 
-u64 sys_io_setup(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
+u64 sys_io_setup(u64, u64, u64, u64, u64, u64){
     return 0;
 }
 
+u64 sys_getcwd(u64 buffer, u64 size, u64, u64, u64, u64){
+    void* thing = (void*)rootfs.root_inode;
+    return 0;
+}
 
-u64 sys_exit_group(u64 status, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
+u64 sys_exit_group(u64 status, u64, u64, u64, u64, u64){
     INFO("Current running process number: %d\n", get_current() - proclist.proclist);
     reap();
     return SYS_SUCCESS;
 }
 
-u64 sys_get_framebuffer(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
+u64 sys_get_framebuffer(u64, u64, u64, u64, u64, u64){
     // return frame.fb;
     return 0;
 }
 
-u64 sys_open(u64 path, u64 flags, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
+u64 sys_open(u64 path, u64 flags, u64, u64, u64, u64){
     file_t* fd = (file_t*) check_vfs((char*) path);
     if(fd){
+        // requested filedescriptor is a device/from the VFS
         pcb_t* current = get_current();
-
-        u8 new_fd_slot = 3;
-
-        // stuff it in 4 for now
         file_t* new_fd = (file_t*) kmalloc(sizeof(file_t));
-
         memcpy(new_fd, fd, sizeof(file_t));
-
-        current->fds[new_fd_slot] = new_fd;
+        int fd_index = fd_alloc(current, new_fd);
+        current->fds[fd_index] = new_fd;
 
         // invoke the open procedure for the filedescriptor
-        new_fd->file_ops->open(new_fd);
-        return new_fd_slot;
+        if(new_fd->file_ops && new_fd->file_ops->open) new_fd->file_ops->open(new_fd);
+        return fd_index;
     }else{
-        open((const char*) path, flags);
+        // requested file exists on disk
+        file_t* f = open((const char*) path, flags);
+        if(!f){
+            ERROR("Could not open file.\n");
+            return SYS_ERROR;   
+        }else{
+            pcb_t* current = get_current();
+            int fd_index = fd_alloc(current, f);
+            current->fds[fd_index] = f;
+
+            if(f->file_ops && f->file_ops->open) f->file_ops->open(f);
+            return fd_index;
+        }
     }
     return SYS_ERROR;
 }
 
-u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64 unused1, u64 unused2, u64 unused3, u64 regfile){
+u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64, u64, u64){
     INFO("Handling IOCTL Request: fd=%d, cmd=0x%x, arg=0x%x\n", fd, cmd, arg);
     switch(cmd){
         case FBIOGET_VSCREENINFO: 
@@ -148,17 +160,17 @@ u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64 unused1, u64 unused2, u64 unused3, u
     return SYS_ERROR;
 }
 
-u64 sys_getc(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
+u64 sys_getc(u64, u64, u64, u64, u64, u64){
     char c = uart_getc();
     uart_putc(c);
     return c;
 }
 
-u64 sys_clone3(u64 cl_args, u64 size, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile){
+u64 sys_clone3(u64 cl_args, u64 size, u64, u64, u64, u64){
     return 0;
 }
 
-u64 sys_pipe2(u64 fd_rets, u64 flags, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 regfile){
+u64 sys_pipe2(u64 fd_rets, u64 flags, u64, u64, u64, u64){
     // allocate a pipe buffer of 64KiB (16 pages)
     u64* pipe = buddy_alloc(16 << PAGE_SHIFT);
 
@@ -173,7 +185,7 @@ u64 sys_pipe2(u64 fd_rets, u64 flags, u64 unused1, u64 unused2, u64 unused3, u64
     return 0;
 }
 
-u64 sys_fork(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){  
+u64 sys_fork(u64, u64, u64, u64, u64, u64){  
     // also now need to clone the kstack from the old to the new process
 
     // procalloc
@@ -191,7 +203,7 @@ u64 sys_fork(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u6
     return pid;
 }
 
-u64 sys_test_mutex(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 unused6, u64 regfile){
+u64 sys_test_mutex(u64, u64, u64, u64, u64, u64){
 
     mutex_t* m = cacheable_page;
     if(!cacheable_page){
@@ -215,7 +227,7 @@ u64 sys_test_mutex(u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unuse
     mutex_release(m);
 }
 
-u64 sys_waitid(u64 pid, u64 unused1, u64 unused2, u64 unused3, u64 unused4, u64 unused5, u64 regfile){
+u64 sys_waitid(u64 pid, u64, u64, u64, u64, u64){
 
     return -1;
 }

@@ -2,44 +2,12 @@
 #include "memory/kmalloc.h"
 #include "memory/mem.h"
 #include "utils/datastructures.h"
+#include "utils/utils.h"
 
 #define DELIMITER   '/'
 #define MAX_NAME    255
 
 extern trie* device_trie;
-
-static ext4_inode* resolve_path(const char* pathname){
-    char* buf = (char*) kmalloc(MAX_NAME);
-    int start = 0, i = 0;
-
-    while(pathname[i]){
-        if(pathname[i] == DELIMITER){
-            if(start == 0){
-                start = i + 1; 
-                i++;
-                continue;
-            }
-            memcpy(buf, pathname + start, i - start);
-            buf[i - start] = '\0';
-
-            // skip past delimiter
-            start = i + 1;
-
-            INFO("Parsed segment: '%s'\n", buf);
-        }else{
-
-        }
-        i++;
-    }
-
-    if(i > start && i > 0){
-        memcpy(buf, pathname + start, i - start);
-        buf[i - start] = '\0';
-        INFO("Parsed segment: '%s'\n", buf);
-    }
-
-    kfree(buf);
-}
 
 u64 check_vfs(char* path){
     return trie_get(device_trie, path);
@@ -47,31 +15,44 @@ u64 check_vfs(char* path){
 
 void* open(const char* pathname, u32 flags){
     INFO("Opening path '%s'\n", pathname);
-    ext4_inode* inode = resolve_path(pathname);
 
-
-    // for now, pathname = 'bin/ls'
-    ext4_inode* dirnode = lookup(rootfs.root_inode, "bin");
-    if(dirnode != NULL){
-        INFO("Found 'bin' directory inode.\n");
-        ext4_inode* filenode = lookup(dirnode, "pwd");
-        if(filenode){
-            INFO("Found 'ls' file inode.\n");
-            kfree(dirnode);
-            file_t* file = (file_t*) kmalloc(sizeof(file_t));
-            if(!file){
-                ERROR("Failed to allocate memory for file structure.\n");
-                return NULL;
-            }
-            file->inode = filenode;
-            file->pos = 0;
-            file->flags = 0;
-            return file;
-        }else{
-            ERROR("File 'ls' not found in 'bin' directory.\n");
-        }
+    // make a mutable copy of the path
+    u32 len = strlen(pathname);
+    char* str = (char*) kmalloc(len + 1);
+    if(!str){
+        ERROR("OUT OF MEMORY.\n");
+        return NULL;
     }
-    kfree(dirnode);
+    memcpy(str, pathname, len);
+    str[len] = '\0';
+
+    char* savestr;
+    char* token = strtok(str, '/', &savestr);
+
+
+
+    ext4_inode* nodeptr = (pathname[0] == '/') ? rootfs.root_inode : NULL; // cwd()
+
+    while(token){
+        nodeptr = lookup(nodeptr, token);
+        if(!nodeptr){
+            WARNING("FILE NOT FOUND. Could not resolve '%s' in '%s'.\n", token, pathname);
+            return NULL;
+        }
+        token = strtok(NULL, '/', &savestr);
+    }
+
+    if(nodeptr){
+        INFO("'%s' resolved successfully.\n", pathname);
+        file_t* file = (file_t*) kmalloc(sizeof(file_t));
+        file->file_ops = NULL;
+        file->inode = nodeptr;
+        file->pos = 0;
+        file->flags = 0;
+        return file;
+    }else{
+        WARNING("Could not resolve path '%s'\n", pathname);
+    }
     return NULL;
 }
 
@@ -117,7 +98,6 @@ static u32 read_file_block(file_t* file, void* buf, u64 count, u32 blockno){
     // return number of bytes read
     return bytes_to_read;
 }
-
 
 static u64 read_direct(file_t* file, void* buf, u64 count){
     u32 block_no = file->pos / 4096;
@@ -182,7 +162,6 @@ static u64 read_double_indirect(file_t* file, void* buf, u64 count, u64 offset){
 static u64 read_triple_indirect(file_t* file, void* buf, u64 count, u64 offset){
     
 }
-
 
 
 u64 read(file_t* file, void* buf, u64 count){

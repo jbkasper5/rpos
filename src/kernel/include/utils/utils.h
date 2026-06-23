@@ -24,6 +24,7 @@ u8 mmu_enabled();
 int log2_pow2(u64 num);
 int strcmp(const char* str1, const char* str2);
 int strlen(const char* str);
+char* strtok(char* str, char delim, char** saveptr);
 
 pcb_t* get_active_pcb();
 void set_active_pcb(pcb_t* pcb);

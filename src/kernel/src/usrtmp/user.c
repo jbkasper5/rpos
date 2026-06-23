@@ -14,32 +14,9 @@ void printf(char* format_str, ...);
 
 // Linux KVM
 TEST_FN void user(){
-
-    int fd = syscall(SYS_OPEN, "/dev/ttyS1");
-    char buf[1024];
-    // child
-    char* bufptr = buf;
-    while(TRUE){
-
-        // blocking read frmo the keyboard device
-        syscall(SYS_READ, fd, bufptr, 1);
-
-        // enter key is 0xD or 13 (aka '\r')
-        if(*bufptr == '\r'){
-            *bufptr = '\0';
-            process_command(buf);
-            bufptr = buf;
-
-        // 0x7F is backspace
-        }else if(*bufptr == 0x7F){
-
-            // move the pointer back one
-            bufptr = MAX(bufptr - 1, buf);
-        }else{
-            // otherwise get ready to receive next character
-            bufptr++;
-        }
-    }
+    int fs = syscall(SYS_OPEN, "/bin/ls");
+    printf("FS returned: %d\n", fs);
+    syscall(SYS_EXIT_GROUP);
 }
 
 

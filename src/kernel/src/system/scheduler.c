@@ -166,9 +166,17 @@ void add_to_schedule(pcb_t* proc){
 }
 
 // placeholder for now
-void reap(u64 procnum){
-    // deschedule();
-    reschedule(procnum);
+void reap(){
+    pcb_t* current = get_current();
+
+    // mark the process as terminated
+    current->state = PROCESS_TERMINATED;
+
+    // TODO: eventually needs to add process to a reap queue for the next process to handle
+
+
+    scheduler();
+    // reap the rest of the process, clean up memory, notify any parents/children, etc.
 }
 
 extern TEST_FN void user();

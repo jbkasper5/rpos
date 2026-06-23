@@ -210,7 +210,7 @@ static u64 inode_from_directory(ext4_dir_entry* dir, const char* name){
 }
 
 /**
- * @brief Reads the superblock and returns the sector of the inode table
+ * @brief Reads the superblock and returns the sector of the inode table. Overwrites dirnode
  * @return Sector of the inode table
  */
 ext4_inode* lookup(ext4_inode* dirnode, char* name){
@@ -222,28 +222,28 @@ ext4_inode* lookup(ext4_inode* dirnode, char* name){
         u64 inode_num = inode_from_directory((ext4_dir_entry*)rootfs.block_buf, name);
         if(inode_num != NULL){
             INFO("Found inode number: %d\n", inode_num);
-            ext4_inode* buf = (ext4_inode*) kmalloc(inode_size);
-            if(buf == NULL){
-                ERROR("Failed to allocate memory for inode lookup.\n");
-                return NULL;
-            }
-            read_inode(buf, inode_num);
-            return buf;
+            read_inode(dirnode, inode_num);
+            return dirnode;
         }
     }
-
     return NULL;
 }
 
 void filesystem_init(){
+
+    // 1 page
     u64 test = (u64) kmalloc(sizeof(ext4_block));
     rootfs.block_buf = (ext4_block*) test;
+
+    // sector is 1/8th of a page
     rootfs.superblock = (ext_superblock*) kmalloc(sizeof(sector) * 2);
-    rootfs.root_inode = (ext4_inode*) kmalloc(inode_size);
+
+    // 8 page descriptor table
     group_descriptor_table = (ext4_group_desc_t*) kmalloc(sizeof(ext4_block) * 8);
 
     emmc_seek_sector(ROOT_SUPERBLOCK_SECTOR);
 
+    // read root superblock into memory, 1KiB 
     int result = emmc_read(rootfs.superblock, sizeof(sector) * 2);
 
     ext_superblock* sb = (ext_superblock*) rootfs.superblock;
@@ -251,6 +251,8 @@ void filesystem_init(){
     inode_size = sb->s_inode_size;
     inodes_per_group = sb->s_inodes_per_group;
     gc_descriptor_size = sb->s_desc_size ? sb->s_desc_size : 32;
+
+    rootfs.root_inode = (ext4_inode*) kmalloc(inode_size);
 
     // read the sectors as a superblock
     INFO("Parsing ext4 filesystem...\n");

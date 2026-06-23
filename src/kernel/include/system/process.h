@@ -15,6 +15,7 @@ enum PROC_STATE{
     PROCESS_BLOCKED,
     PROCESS_READY,
     PROCESS_RUNNING,
+    PROCESS_TERMINATED,
 };
 
 typedef struct reglist_s{
@@ -58,6 +59,7 @@ static inline void set_current(pcb_t* pcb) {
 
 pcb_t* procalloc(u64 entrypoint);
 pcb_t* clone_active_proc();
+int fd_alloc(pcb_t* proc, file_t* file);
 u32 atomic_increment(u64 address, u32 increment);
 
 #endif
