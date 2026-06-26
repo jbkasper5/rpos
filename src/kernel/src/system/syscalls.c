@@ -11,6 +11,7 @@
 #include "memory/mmap.h"
 #include "synchronization/mutex.h"
 #include "filesystem/disk.h"
+#include "uapi/rpos/errno.h"
 
 
 void* cacheable_page = NULL;
@@ -127,7 +128,7 @@ u64 sys_open(u64 path, u64 flags, u64, u64, u64, u64){
         file_t* f = open((const char*) path, flags);
         if(!f){
             ERROR("Could not open file.\n");
-            return SYS_ERROR;   
+            return -ENOENT;   
         }else{
             pcb_t* current = get_current();
             int fd_index = fd_alloc(current, f);
@@ -137,7 +138,7 @@ u64 sys_open(u64 path, u64 flags, u64, u64, u64, u64){
             return fd_index;
         }
     }
-    return SYS_ERROR;
+    return -ENOENT;
 }
 
 u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64, u64, u64){
@@ -187,6 +188,7 @@ u64 sys_pipe2(u64 fd_rets, u64 flags, u64, u64, u64, u64){
 
 u64 sys_fork(u64, u64, u64, u64, u64, u64){  
     // also now need to clone the kstack from the old to the new process
+    pcb_t* current = get_current();
 
     // procalloc
     pcb_t* newproc = clone_active_proc();
@@ -195,6 +197,9 @@ u64 sys_fork(u64, u64, u64, u64, u64, u64){
     add_to_schedule(newproc);
 
     int pid = newproc->pid;
+
+    // add the new child into the parent's children list
+    list_add(&proclist.proclist[pid].siblings, &current->children);
 
     // free process buffer
     kfree(newproc);
@@ -228,6 +233,29 @@ u64 sys_test_mutex(u64, u64, u64, u64, u64, u64){
 }
 
 u64 sys_waitid(u64 pid, u64, u64, u64, u64, u64){
+    pcb_t* current = get_current();
 
-    return -1;
+    if(list_empty(&current->children)){
+        return ECHILD;
+    }
+
+    pcb_t* child = NULL;
+    bool found = FALSE;
+    for (list_head_t* p = current->children.next; p != &current->children; p = p->next) {
+        child = list_entry(p, pcb_t, siblings);
+        if(child->pid == pid){
+            found = TRUE;
+            break;
+        }
+    }
+
+    if(found){
+        current->waiting_on = pid;
+        while(TRUE){
+            if(child->state == PROCESS_TERMINATED){
+                break;
+            }
+            deschedule();  
+        }
+    }
 }

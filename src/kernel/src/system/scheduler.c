@@ -145,7 +145,7 @@ void deschedule(){
     // move the current running process to the waiting queue
     pcb_t* current = get_current();
 
-    DEBUG("Descheduling %d\n", current->pid);
+    // DEBUG("Descheduling %d\n", current->pid);
 
     if(current->state == PROCESS_RUNNING) current->state = PROCESS_BLOCKED;
     
@@ -173,7 +173,9 @@ void reap(){
     current->state = PROCESS_TERMINATED;
 
     // TODO: eventually needs to add process to a reap queue for the next process to handle
+    pcb_t* parent = current->parent;
 
+    if(parent->waiting_on == current->pid || parent->waiting_on == WAITING_ALL) parent->state = PROCESS_READY;
 
     scheduler();
     // reap the rest of the process, clean up memory, notify any parents/children, etc.

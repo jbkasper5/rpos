@@ -3,6 +3,7 @@
 #include "memory/mem.h"
 #include "utils/datastructures.h"
 #include "utils/utils.h"
+#include "uapi/rpos/errno.h"
 
 #define DELIMITER   '/'
 #define MAX_NAME    255
@@ -29,9 +30,13 @@ void* open(const char* pathname, u32 flags){
     char* savestr;
     char* token = strtok(str, '/', &savestr);
 
-
-
-    ext4_inode* nodeptr = (pathname[0] == '/') ? rootfs.root_inode : NULL; // cwd()
+    ext4_inode* nodeptr = kmalloc(sizeof(ext4_inode));
+    
+    if(pathname[0] == '/'){
+        memcpy(nodeptr, rootfs.root_inode, sizeof(ext4_inode));
+    }else{
+        return NULL;
+    }
 
     while(token){
         nodeptr = lookup(nodeptr, token);
@@ -42,6 +47,8 @@ void* open(const char* pathname, u32 flags){
         token = strtok(NULL, '/', &savestr);
     }
 
+    kfree(str);
+
     if(nodeptr){
         INFO("'%s' resolved successfully.\n", pathname);
         file_t* file = (file_t*) kmalloc(sizeof(file_t));
@@ -49,10 +56,12 @@ void* open(const char* pathname, u32 flags){
         file->inode = nodeptr;
         file->pos = 0;
         file->flags = 0;
+        kfree(nodeptr);
         return file;
-    }else{
-        WARNING("Could not resolve path '%s'\n", pathname);
     }
+
+    WARNING("Could not resolve path '%s'\n", pathname);
+    kfree(nodeptr);
     return NULL;
 }
 
@@ -203,3 +212,6 @@ int seek(file_t* file, u64 offset, int whence){
     }
     return 0;
 }
+
+//         0xffff80003ffec080
+// second: 0xffff80003ffec080

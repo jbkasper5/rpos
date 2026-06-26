@@ -9,33 +9,47 @@
 extern int syscall(u64, ...);
 static TEST_FN void process_command(char* cmd);
 void printf(char* format_str, ...);
-
-#define SCREEN_SIZE_BYTES        (800 * 480 * 4)
+static const char path[1024] = "/bin/";
 
 // Linux KVM
 TEST_FN void user(){
-    int fs = syscall(SYS_OPEN, "/bin/ls");
-    printf("FS returned: %d\n", fs);
-    syscall(SYS_EXIT_GROUP);
+    // register the keyboard
+    int fd = syscall(SYS_OPEN, "/dev/ttyS1");
+    char buf[1024];
+    char* cmdptr = &buf;
+    while(TRUE){
+        syscall(SYS_READ, fd, cmdptr, 1);
+        char c = *cmdptr;
+        if(c == '\r' || c == '\n'){
+            *cmdptr = '\0';
+            process_command(buf);
+            cmdptr = buf;
+        }else if(c == 0x7F){
+            // 0x7F is the backspace code
+            cmdptr = MAX(cmdptr - 1, buf);
+        }else{
+            *cmdptr = c;
+            cmdptr++;
+        }
+    }
 }
 
 
 static TEST_FN void process_command(char* cmd){
-    printf("CMD: '%s'\n", cmd);
-    u64 pid = syscall(SYS_FORK);
-
+    int pid = syscall(SYS_FORK);
     if(pid){
         // parent
         syscall(SYS_WAITID, pid);
-
-
     }else{
-        // child
-
-        // should be something like that once things are set up properly
-        // syscall(SYS_EXECVE, cmd);
-
-        // reap the child process once it's done doing it's thing (technically shouldn't need to do this since it'll EXEC)
+        syscall(SYS_NANOSLEEP, 1000000000);
+        char* copy = cmd;
+        char* destcopy = path + 5;
+        while(*copy){
+            *destcopy++ = *copy++;
+        } 
+        printf("Attempting to open binary '%s'\n", path);
+        int fd = syscall(SYS_OPEN, path);
+        printf("Opened file at %d\n", fd);
         syscall(SYS_EXIT_GROUP);
     }
 }

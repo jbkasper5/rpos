@@ -107,7 +107,6 @@ void handle_irq(u64 reg_addr, u8 el){
 			handle_virtual_timer();
 		}else if(gic_irq == 125){
 			uint32_t iir = REGS_AUX->mu_iir;
-			DEBUG("IIR: %x\n", iir);
 			char c = REGS_AUX->mu_io & 0xFF;  // read clears the interrupt
 			// DEBUG("Mini UART Recieved interrupt 125: %c\n", c);	
 

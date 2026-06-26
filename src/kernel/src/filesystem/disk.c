@@ -181,6 +181,8 @@ static u64 inode_from_directory(ext4_dir_entry* dir, const char* name){
     while (offset < 4096) {
         ext4_dir_entry *entry = (char*)dir + offset;
 
+        if(!entry->rec_len) return NULL;
+
         // skip unused entries
         if (entry->inode == 0) {
             offset += entry->rec_len;
@@ -216,8 +218,12 @@ static u64 inode_from_directory(ext4_dir_entry* dir, const char* name){
 ext4_inode* lookup(ext4_inode* dirnode, char* name){
     INFO("Looking up '%s'...\n", name);
 
-    for(int i = 0; i < 16; i++){
+    for(int i = 0; i < 15; i++){
         u64 block = dirnode->i_block[i];
+        
+        // if block is 0, try the next one
+        if(!block) continue;
+
         read_block(rootfs.block_buf, block);
         u64 inode_num = inode_from_directory((ext4_dir_entry*)rootfs.block_buf, name);
         if(inode_num != NULL){

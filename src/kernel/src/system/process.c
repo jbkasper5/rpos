@@ -38,6 +38,14 @@ pcb_t* procalloc(u64 entrypoint){
 
     memset(process, 0, sizeof(pcb_t));
 
+    process->parent = get_current();
+
+    INIT_LIST_HEAD(&process->children);
+    INIT_LIST_HEAD(&process->siblings);
+
+    // not waiting on anyone by default
+    process->waiting_on = WAITING_NONE;
+
     // allocate and map the L0 page table for the process
     // the kernel should be able to dereference this table, but not the process
     process->registers.ttbr = alloc_page_table();
@@ -94,6 +102,11 @@ pcb_t* clone_active_proc(){
 
     // copy parent process data into child process
     memcpy(process, get_current(), sizeof(pcb_t));
+
+    INIT_LIST_HEAD(&process->children);
+    INIT_LIST_HEAD(&process->siblings);
+
+    process->parent = get_current();
 
     process->kernel_stack = initialize_proc_kstack();
 
