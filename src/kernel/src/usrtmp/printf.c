@@ -1,6 +1,6 @@
 #include <stdarg.h>
 #include "macros.h"
-#include "uapi/rpos/syscall_macros.h"
+#include "uabi/rpos/syscall_macros.h"
 
 typedef enum{
     ANSI_ESCAPE,

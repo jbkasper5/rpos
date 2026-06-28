@@ -2,6 +2,6 @@
 #define __FB_H__
 
 #include "macros.h"
-#include "uapi/rpos/fb.h"
+#include "uabi/rpos/fb.h"
 
 #endif

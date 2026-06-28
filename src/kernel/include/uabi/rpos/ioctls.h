@@ -1,5 +1,5 @@
-#ifndef __UAPI_IOCTLS__
-#define __UAPI_IOCTLS__
+#ifndef __uabi_IOCTLS__
+#define __uabi_IOCTLS__
 
 #define FBIOGET_VSCREENINFO	    0x4600
 #define FBIOPUT_VSCREENINFO	    0x4601

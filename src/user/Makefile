@@ -5,7 +5,7 @@ CFLAGS += \
   -nostdlib \
   -nostartfiles \
   -fno-pie -no-pie \
-  -I /Users/jakekasper/C/RaspberryPi/rpos/src/kernel/include/system
+  -I /Users/jakekasper/C/RaspberryPi/rpos/src/kernel/include
 
 # ANSI colors
 GREEN  := \033[1;32m
@@ -21,8 +21,42 @@ LDSCRIPT := linker.ld
 LDFLAGS  := -T $(LDSCRIPT)
 
 
-.PHONY: all clean
+.PHONY: all clean build
 all: $(BINS)
+
+# ==========================
+# build: compile the commands, then deploy them into the rootfs /bin by
+# writing the ext4 partition directly with debugfs (userspace, no mount).
+# Disk numbers shift on replug, so override:  make build ROOTFS_DEV=/dev/disk5s2
+# ==========================
+ROOTFS_DEV ?= /dev/disk5s2
+
+build: all
+	@set -e; \
+	PART="$(ROOTFS_DEV)"; RAW="/dev/r$${PART#/dev/}"; \
+	DBG="$$(brew --prefix e2fsprogs 2>/dev/null)/sbin/debugfs"; \
+	[ -x "$$DBG" ] || { printf "$(RED)✗ debugfs not found — run: brew install e2fsprogs$(RESET)\n"; exit 1; }; \
+	printf "$(BLUE)==> Deploying to $(GREEN)%s$(BLUE):/bin via debugfs$(RESET)\n" "$$RAW"; \
+	{ for f in "$(CURDIR)"/bin/*; do \
+		[ -f "$$f" ] || continue; \
+		n=$$(basename "$$f"); \
+		printf "$(GREEN)==> write %s$(RESET)\n" "$$n" >&2; \
+		printf 'rm /bin/%s\nwrite %s /bin/%s\n' "$$n" "$$f" "$$n"; \
+	  done; } | sudo "$$DBG" -w "$$RAW"; \
+	printf "$(GREEN)✓ Deployed to %s:/bin$(RESET)\n" "$$RAW"; \
+	DISK=$$(echo "$$PART" | sed -E 's/s[0-9]+$$//'); \
+	printf "$(BLUE)==> Ejecting %s$(RESET)\n" "$$DISK"; \
+	sync; diskutil eject "$$DISK" || printf "$(YELLOW)⚠ could not eject %s — unmount it manually$(RESET)\n" "$$DISK"
+
+# fsck: reconcile the rootfs / clear the dirty flag after writes (run occasionally;
+# can be slow on a large fs). Override the device the same way as build.
+.PHONY: fsck
+fsck:
+	@PART="$(ROOTFS_DEV)"; RAW="/dev/r$${PART#/dev/}"; \
+	FSCK="$$(brew --prefix e2fsprogs 2>/dev/null)/sbin/e2fsck"; \
+	printf "$(YELLOW)==> e2fsck -fy %s$(RESET)\n" "$$RAW"; \
+	sudo "$$FSCK" -fy "$$RAW" || true; \
+	printf "$(GREEN)✓ fsck complete$(RESET)\n"
 
 # ==========================
 # Build each project

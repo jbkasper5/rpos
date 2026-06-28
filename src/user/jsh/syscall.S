@@ -2,6 +2,7 @@
 //      x0 as syscall number
 //      x1-x6 arguments
 // then adjust accordingly
+.globl syscall
 syscall:
     stp x29, x30, [sp, #-16]!
     mov x8, x0

@@ -3,7 +3,7 @@
 #include "memory/mem.h"
 #include "utils/datastructures.h"
 #include "utils/utils.h"
-#include "uapi/rpos/errno.h"
+#include "uabi/rpos/errno.h"
 
 #define DELIMITER   '/'
 #define MAX_NAME    255

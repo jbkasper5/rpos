@@ -1,9 +1,8 @@
 #include <stdint.h>
-#include "uapi/rpos/syscall_macros.h"
+#include "uabi/rpos/syscall_macros.h"
 
 
-
-extern u64 syscall(u64 sysnum, ...);
+extern uint64_t syscall(uint64_t sysnum, ...);
 
 int main(){
     // write syscall is: u64 fd, u64 buf, u64 count

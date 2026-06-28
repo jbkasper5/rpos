@@ -1,8 +1,8 @@
-#include "uapi/rpos/syscall_macros.h"
-#include "uapi/rpos/fb.h"
-#include "uapi/rpos/ioctls.h"
-#include "uapi/rpos/mman.h"
-#include "uapi/rpos/fds.h"
+#include "uabi/rpos/syscall_macros.h"
+#include "uabi/rpos/fb.h"
+#include "uabi/rpos/ioctls.h"
+#include "uabi/rpos/mman.h"
+#include "uabi/rpos/fds.h"
 
 #include "macros.h"
 

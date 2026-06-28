@@ -1,5 +1,5 @@
-#ifndef __UAPI_MMAN_H__
-#define __UAPI_MMAN_H__
+#ifndef __uabi_MMAN_H__
+#define __uabi_MMAN_H__
 
 #define PROT_READ	0x1		/* page can be read */
 #define PROT_WRITE	0x2		/* page can be written */

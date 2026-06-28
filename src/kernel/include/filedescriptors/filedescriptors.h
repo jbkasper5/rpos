@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "filesystem/filesystem.h"
-#include "uapi/rpos/fds.h"
+#include "uabi/rpos/fds.h"
 #include "filedescriptors/pipe.h"
 
 int pipe_write(struct file_s* file, const char* buf, u64 count);

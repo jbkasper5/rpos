@@ -1,8 +1,8 @@
 #ifndef __SYSCALLS_H__
 #define __SYSCALLS_H__
 
-#include "uapi/rpos/syscall_macros.h"
-#include "uapi/rpos/clone.h"
+#include "uabi/rpos/syscall_macros.h"
+#include "uabi/rpos/clone.h"
 #include "macros.h"
 
 #define SYS_ERROR           -1ULL

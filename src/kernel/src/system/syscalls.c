@@ -6,12 +6,12 @@
 #include "macros.h"
 #include "io/lcd.h"
 #include "memory/mem.h"
-#include "uapi/rpos/ioctls.h"
-#include "uapi/rpos/fb.h"
+#include "uabi/rpos/ioctls.h"
+#include "uabi/rpos/fb.h"
 #include "memory/mmap.h"
 #include "synchronization/mutex.h"
 #include "filesystem/disk.h"
-#include "uapi/rpos/errno.h"
+#include "uabi/rpos/errno.h"
 
 
 void* cacheable_page = NULL;
