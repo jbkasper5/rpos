@@ -40,6 +40,7 @@ int keyboard_open(struct file_s* file){
     // open the pipe buffer that the keyboard will stream to
     file->private_data = &kbd_pipe;
     file->refcount++;
+    return TRUE;
 }
 
 int keyboard_close(struct file_s* file){

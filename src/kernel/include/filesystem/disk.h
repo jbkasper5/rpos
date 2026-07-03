@@ -185,6 +185,12 @@ typedef struct {
     ext4_block* block_buf;
 } fs;
 
+typedef struct {
+    u64 inode_number;
+    ext4_inode* inode;
+    char* path;
+} directory;
+
 extern fs rootfs;
 
 

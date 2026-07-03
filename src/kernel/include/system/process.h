@@ -4,6 +4,7 @@
 #include "macros.h"
 #include "filesystem/filesystem.h"
 #include "memory/kmalloc.h"
+#include "filesystem/disk.h"
 
 #define SET_PCB_REG_NUM(pcb, regnum, val)   (pcb->registers.regs[regnum] = val)
 #define SET_PCB_REG(pcb, reg, val)          (pcb->registers.reg = val)
@@ -65,6 +66,7 @@ typedef struct pcb_s {
     list_head_t children;
     list_head_t siblings;
 
+    directory* cwd;
 
     file_t* fds[MAX_OPEN_FILES];
     // file structure information

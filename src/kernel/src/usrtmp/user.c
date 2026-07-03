@@ -48,7 +48,7 @@ static TEST_FN void process_command(char* cmd){
             *destcopy++ = *copy++;
         } 
         printf("Attempting to open binary '%s'\n", path);
-        int fd = syscall(SYS_OPEN, path);
+        int fd = syscall(SYS_EXECVE, path);
         printf("Opened file at %d\n", fd);
         syscall(SYS_EXIT_GROUP);
     }

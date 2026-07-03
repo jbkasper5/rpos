@@ -30,4 +30,14 @@ extern u64 get_test_size();
 
 extern u64 get_core_pcb();
 
+
+extern char __page_frame_array_start[];
+extern char __page_frame_array_end[];
+extern char __static_page_region_start[];
+extern char __static_page_region_end[];
+extern char __static_page_region_pages[];
+extern char __kernel_start[];
+extern char __kernel_end[];
+
+
 #endif

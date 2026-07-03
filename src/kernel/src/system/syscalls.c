@@ -12,6 +12,7 @@
 #include "synchronization/mutex.h"
 #include "filesystem/disk.h"
 #include "uabi/rpos/errno.h"
+#include "filesystem/elf.h"
 
 
 void* cacheable_page = NULL;
@@ -82,7 +83,15 @@ u64 sys_execve(u64 path, u64 argv, u64 envp, u64, u64, u64){
     // pass in arguments and environment variables
     // jump back to ELF-defined entry point
     // if invalid, return -1
-    return (u64) p;
+    file_t* f = open(path, NULL);
+    if(f){
+        // begin ELF parsing
+        readelf(f);
+        
+        return;
+    }else{
+        return -ENOEXEC;
+    }
 }
 
 u64 sys_pulse_led(u64 pin_num, u64 turn_on, u64, u64, u64, u64){

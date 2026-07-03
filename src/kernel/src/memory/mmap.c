@@ -2,6 +2,12 @@
 
 // early boot uses 15 pages
 u64 allocated_pages = 15;
+
+extern char __static_page_region_start[];
+extern char __static_page_region_end[];
+#define STATIC_PAGE_REGION_PAGES 100   /* == __STATIC_PAGES */
+
+
 extern u32 static_page_region_pages();
 extern uintptr_t static_page_region_start();
 extern u64 virt_base();
@@ -23,11 +29,8 @@ static inline void clean_pte(void *addr) {
 
 
 uintptr_t alloc_page_table(){
-    if(allocated_pages >= static_page_region_pages()){
-        panic();
-    }
-
-    uintptr_t page_addr = static_page_region_start() + (PAGE_SIZE * allocated_pages);
+    if (allocated_pages >= STATIC_PAGE_REGION_PAGES) panic();
+    uintptr_t page_addr = (uintptr_t)__static_page_region_start + (PAGE_SIZE * allocated_pages);
     allocated_pages++;
     memset(page_addr, 0, PAGE_SIZE);
 

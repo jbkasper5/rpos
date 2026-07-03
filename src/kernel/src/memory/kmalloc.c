@@ -14,16 +14,16 @@ static void* _slab_alloc(u32 order){
     u64 phys_page = buddy_alloc(PAGE_SIZE * (order + 1));
 
     // the ownership changed hands to the slab
-    set_page_owner(phys_page, PAGE_SLAB);
+    set_page_owner((void*) phys_page, PAGE_SLAB);
 
     // if no more pages are available in RAM, PANIC
     if(!phys_page) panic();
 
     // map the page into memory
-    map(phys_page, va_to_pa(phys_page), order, MAP_KERNEL, L0_TABLE);
+    map(phys_page, va_to_pa(phys_page), order, MAP_KERNEL, (u64) L0_TABLE);
 
     // for now, convert this to virtual later
-    return phys_page;
+    return (void*) phys_page;
 }
 
 void kheap_init(){
@@ -49,7 +49,7 @@ static void* _addr_from_slab(slab* s){
             s->inuse++;
 
             // skip past metadata for the slab, then get the offset based on the bitfield
-            return ((uintptr_t) s) + ALIGN_UP(sizeof(slab), (1 << s->slab_order)) + (i * (1 << s->slab_order));
+            return (void*) ((uintptr_t) s) + ALIGN_UP(sizeof(slab), (1 << s->slab_order)) + (i * (1 << s->slab_order));
         }
     }
 
