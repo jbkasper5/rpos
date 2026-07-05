@@ -34,3 +34,11 @@ context_switch:
     ldp x19, x20, [sp], #16
 
     ret
+
+.globl switch_user_tlb
+switch_user_tlb:
+    msr ttbr0_el1, x0       // Switch to the new process's memory map
+    tlbi vmalle1            // Wipe the TLB (mandatory since no ASID)
+    dsb sy                  // Wait for TLB wipe to complete
+    isb                     // Flush pipeline
+    ret
