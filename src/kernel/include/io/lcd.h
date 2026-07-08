@@ -29,13 +29,7 @@ u32 mailbox_read(u8 channel);
 
 #define GPU_BUS_TO_ARM(addr) ((addr) & 0x3FFFFFFF)
 
-typedef struct frame_s{
-    u32* fb;
-    u32 width;
-    u32 height;
-    u32 pitch;
-} frame_t;
-
+#include "types/lcd_types.h"
 
 extern frame_t frame;
 

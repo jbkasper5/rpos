@@ -4,11 +4,10 @@
 #include "uabi/rpos/syscall_macros.h"
 #include "uabi/rpos/clone.h"
 #include "macros.h"
+#include "types/syscalls_types.h"
 
 #define SYS_ERROR           -1ULL
 #define SYS_SUCCESS         0
-
-typedef u64 (*syscall_fn_t)(u64, u64, u64, u64, u64, u64);
 
 
 u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64, u64, u64);
