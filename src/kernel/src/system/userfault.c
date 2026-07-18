@@ -8,7 +8,7 @@ void handle_el0_fault();
 
 pte* check_cow(u64 addr){
     pcb_t* current = get_current();
-    pte* page_table = (pte*) pa_to_va(current->registers.ttbr);
+    pte* page_table = (pte*) pa_to_va(current->ttbr);
 
     int idx0 = (addr >> 39) & 0x1FF;
     int idx1 = (addr >> 30) & 0x1FF;
@@ -61,7 +61,7 @@ void handle_el0_fault(u64 faulting_address){
       (faulting_address >> 12) & 0x1FF);
 
     pte* l3_pte = check_cow(faulting_address);
-    void* current_ttbr = get_current()->registers.ttbr;
+    void* current_ttbr = get_current()->ttbr;
 
     if(l3_pte){
         // copy the memory to a new table

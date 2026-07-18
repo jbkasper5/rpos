@@ -16,7 +16,7 @@ mutex_t* mutex_init(){
 void mutex_acquire(mutex_t* mutex){
     pcb_t* current = get_current();
 
-    int pid = current - proclist.proclist;
+    int pid = current->pid;
     DEBUG("Process %d attempting to acquire mutex at 0x%x...\n", pid, mutex);
     
     // otherwise, the mutex has been acquired already, we need to add it to the mutex's wait queue

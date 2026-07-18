@@ -12,7 +12,7 @@ void start_scheduler();
 void add_to_schedule(pcb_t* proc);
 void scheduler();
 void deschedule();
-void reschedule(u64 procnum);
+void reschedule(pcb_t* proc);
 
 void add_test_section_to_scheduler();
 

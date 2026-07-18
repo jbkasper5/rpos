@@ -10,8 +10,6 @@
 #define SET_PCB_REG_NUM(pcb, regnum, val)   (pcb->registers.regs[regnum] = val)
 #define SET_PCB_REG(pcb, reg, val)          (pcb->registers.reg = val)
 
-extern pcb_list_t proclist;
-
 static inline pcb_t* get_current() {
     u64 pcb_addr;
     asm volatile("mrs %0, TPIDR_EL1" : "=r"(pcb_addr));

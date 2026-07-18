@@ -59,6 +59,7 @@ u64 ticks_since_boot();
 #define TEST_RODATA     __attribute__((section(".test.rodata")))
 
 #define INTERRUPT_ENABLE()        asm volatile("msr daifclr, #0xf")
+#define INTERRUPT_DISABLE()       asm volatile("msr daifset, #0xf")
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))

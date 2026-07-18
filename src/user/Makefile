@@ -20,9 +20,37 @@ BINS := $(patsubst %/,bin/%,$(DIRS))
 LDSCRIPT := linker.ld
 LDFLAGS  := -T $(LDSCRIPT)
 
+# musl cross-toolchain (real libc + crt startup). See the `musl` target below.
+MUSL_CC := aarch64-linux-musl-gcc
+
+# Extra `find` predicates for excluding ASM sources. Empty for the freestanding
+# build; the musl build drops the hand-rolled crt/syscall stubs so libc's own
+# _start / syscall() are used instead.
+ASM_FIND_EXCLUDE :=
+
 
 .PHONY: all clean build
 all: $(BINS)
+
+# ==========================
+# musl: build the same binaries against a musl libc cross-toolchain (real crt
+# startup + C library) instead of the bare-metal freestanding toolchain.
+# Static, non-PIE. Excludes each project's start.S / syscall.S so musl's own
+# _start and syscall() are used. Does a clean rebuild (flags differ from the
+# freestanding build). Requires aarch64-linux-musl-gcc on PATH.
+#   make musl    then    make build
+# ==========================
+.PHONY: musl
+musl:
+	@command -v $(MUSL_CC) >/dev/null 2>&1 || { printf "$(RED)✗ $(MUSL_CC) not found on PATH — install a musl aarch64 cross-toolchain$(RESET)\n"; exit 1; }
+	@printf "$(BLUE)==> Rebuilding binaries with musl ($(GREEN)$(MUSL_CC)$(BLUE))$(RESET)\n"
+	@$(MAKE) clean
+	@$(MAKE) all \
+		CC="$(MUSL_CC)" \
+		CFLAGS="-Wall -Wextra -O2 -fno-pie -no-pie -static -I /Users/jakekasper/C/RaspberryPi/rpos/src/kernel/include" \
+		LDFLAGS="" \
+		ASM_FIND_EXCLUDE="! -name start.S ! -name syscall.S"
+	@printf "$(GREEN)✓ musl build complete$(RESET)\n"
 
 # ==========================
 # build: compile the commands, then deploy them into the rootfs /bin by
@@ -66,7 +94,7 @@ bin/%: %/
 	@mkdir -p bin
 
 	@C_SRC=$$(find $* -type f -name '*.c'); \
-	ASM_SRC=$$(find $* -type f -name '*.S'); \
+	ASM_SRC=$$(find $* -type f -name '*.S' $(ASM_FIND_EXCLUDE)); \
 	if [ -z "$$C_SRC" ] && [ -z "$$ASM_SRC" ]; then \
 		printf "$(RED)✗ No source files found in %s$(RESET)\n" "$*"; \
 		exit 1; \

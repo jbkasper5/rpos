@@ -41,23 +41,19 @@ enum EXIT_STATUS{
     EX_CONFIG       = 78,      /* configuration error */
 };
 
-typedef struct reglist_s{
-    u64 regs[11];
-    u64 sp;            // stack pointer to use on return
-    u64 pc;            // instruction address to return to
-    u64 spsr;          // processor state to return to
-    u64 ttbr;          // page table base for the process
-}reglist_t;
-
 typedef struct pcb_s {
-    reglist_t registers;
     u64 kernel_stack;
+
+    u64 ttbr;
 
     enum PROC_STATE state;
     enum EXIT_STATUS exit_status;
 
     u32 pid;
     u32 waiting_on;
+
+    list_head_t proclist;
+    list_head_t runqueue;
 
     struct pcb_s* parent;
     list_head_t children;
@@ -71,10 +67,5 @@ typedef struct pcb_s {
     // signal information
     // timer information
 }pcb_t;
-
-typedef struct PCB_LIST_S{
-    pcb_t proclist[MAX_PROCESSES];
-    u32 processes;
-} pcb_list_t;
 
 #endif

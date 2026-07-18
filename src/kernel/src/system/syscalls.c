@@ -109,7 +109,7 @@ u64 sys_getcwd(u64 buffer, u64 size, u64, u64, u64, u64){
 }
 
 u64 sys_exit_group(u64 status, u64, u64, u64, u64, u64){
-    INFO("Current running process number: %d\n", get_current() - proclist.proclist);
+    INFO("Current running process number: %d\n", get_current()->pid);
     reap();
     return SYS_SUCCESS;
 }
@@ -208,12 +208,9 @@ u64 sys_fork(u64, u64, u64, u64, u64, u64){
     int pid = newproc->pid;
 
     // add the new child into the parent's children list
-    list_add(&proclist.proclist[pid].siblings, &current->children);
+    list_add(&newproc->siblings, &current->children);
 
-    // free process buffer
-    kfree(newproc);
-
-    // return "fake"
+    // return child pid
     return pid;
 }
 
@@ -231,7 +228,7 @@ u64 sys_test_mutex(u64, u64, u64, u64, u64, u64){
     mutex_acquire(m);
 
     pcb_t* current = get_current();
-    int pid = current - proclist.proclist;
+    int pid = current->pid;
 
     INFO("Process %d acquired the mutex. Spinning for a lil while...\n", pid);
 

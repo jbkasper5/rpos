@@ -2,7 +2,7 @@
 #include "memory/mmap.h"
 #include "filedescriptors/filedescriptors.h"
 #include "system/entry.h"
-
+#include "types/kernel_types.h"
                        //0x00007fffffff0
 #define USER_STACK_TOP   0x0000800000000ULL
 #define KSTACK_SIZE      PAGE_SIZE
@@ -18,7 +18,8 @@ static void* initialize_proc_kstack(){
 }
 
 u32 generate_pid(){
-    return atomic_increment(&pidcounter, 1);
+    // return atomic_increment(&pidcounter, 1);
+    return ++pidcounter;
 }
 
 int fd_alloc(pcb_t* proc, file_t* file) {
@@ -38,6 +39,8 @@ pcb_t* procalloc(u64 entrypoint){
 
     memset(process, 0, sizeof(pcb_t));
 
+    process->pid = generate_pid();
+
     process->parent = get_current();
 
     INIT_LIST_HEAD(&process->children);
@@ -48,37 +51,37 @@ pcb_t* procalloc(u64 entrypoint){
 
     // allocate and map the L0 page table for the process
     // the kernel should be able to dereference this table, but not the process
-    process->registers.ttbr = alloc_page_table();
+    process->ttbr = alloc_page_table();
 
     // 8 KiB stack -> 2 pages -> order 1
     u32 stack_size = PAGE_SIZE * 2;
     u64 stack_base = buddy_alloc(stack_size); // stack base page address = 3FFD5000
 
     // map the virtual stack to the process (0x7ffffe000 -> 3FFD5000)
-    map(USER_STACK_TOP - stack_size, va_to_pa(stack_base), 1, MAP_USER | MAP_READ | MAP_WRITE, process->registers.ttbr);
+    map(USER_STACK_TOP - stack_size, va_to_pa(stack_base), 1, MAP_USER | MAP_READ | MAP_WRITE, process->ttbr);
 
     void* kstack = initialize_proc_kstack();
     process->kernel_stack = kstack;
 
     // set the kernel stack to the trap frame defined by the kernel_entry of the parent process
-    process->kernel_stack -= S_FRAME_SIZE;
+    trap_frame_t* tf = process->kernel_stack - sizeof(trap_frame_t);
+    tf->sp_el0 = USER_STACK_TOP - 16;
+    tf->elr_el1 = entrypoint;
+    tf->spsr_el1 = 0x0;
 
     // in order to be context switched in later, we need to do an "artificial push" of the x19-x30 registers
     // in total, there are 12 registers to "push", each 8 bytes, so 96 bytes of context to invent
-    process->kernel_stack -= 96;
-    memset(process->kernel_stack, 0, 96 + S_FRAME_SIZE);
+    process->kernel_stack = process->kernel_stack - sizeof(trap_frame_t) - 96;
+    memset(process->kernel_stack, 0, 96);
 
     // set x30 from the context switch to be the trampoline out of the kernel
     *((u64*) (process->kernel_stack + 8)) = &ret_from_fork;
 
-    u64* trap_frame = (u64*)(process->kernel_stack + 96);
-    trap_frame[31] = USER_STACK_TOP - 16;               // SP_EL0
-    trap_frame[32] = entrypoint;                        // ELR_EL1
-    trap_frame[33] = 0x0;                               // SPSR
+    // u64* trap_frame = (u64*)(process->kernel_stack + 96);
+    // trap_frame[31] = USER_STACK_TOP - 16;               // SP_EL0
+    // trap_frame[32] = entrypoint;                        // ELR_EL1
+    // trap_frame[33] = 0x0;                               // SPSR
 
-
-    // subtract 16 since USER_STACK_TOP technically lies outside the 2 page boundary
-    process->registers.sp = USER_STACK_TOP - 16;
 
     file_t* stdin_f  = kmalloc(sizeof(file_t));
     file_t* stdout_f = kmalloc(sizeof(file_t));
@@ -93,6 +96,8 @@ pcb_t* procalloc(u64 entrypoint){
     process->fds[STDIN] = stdin_f;
     process->fds[STDOUT] = stdout_f;
     process->fds[STDERR] = stderr_f;
+
+    process->state = PROCESS_READY;
 
     return process;
 }
@@ -110,6 +115,8 @@ pcb_t* clone_active_proc(){
 
     process->kernel_stack = initialize_proc_kstack();
 
+    process->pid = generate_pid();
+
     u64 current_sp;
     asm volatile("mov %0, sp" : "=r"(current_sp));
 
@@ -121,7 +128,7 @@ pcb_t* clone_active_proc(){
     memcpy(ALIGN_DOWN(process->kernel_stack, KSTACK_SIZE),  current_stack_top, PAGE_SIZE);
 
     // now we need to create a new virtual memory system (using the virt address of the page table)
-    process->registers.ttbr = clone_virtual_memory(pa_to_va(get_current()->registers.ttbr));
+    process->ttbr = clone_virtual_memory(pa_to_va(get_current()->ttbr));
 
     // set the kernel stack to the trap frame defined by the kernel_entry of the parent process
     process->kernel_stack -= S_FRAME_SIZE;

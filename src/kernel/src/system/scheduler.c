@@ -7,8 +7,14 @@
 #include "memory/mem.h"
 #include "memory/mm.h"
 #include "memory/mmap.h"
+#include "types/kernel_types.h"
 
-pcb_list_t proclist;
+static list_head_t proclist;
+static list_head_t runqueue;
+static u64 n_processes = 0;
+
+static pcb_t* idle_proc;
+static pcb_t* progenitor_proc;
 
 #define KSTACK_SIZE PAGE_SIZE
 
@@ -17,6 +23,7 @@ static void idle(){
     while(TRUE){
         INTERRUPT_ENABLE();
         WFI();
+        // INTERRUPT_DISABLE();
         scheduler();
     }
 }
@@ -28,116 +35,117 @@ static void* initialize_proc_kstack(){
     return range + (KSTACK_SIZE + PAGE_SIZE) - 0x10;
 }
 
-void scheduler_init(){
-    // idle process in index 0
-    proclist.processes = 1;
+static void pre_context_switch(pcb_t* newproc, void* old_sp_buffer){
+    // get new context stack
+    u64 new_sp = newproc->kernel_stack;
 
-    // process 0 is the idle proc
-    proclist.proclist[0].registers.pc = &idle;
+    // get new base L0 table
+    u64 new_ttbr = newproc->ttbr;
 
-    // empty out SP and TTBR since the idle process does exactly nothing
-    proclist.proclist[0].registers.sp = NULL;
-    proclist.proclist[0].registers.ttbr = NULL;
+    // switch current process
+    set_current(newproc);
 
-    // set up the idle proc to run in EL1 with interrupts enabled
-    proclist.proclist[0].registers.spsr = 0x345;
+    // prime the timer
+    prime_physical_timer();
 
-    // initialize the idle process' kernel stack
-    proclist.proclist[0].kernel_stack = initialize_proc_kstack();
+    // set process to running
+    newproc->state = PROCESS_RUNNING;
 
-    // set the idle process as the current "user" process
-    set_current(&proclist.proclist[0]);
+    // switch
+    context_switch(new_sp, old_sp_buffer, new_ttbr);
 }
 
-void print_reg_file(reglist_t* regfile){
-    kprintf("Register file at: 0x%x\n", regfile);
-    for(int i = 0; i < 11; i++){
-        kprintf("\tx%d: 0x%x\n", i, regfile->regs[i]);
-    }
-    kprintf("\tsp: 0x%x\n", regfile->sp);
-    kprintf("\tpc: 0x%x\n", regfile->pc);
-    kprintf("\tspsr: 0x%x\n\n", regfile->spsr);
+void scheduler_init(){
+    // initialize process list and runqueue
+    INIT_LIST_HEAD(&proclist);
+    INIT_LIST_HEAD(&runqueue);
+
+    // create the idle process
+    idle_proc = (pcb_t*) kmalloc(sizeof(pcb_t));
+
+    idle_proc->kernel_stack = initialize_proc_kstack();
+    idle_proc->ttbr = NULL;
+
+    idle_proc->state = PROCESS_READY;
+
+    trap_frame_t* tf = idle_proc->kernel_stack - sizeof(trap_frame_t);
+
+    // process 0 is the idle proc
+    tf->elr_el1 = &idle;
+
+    // empty out SP and TTBR since the idle process does exactly nothing
+    tf->sp_el0 = NULL;
+
+    // set up the idle proc to run in EL1 with interrupts enabled
+    tf->spsr_el1 = 0x345;
+
+    // set the idle process as the current "user" process
+    set_current(idle_proc);
+
+    progenitor_proc = (pcb_t*) kmalloc(sizeof(pcb_t));
+
+    progenitor_proc->pid = 1;
 }
 
 void scheduler(){
-    // switch active processes
-    int selected_process = 0;
-    int active_process = get_current() - proclist.proclist;
-    int i = active_process + 1;
-    for(int idx = 0; idx < proclist.processes; idx++){
+    pcb_t* active_process = get_current();
+    pcb_t* newproc;
 
-        // handle wraparounds
-        i %= proclist.processes;
+    /*
+    Since the runqueue is READY-only, and it's head insert, per RR rules, 
+    the next process to get it's quantum is the tail, i.e. head->prev
 
-        // ignore the idle process, will be defaulted if selected_process is still 0
-        if(!i){
-            i++;
-            continue;   
+    We just need to check first if the current process is the only 
+    process left to run, and what it's state is
+    */
+
+    // if the runqueue is empty, it means the current process is the last one
+    if(list_empty(&runqueue)){
+
+        // just exit early if the process is still running
+        if(active_process->state == PROCESS_RUNNING){
+            prime_physical_timer();
+            return;
         }
 
-        // only look for processes that are ready
-        if(proclist.proclist[i].state == PROCESS_READY){
-
-            // if we found a ready process, take it and context switch
-            selected_process = i;
-            break;
-
-        // if we haven't selected a process yet and the current one is still running, select it
-        }else if(proclist.proclist[i].state == PROCESS_RUNNING && !selected_process){
-            selected_process = i;
-        }
-
-        i++;
-    }
-    // at this point, either we found a new process, the active process hasn't changed, or the selected process
-    // is the idle process
-    if(selected_process != active_process){
-        // if the selected process differs from the active process, we need to perform a context switch
-
-        // if the process was running, change it back to ready
-        if(proclist.proclist[active_process].state == PROCESS_RUNNING){
-            proclist.proclist[active_process].state = PROCESS_READY;
-        }
-
-        u64 old_sp_buffer = &proclist.proclist[active_process].kernel_stack;
-
-        // update active process
-        active_process = selected_process;
-
-        // set active process to running
-        proclist.proclist[active_process].state = PROCESS_RUNNING;
-
-        u64 new_sp = proclist.proclist[active_process].kernel_stack;
-
-        u64 new_ttbr = proclist.proclist[active_process].registers.ttbr;
-
-        set_current(&proclist.proclist[active_process]);
-
-        prime_physical_timer();
-
-        context_switch(new_sp, old_sp_buffer, new_ttbr);
+        // otherwise, context switch in the idle_proc
+        pre_context_switch(idle_proc, &active_process->kernel_stack);
+        return;
     }else{
-        prime_physical_timer();
-    }
-}
 
-static u64 get_current_daif() {
-    u64 daif;
-    asm volatile ("mrs %0, daif" : "=r" (daif));
-    return daif;
+        // runqueue isn't empty, so we get the next process off the queue
+        newproc = list_entry(runqueue.next, pcb_t, runqueue);
+    }
+
+    // get the current process's kstack pointer
+    u64 old_sp_buffer = &active_process->kernel_stack;
+
+    // remove the new process from the runqeue since it's getting scheduled in
+    if(newproc->pid != 0) list_remove(&newproc->runqueue);
+    if(active_process->state == PROCESS_RUNNING){
+        active_process->state = PROCESS_READY;
+
+        // add the active process back to the runqueue since it's getting scheduled out
+        if(active_process->pid != 0) list_add(&active_process->runqueue, &runqueue);
+    }
+
+    pre_context_switch(newproc, old_sp_buffer);
 }
 
 void start_scheduler(){
-    pcb_t* current = &proclist.proclist[0];
+    // starts as the idle proc
+    pcb_t* current = get_current();
 
     current->state = PROCESS_RUNNING;
 
     set_current(current);
 
-    u64 sp = current->registers.sp;
-    u64 pc = current->registers.pc;
-    u64 spsr = current->registers.spsr;
-    u64 ttbr = current->registers.ttbr;
+    trap_frame_t* tf = current->kernel_stack - sizeof(trap_frame_t);
+
+    u64 sp = tf->sp_el0;
+    u64 pc = tf->elr_el1;
+    u64 spsr = tf->spsr_el1;
+    u64 ttbr = current->ttbr;
     drop_to_user(sp, pc, spsr, ttbr, current->kernel_stack);
 }
 
@@ -145,24 +153,26 @@ void deschedule(){
     // move the current running process to the waiting queue
     pcb_t* current = get_current();
 
-    // DEBUG("Descheduling %d\n", current->pid);
-
-    if(current->state == PROCESS_RUNNING) current->state = PROCESS_BLOCKED;
+    // remove the current from the runqueue before invoking the scheduler
+    if(current->state == PROCESS_RUNNING){
+        current->state = PROCESS_BLOCKED;
+        list_remove(&current->runqueue);
+    }
     
     scheduler();
 }
 
-void reschedule(u64 procnum){
-    DEBUG("Rescheduling %d\n", procnum);
-    proclist.proclist[procnum].state = PROCESS_READY;
+void reschedule(pcb_t* proc){
+    // DEBUG("Rescheduling %d\n", proc->pid);
+    proc->state = PROCESS_READY;
+    list_add(&proc->runqueue, &runqueue);
 }
 
 void add_to_schedule(pcb_t* proc){
     proc->state = PROCESS_READY;
-    proc->registers.spsr = 0x0;
-    proc->pid = proclist.processes;
-    memcpy(&proclist.proclist[proclist.processes], proc, sizeof(pcb_t));
-    proclist.processes++;
+    list_add(&proc->proclist, &proclist);
+    list_add(&proc->runqueue, &runqueue);
+    n_processes++;
 }
 
 // placeholder for now
@@ -175,7 +185,10 @@ void reap(){
     // TODO: eventually needs to add process to a reap queue for the next process to handle
     pcb_t* parent = current->parent;
 
-    if(parent->waiting_on == current->pid || parent->waiting_on == WAITING_ALL) parent->state = PROCESS_READY;
+    if(parent->waiting_on == current->pid || parent->waiting_on == WAITING_ALL){
+        parent->state = PROCESS_READY;
+        list_add(&parent->runqueue, &runqueue);
+    }
 
     scheduler();
     // reap the rest of the process, clean up memory, notify any parents/children, etc.
@@ -191,9 +204,13 @@ void add_test_section_to_scheduler(){
     u64 test_size = get_test_size();
     u16 order = log2_pow2(test_size / 4096);
 
-    map(test_virt, test_phys, order, MAP_USER | MAP_READ | MAP_WRITE | MAP_EXEC, proc->registers.ttbr);
+    map(test_virt, test_phys, order, MAP_USER | MAP_READ | MAP_WRITE | MAP_EXEC, proc->ttbr);
 
-    proc->registers.pc = user_ptr;
+    // write the return pointer into the user stack
+    trap_frame_t* tf = proc->kernel_stack - sizeof(trap_frame_t);
+    tf->elr_el1 = user_ptr;
+
+    // proc->registers.pc = user_ptr;
 
     add_to_schedule(proc);
 }

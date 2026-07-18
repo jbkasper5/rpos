@@ -34,9 +34,6 @@ void hardware_init(){
     INFO("Enabling system timers...\n");
     timer_init();
 
-    INFO("Enabling system scheduler...\n");
-    scheduler_init();
-
     INFO("Enabling SD...\n");
     if(!emmc_init()){
         ERROR("SD card initialization failed.\n");
@@ -45,6 +42,9 @@ void hardware_init(){
 
     INFO("Initializing kernel heap...\n");
     kheap_init();
+
+    INFO("Enabling system scheduler...\n");
+    scheduler_init();
 
     INFO("Initializing filesystem...\n");
     filesystem_init();
@@ -64,8 +64,8 @@ void hardware_init(){
     INFO("Priming physical timer...\n");
     prime_physical_timer();
 
-    INFO("Enabling IRQ interrupts...\n");
-    irq_enable();
+    // INFO("Enabling IRQ interrupts...\n");
+    // irq_enable();
 
     INFO("Hardware initialization complete.\n\n");
 }

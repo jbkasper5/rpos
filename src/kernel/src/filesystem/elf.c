@@ -82,9 +82,9 @@ void readelf(file_t* file){
     // current->cwd
 
     // switch over ttbr
-    u64* old_ttbr = current->registers.ttbr;
+    u64* old_ttbr = current->ttbr;
 
-    current->registers.ttbr = va_to_pa(new_proc_l0);
+    current->ttbr = va_to_pa(new_proc_l0);
 
     // tear down old_ttbr
     // teardown_vm(old_ttbr);
@@ -105,7 +105,7 @@ void readelf(file_t* file){
     // 0x7fffffff0
 
     // swap the base table for the process
-    switch_user_tlb(current->registers.ttbr);
+    switch_user_tlb(current->ttbr);
 
     // update user sp, pc, and zero out other registers
 }
