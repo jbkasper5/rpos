@@ -17,6 +17,7 @@
 #include "filesystem/elf.h"
 #include "drivers/dt.h"
 #include "drivers/kbd.h"
+#include "memory/memprofiler.h"
 
 void hardware_init(){
 

@@ -107,5 +107,6 @@ void readelf(file_t* file){
     // swap the base table for the process
     switch_user_tlb(current->ttbr);
 
-    // update user sp, pc, and zero out other registers
+    // reap the virtual memory for the abandoned process state
+    reap_virtual_memory(pa_to_va(old_ttbr), 0);
 }

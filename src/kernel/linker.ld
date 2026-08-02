@@ -132,7 +132,7 @@ SECTIONS {
     **/usrtmp/user.o(.text*)
     **/usrtmp/user_s.o(.text*)
     . = ALIGN(0x1000);
-    _test_text_end = .;
+    __test_text_end = .;
   } : test_text
 
   /* 3. Map Test Data - Force VMA to stay in the Low-Half (0x800xxxx) */
@@ -145,6 +145,7 @@ SECTIONS {
     **/usrtmp/user_s.o(.rodata*)
     **/usrtmp/user_s.o(.data*)
     . = ALIGN(0x1000);
+    __test_data_end = .;
   } : test_data
 
   __test_size = LOADADDR(.test.data) + SIZEOF(.test.data) - __test_phys_loc;

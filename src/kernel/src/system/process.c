@@ -45,6 +45,8 @@ pcb_t* procalloc(u64 entrypoint){
 
     INIT_LIST_HEAD(&process->children);
     INIT_LIST_HEAD(&process->siblings);
+    INIT_LIST_HEAD(&process->proclist);
+    INIT_LIST_HEAD(&process->runqueue);
 
     // not waiting on anyone by default
     process->waiting_on = WAITING_NONE;
@@ -110,6 +112,8 @@ pcb_t* clone_active_proc(){
 
     INIT_LIST_HEAD(&process->children);
     INIT_LIST_HEAD(&process->siblings);
+    INIT_LIST_HEAD(&process->proclist);
+    INIT_LIST_HEAD(&process->runqueue);
 
     process->parent = get_current();
 

@@ -11,6 +11,8 @@
 #include "io/kprintf.h"
 #include "asm_utils.h"
 
+#include "types/paging_types.h"
+
 u64* L0_TABLE;
 
 u64 mmutest(u64);

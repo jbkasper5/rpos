@@ -8,10 +8,12 @@
 #include "memory/mm.h"
 #include "memory/mmap.h"
 #include "types/kernel_types.h"
+#include "memory/memprofiler.h"
 
-static list_head_t proclist;
+list_head_t proclist;
 static list_head_t runqueue;
 static u64 n_processes = 0;
+static int memgate = 0;
 
 static pcb_t* idle_proc;
 static pcb_t* progenitor_proc;
@@ -23,7 +25,11 @@ static void idle(){
     while(TRUE){
         INTERRUPT_ENABLE();
         WFI();
-        // INTERRUPT_DISABLE();
+
+        if(memgate){
+            // profile(0x0, 0x1000000);
+        }
+
         scheduler();
     }
 }
@@ -68,6 +74,9 @@ void scheduler_init(){
 
     idle_proc->state = PROCESS_READY;
 
+    INIT_LIST_HEAD(&idle_proc->proclist);
+    INIT_LIST_HEAD(&idle_proc->runqueue);
+
     trap_frame_t* tf = idle_proc->kernel_stack - sizeof(trap_frame_t);
 
     // process 0 is the idle proc
@@ -85,6 +94,9 @@ void scheduler_init(){
     progenitor_proc = (pcb_t*) kmalloc(sizeof(pcb_t));
 
     progenitor_proc->pid = 1;
+
+    INIT_LIST_HEAD(&progenitor_proc->proclist);
+    INIT_LIST_HEAD(&progenitor_proc->runqueue);
 }
 
 void scheduler(){
@@ -190,6 +202,13 @@ void reap(){
         list_add(&parent->runqueue, &runqueue);
     }
 
+    // before + after check of the memory
+    profile(&(memprofiler_cfg){ .pid = current->pid });
+
+    reap_virtual_memory(pa_to_va(current->ttbr), 0);
+
+    profile(&(memprofiler_cfg){ .pid = current->pid });
+
     scheduler();
     // reap the rest of the process, clean up memory, notify any parents/children, etc.
 }
@@ -210,7 +229,7 @@ void add_test_section_to_scheduler(){
     trap_frame_t* tf = proc->kernel_stack - sizeof(trap_frame_t);
     tf->elr_el1 = user_ptr;
 
-    // proc->registers.pc = user_ptr;
-
     add_to_schedule(proc);
 }
+
+// 

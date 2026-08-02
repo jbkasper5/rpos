@@ -5,6 +5,8 @@
 
 #include "asm_utils.h"
 
+#include "definitions/linker_symbols.h"
+
 #define MAX_ORDER 20
 
 // one list per order
@@ -33,7 +35,20 @@ uintptr_t _split_down(u8 req_order, u8 curr_order){
     list_add(&og_frame->list, &buddy_lists[curr_order - 1]);
 
     frame_metadata[pfn].order = curr_order - 1;
+
+    // mark the buddy as having a valid order now, and mark it as a head page
     frame_metadata[buddy_pfn].order = curr_order - 1;
+    frame_metadata[buddy_pfn].flags.bits.flags = PAGE_BUDDY_HEAD;
+
+    // now update the tail pages for the two new blocks
+    for(int j = 1; j < (1ULL << (curr_order - 1)); j++){
+        frame_metadata[buddy_pfn + j].order = buddy_pfn;
+        frame_metadata[buddy_pfn + j].flags.bits.flags = PAGE_BUDDY_TAIL;
+
+        frame_metadata[pfn + j].order = pfn;
+        frame_metadata[pfn + j].flags.bits.flags = PAGE_BUDDY_TAIL;
+    }
+
     return _split_down(req_order, curr_order - 1);
 }
 
@@ -61,6 +76,7 @@ uintptr_t _alloc_and_return(list_head_t* head, u32 req_order){
     // mark the following pages as tail pages and define what the head PFN is
     for(int i = 1; i < (1U << req_order); i++){
         frame_metadata[pfn + i].flags.bits.flags = PAGE_BUDDY_TAIL;
+        frame_metadata[pfn + i].flags.bits.state = PAGE_BUDDY;
         frame_metadata[pfn + i].refcount = 1;
         frame_metadata[pfn + i].order = pfn;
     }
@@ -111,7 +127,7 @@ void buddy_free(void* page){
 
     // get the frame from the page address
     u64 pfn = va_to_pa(page) >> 12;
-    page_frame_t* frame = &frame_metadata[pfn];
+    page_frame_t* frame = frame_metadata + pfn;
 
     // step 1: mark the frame as free
     frame->flags.bits.state = PAGE_FREE;
@@ -171,12 +187,44 @@ u64 buddy_alloc_pt(){
     return (u64) new_page;
 }
 
+
+/**
+ * @brief Decrements the reference count for a block
+ * @return          Address of the page. Assumes this is the head     
+ */
+static u64 decrement_ref(void* addr){
+    u64 pfn = va_to_pa((u64) addr) >> 12;
+
+    page_frame_t* base = (page_frame_t*) page_frame_array_start();
+    page_frame_t* pf = base + pfn;
+
+    if(pf->flags.bits.state == PAGE_RESERVED){
+        return -2;
+    }
+
+    if(!(pf->flags.bits.flags & PAGE_BUDDY_HEAD)){
+        WARNING("Attempting to decrement refcount of non-head page.\n");
+        return -1;
+    }
+
+    // decrement the refcount of the head page
+    pf->refcount--;
+
+    // if refcount for the page hit 0, free it
+    if(!pf->refcount){
+        buddy_free(addr);
+    }
+
+    return pf->refcount;
+}
+
+
 void set_page_owner(void* page_addr, page_state new_owner){
     u64 pfn = va_to_pa(page_addr) >> 12;
 
     if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
         // if it's a tail page, get the head page first
-        pfn -= frame_metadata[pfn].order;
+        pfn = frame_metadata[pfn].order;
     }
 
     page_frame_t* pf = &frame_metadata[pfn];
@@ -207,7 +255,7 @@ void* head_from_page(void* page_addr){
     }
 
     // if the page is a head, return it
-    if(pf->flags.bits.flags | PAGE_BUDDY_HEAD){
+    if(pf->flags.bits.flags & PAGE_BUDDY_HEAD){
         return pa_to_va(pfn << 12);
     }else{
         return NULL;
@@ -225,6 +273,10 @@ static void _initialize_buddy_allocator(u64 start_page_addr, u64 available_pages
     for(int64_t i = MAX_ORDER; i >= 0; i--){
         if(available_pages & (1ULL << i)){
             frame_metadata[curr_pfn].order = i;
+            for(int j = 1; j < (1ULL << i); j++){
+                frame_metadata[curr_pfn + j].order = curr_pfn;
+                frame_metadata[curr_pfn + j].flags.bits.state = PAGE_BUDDY_TAIL;
+            }
             frame_metadata[curr_pfn].flags = base_flags;
             list_add(&frame_metadata[curr_pfn].list, &buddy_lists[i]);
             curr_pfn += (1ULL << i);
@@ -244,7 +296,7 @@ u8 get_block_order(u64 addr){
 u64 initialize_page_frame_array(){
     for(int i = 0; i <= MAX_ORDER; i++) INIT_LIST_HEAD(&buddy_lists[i]);
     frame_metadata = (page_frame_t*) (page_frame_array_start());
-    u64 reserved_memory = (u64) va_to_pa(static_page_region_end());
+    u64 reserved_memory = ((u64) get_phys_test_region()) + get_test_size();
     u64 reserved_pages = (reserved_memory + 0xFFF) >> 12;
 
     // this is now the physical address
@@ -256,6 +308,12 @@ u64 initialize_page_frame_array(){
     // zero out the page frame metadata (which internally sets the state to free and )
     // for 1 GiB of RAM, there are 2^18 pages
     memset(frame_metadata, 0, (1 << 18) * sizeof(page_frame_t));
+
+    // mark all pages belonging to the page frame array as reserved
+    for(int i = 0; i < reserved_pages; i++){
+        frame_metadata[i].flags.bits.state = PAGE_RESERVED;
+    }
+
 
     _initialize_buddy_allocator(start_page_addr, available_pages);   
     return reserved_pages;
@@ -284,12 +342,14 @@ static void* clone_page_table(pte* parent_table, u8 level){
             DEBUG("CLONE L%d[%d] marked COW, PTE=0x%x\n", level, i, parent_table[i].value);
             if(!child_table) child_table = buddy_alloc_pt();
             child_table[i].value = parent_table[i].value;
+            page_frame_t* pf = ((page_frame_t*) page_frame_array_start()) + parent_table[i].md.address;
+            pf->refcount++;
         }
     }
     return child_table;
 }
 
-/**;o
+/**
  * @brief Clones the virtual memory system for a parent. Marks all writeable memory as read-only and 
  * marks the copy-on-write bit as pending. 
  * @param bytes     Number of bytes to allocate 
@@ -316,4 +376,19 @@ void* clone_virtual_memory(pte* parent_table){
     flush_tlb();
 
     return (void*) va_to_pa(new_l0_table);
+}
+
+void reap_virtual_memory(pte* parent_table, u32 level){
+    u32 n_entries = PAGE_SIZE / 8;
+    for(int i = 0; i < n_entries; i++){
+        if(!parent_table[i].md.valid) continue;
+
+        if(level < 3 && parent_table[i].td.type == 1) {
+            // This is a table, recurse!
+            reap_virtual_memory(pa_to_va(parent_table[i].td.address << 12), level + 1);
+        }else{
+            // check if page pointed to by the 
+            decrement_ref(pa_to_va(parent_table[i].md.address << 12));
+        }
+    }
 }

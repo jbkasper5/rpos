@@ -13,6 +13,7 @@
 #include "filesystem/disk.h"
 #include "uabi/rpos/errno.h"
 #include "filesystem/elf.h"
+#include "memory/memprofiler.h"
 
 
 void* cacheable_page = NULL;
@@ -87,6 +88,8 @@ u64 sys_execve(u64 path, u64 argv, u64 envp, u64, u64, u64){
     if(f){
         // begin ELF parsing
         readelf(f);
+
+        profile(&(memprofiler_cfg){ .pid = get_current()->pid });
         
         return;
     }else{
@@ -209,6 +212,13 @@ u64 sys_fork(u64, u64, u64, u64, u64, u64){
 
     // add the new child into the parent's children list
     list_add(&newproc->siblings, &current->children);
+
+
+    DEBUG("Parent process memprofile: \n");
+    profile(&(memprofiler_cfg){ .pid = current->pid });
+
+    DEBUG("New child process memprofile: \n");
+    profile(&(memprofiler_cfg){ .pid = pid });
 
     // return child pid
     return pid;

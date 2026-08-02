@@ -115,9 +115,6 @@ _infinite:
 .section .text
 .globl el1_entry
 el1_entry:
-
-   bl snapshot_sysregs
-
    ldr x0, =bss_begin
    ldr x1, =bss_end
    sub x1, x1, x0
