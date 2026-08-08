@@ -7,7 +7,9 @@
 
 #include "definitions/linker_symbols.h"
 
-#define MAX_ORDER 20
+// 20 is for a 4GiB system, right now we operate on 1GiB
+// #define MAX_ORDER 20
+#define MAX_ORDER 18
 
 // one list per order
 static list_head_t buddy_lists[MAX_ORDER + 1];
@@ -22,7 +24,7 @@ uintptr_t _split_down(u8 req_order, u8 curr_order){
         return (uintptr_t) &og_frame->list;
     }
     u32 pfn = og_frame - frame_metadata;
-    u32 buddy_pfn = pfn + (1UL << (curr_order - 1));
+    u32 buddy_pfn = pfn + (1u << (curr_order - 1));
 
     // BUG: buddy PFN metadata never allocated, needs fix later
     DEBUG("PFN: %d\n", pfn);
@@ -87,30 +89,39 @@ uintptr_t _alloc_and_return(list_head_t* head, u32 req_order){
 
 
 static void coalesce_up(page_frame_t* frame){
-    DEBUG("Trying to coalesce pfn 0x%x of order %d\n", (uintptr_t) frame >> 12, frame->order);
     size_t block_order = frame->order;
+    u64 curr_pfn = (frame - frame_metadata);
+    u64 buddy = curr_pfn ^ (1u << block_order);
+
+    DEBUG("Trying to coalesce pfn 0x%x of order %d\n", curr_pfn, frame->order);
 
     // slide back to the previous frame in memory
-    page_frame_t* prev_frame = frame - (1 << block_order);
-    page_frame_t* next_frame = frame + (1 << block_order);
+    page_frame_t* prev_frame = frame_metadata + MIN(buddy, curr_pfn);
+    page_frame_t* next_frame = frame_metadata + MAX(buddy, curr_pfn);
 
-    if(prev_frame->order == block_order && prev_frame->flags.bits.state == PAGE_FREE && prev_frame->flags.bits.flags & PAGE_BUDDY_HEAD){
-        DEBUG("Coalescing pfn 0x%x with prior pfn 0x%x\n", (uintptr_t) frame >> 12, (uintptr_t) prev_frame >> 12);
+    // in order to coalesce, both buddies must be of the same order
+    if(prev_frame->order != next_frame->order) return;
 
-        list_remove(&frame->list);
+    // they also must both be free
+    if(prev_frame->flags.bits.state == PAGE_FREE && next_frame->flags.bits.state == PAGE_FREE){
+        DEBUG("Coalescing pfn 0x%x with pfn 0x%x\n", curr_pfn, buddy);
+
         list_remove(&prev_frame->list);
-        prev_frame->order++;
+        list_remove(&next_frame->list);
 
         // since we're coalescing, the later page frame becomes a tail page
-        frame->flags.bits.state = PAGE_BUDDY_TAIL;
+        next_frame->flags.bits.state = PAGE_BUDDY_TAIL;
 
-        // add congealed block to the next buddy list
+        // now we need to updated the reference back to the head page for all buddy tail pages
+        u64 updated_pfn = MIN(buddy, curr_pfn);
+        for(int i = 0; i < prev_frame->order; i++) (next_frame + i)->order = updated_pfn;
+        prev_frame->order++;
+
+        // // add congealed block to the next buddy list
         list_add(&prev_frame->list, &buddy_lists[block_order + 1]);
 
-        // recurse up in case prev_frame also needs coalescing
+        // // recurse up in case prev_frame also needs coalescing
         coalesce_up(prev_frame);
-    }else if(FALSE){
-        // check the frame ahead in case the one behind isn't suitable for coalescing
     }
 }
 
@@ -129,20 +140,20 @@ void buddy_free(void* page){
     u64 pfn = va_to_pa(page) >> 12;
     page_frame_t* frame = frame_metadata + pfn;
 
+    // already free, don't do anything else
+    if(frame->flags.bits.state == PAGE_FREE) return;
+
     // step 1: mark the frame as free
     frame->flags.bits.state = PAGE_FREE;
 
     // step 2: add it to the buddy list of the appropriate order
     size_t block_order = frame->order;
 
-    // quick panic if block order exceeds the buddy list
-    if(block_order > MAX_ORDER) panic();
-
     // add the frame to the free list
     list_add(&frame->list, &buddy_lists[block_order]);
 
     // perform any coalescing if necessary
-    coalesce_up(frame);
+    if(block_order < MAX_ORDER) coalesce_up(frame);
 }
 
 /**
@@ -157,6 +168,8 @@ u64 buddy_alloc(u64 bytes){
     // convert number of pages into minimum order
     u8 requested_order = 0;
     while ((1U << requested_order) < n_pages) requested_order++;
+
+    if(requested_order > MAX_ORDER) return NULL;
 
     if(!list_empty(&buddy_lists[requested_order])) return _alloc_and_return(&buddy_lists[requested_order], requested_order);
 

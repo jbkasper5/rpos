@@ -37,20 +37,31 @@ KCFLAGS := $(CFLAGS) \
 BUILD   := build
 BIN     := $(BUILD)/run_tests
 
+# kernel source files under test (for the -DDEBUG syntax gate below)
+KSRCS   := $(KSRC)/memory/paging.c $(KSRC)/memory/kmalloc.c
 # kernel TUs exercised by the harness (add more as coverage grows)
-KOBJS   := $(BUILD)/paging.o
+KOBJS   := $(BUILD)/paging.o $(BUILD)/kmalloc.o
 # harness TUs
 HOBJS   := $(BUILD)/test.o $(BUILD)/host_env.o $(BUILD)/host_sys.o \
-           $(BUILD)/test_pfa.o $(BUILD)/test_buddy.o $(BUILD)/test_buddy_invariants.o
+           $(BUILD)/test_pfa.o $(BUILD)/test_buddy.o $(BUILD)/test_buddy_invariants.o \
+           $(BUILD)/test_slab.o
 
 OBJS    := $(KOBJS) $(HOBJS)
 
-.PHONY: test build clean
+.PHONY: test build clean debugcheck
 test: build
 	@echo "== running host test suite =="
 	@./$(BIN) $(FILTER)
 
-build: $(BIN)
+build: debugcheck $(BIN)
+
+# The harness links the DEBUG-disabled build, but the kernel ships with DEBUG
+# logging on -- and that expansion can expose syntax errors the default build
+# hides (an empty DEBUG(...); can silently supply a missing ';'). Syntax-check
+# every kernel TU with -DDEBUG so the gate covers the configuration that ships.
+debugcheck:
+	@echo "== syntax-check kernel TUs with -DDEBUG =="
+	@for f in $(KSRCS); do $(CC) $(KCFLAGS) -DDEBUG -fsyntax-only $$f || exit 1; done
 
 debug: build
 	@echo "== Starting lldb =="	
@@ -62,6 +73,9 @@ $(BIN): $(OBJS)
 
 # --- kernel translation units (unmodified; relaxed conversion diagnostics) ---
 $(BUILD)/paging.o: $(KSRC)/memory/paging.c
+	@mkdir -p $(@D)
+	$(CC) $(KCFLAGS) -c -o $@ $<
+$(BUILD)/kmalloc.o: $(KSRC)/memory/kmalloc.c
 	@mkdir -p $(@D)
 	$(CC) $(KCFLAGS) -c -o $@ $<
 
@@ -82,6 +96,9 @@ $(BUILD)/test_buddy.o: unit/test_buddy.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 $(BUILD)/test_buddy_invariants.o: unit/test_buddy_invariants.c
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) -c -o $@ $<
+$(BUILD)/test_slab.o: unit/test_slab.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
 

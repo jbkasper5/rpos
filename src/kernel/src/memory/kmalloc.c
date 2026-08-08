@@ -8,6 +8,7 @@ cache kcaches[CACHES];
 
 #define MIN_SLAB_ORDER      5
 #define MAX_SLAB_ORDER      11
+#define MAX_BUDDY_ORDER     18
 
 static void* _slab_alloc(u32 order){
     // get new physical page from buddy allocator
@@ -30,7 +31,7 @@ void kheap_init(){
     // zero out all the slab pointers to start
     memset(kcaches, 0, CACHES * sizeof(cache));
 
-    for(int i = 0; i <= CACHES; i++){
+    for(int i = 0; i < CACHES; i++){
         INIT_LIST_HEAD(&kcaches[i].full_slabs);
         INIT_LIST_HEAD(&kcaches[i].partial_slabs);
     }
@@ -57,12 +58,13 @@ static void* _addr_from_slab(slab* s){
 }
 
 void* kmalloc(size_t bytes){
+    if(bytes > (1ULL << (MAX_BUDDY_ORDER + PAGE_SHIFT))) return NULL;
+
     size_t aligned_bytes = 1;
     u32 shift = 1;
 
     // align the requested number of bytes to the nearest slab_order
-    while (aligned_bytes < bytes) aligned_bytes <<= 1;
-    aligned_bytes = MAX(aligned_bytes, (1 << MIN_SLAB_ORDER));
+    aligned_bytes = 1ULL << (64 - __builtin_clzll(MAX(bytes, (size_t)1 << MIN_SLAB_ORDER) - 1));
     DEBUG("Allocating %d bytes...\n", aligned_bytes);
 
     u32 log2 = log2_pow2(aligned_bytes);
@@ -95,13 +97,19 @@ void* kmalloc(size_t bytes){
         list_add(&new_slab->list, &kcaches[cache_idx].partial_slabs);
     }else{
         slab* partial_slab = list_entry(kcaches[cache_idx].partial_slabs.next, slab, list);
-        
     }
 
     // once we have the partial slab, we need to "traverse" the bitfield
     // to find the first open allocation
     slab* s = list_entry(kcaches[cache_idx].partial_slabs.next, slab, list);
     uintptr_t addr = (uintptr_t) _addr_from_slab(s);
+
+    // if this allocation filled the slab, we need to move it from partial to full
+    if(s->inuse == s->total){
+        list_remove(&s->list);
+        list_add(&s->list, &kcaches[cache_idx].full_slabs);
+    }
+
     INFO("Allocated address 0x%x\n", addr);
     return addr;
 }
@@ -125,20 +133,35 @@ static void _slab_free(void* ptr){
     // mark the bit as free (1)
     size_t byte = offset / 8;
     size_t bit = offset % 8;
+
+    // bit is not set, so it's already free
+    if((slab_head->bitmap[byte] & (1 << bit)) == 0){
+        return;
+    }
+
     slab_head->bitmap[byte] &= ~(1 << bit);
+
+    // if we're freeing from a full slab, we need to swap it from full list to partial list
+    if(slab_head->inuse == slab_head->total){
+        list_remove(&slab_head->list);
+        list_add(&slab_head->list, &kcaches[slab_head->slab_order - MIN_SLAB_ORDER].partial_slabs);
+    }
 
     // decrement the number of items in use
     slab_head->inuse--;
 
     // free the entire slab back to the buddy if nothing is in use
     if(slab_head->inuse == 0){
-
         DEBUG("INUSE reached 0, determine if buddy_free is necessary.\n", slab_head);
-        // buddy_free((uintptr_t) slab_head);
+        list_remove(&slab_head->list);
+        buddy_free((uintptr_t) slab_head);
     }
 }
 
 void kfree(void* ptr){
+    // check dem nulls
+    if(!ptr) return;
+
     void* aligned_ptr = ALIGN_DOWN((uintptr_t) ptr, PAGE_SIZE);
     page_state owner = get_page_owner(aligned_ptr);
     if(owner == PAGE_BUDDY){
@@ -152,6 +175,9 @@ void kfree(void* ptr){
     }else if(owner == PAGE_SLAB){
         DEBUG("kmalloc freeing slab allocation at address 0x%x\n", aligned_ptr);
         _slab_free(ptr);
+        return;
+    }else if(owner == PAGE_FREE){
+        WARNING("Attempting to free a free page\n");
         return;
     }
 

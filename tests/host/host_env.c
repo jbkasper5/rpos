@@ -59,3 +59,11 @@ bool map(u64 v, u64 p, u8 o, u64 f, u64 b) {
 }
 
 void flush_tlb(void) {}
+
+/* utils.S provides this on-target; floor(log2) is exact for kmalloc's
+ * already-power-of-2 inputs */
+int log2_pow2(u64 n) {
+    int r = 0;
+    while (n >>= 1) r++;
+    return r;
+}

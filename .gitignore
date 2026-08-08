@@ -13,3 +13,4 @@ dmp/
 resources/
 *.txt
 *.o
+tests/build/

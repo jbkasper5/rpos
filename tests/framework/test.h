@@ -22,6 +22,9 @@ void register_test(const char *suite, const char *name, test_fn_t fn);
 void test_failf(const char *file, int line, const char *fmt, ...)
     __attribute__((noreturn, format(printf, 3, 4)));
 
+/* shorten the current test's watchdog (e.g. before code expected to hang) */
+void test_set_timeout(unsigned seconds);
+
 #define TEST(suite, name)                                                     \
     static void suite##_##name(void);                                         \
     __attribute__((constructor))                                              \

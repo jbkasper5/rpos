@@ -20,6 +20,10 @@
 #include "memory/paging.h"
 
 #define ULL(x) ((unsigned long long)(x))
+#define MAX_TEST_ORDER 18        /* safe probe start: the buddy_lists top index.
+                                    (once buddy_alloc clamps oversized requests to
+                                    NULL, this can be any generous upper bound and
+                                    stops needing to track MAX_ORDER) */
 
 /* Walk [RESV, NPAGES) block by block and assert the tiling invariant.
  * `phase`/`op`/`op_pfn` describe the operation that just ran, so failures are
@@ -169,6 +173,184 @@ TEST(invariant, no_double_vend_stress) {
             buddy_free((void *)(uintptr_t)pa_to_va(g_live[j].pfn << 12));
 
     check_structure("stress final", -1, 0);
+}
+
+/* ---- fill-up / split / coalesce semantics ------------------------------- */
+static u64 g_pages[1 << 18];
+
+/* allocate every page as order-0 until empty; returns the count, fills g_pages */
+static int exhaust_order0(void) {
+    int n = 0;
+    for (;;) {
+        u64 va = buddy_alloc(PAGE_SIZE);
+        if (!va) break;
+        g_pages[n++] = va;
+        if (n >= (int)HOST_NPAGES) break;    /* safety: never loop past capacity */
+    }
+    return n;
+}
+static void free_pages(int n) {
+    for (int i = 0; i < n; i++) buddy_free((void *)(uintptr_t)g_pages[i]);
+}
+
+/* every buddy-managed page is allocatable as order-0 exactly once, then dry */
+TEST(invariant, exhaustion_is_exact) {
+    initialize_page_frame_array();
+    u64 RESV = host_reserved_pages();
+    int n = exhaust_order0();
+    ASSERT_EQ((u64)n, (u64)HOST_NPAGES - RESV);   /* no lost pages, no over-vend */
+    ASSERT_EQ(buddy_alloc(PAGE_SIZE), 0);         /* allocator is now dry */
+    free_pages(n);
+}
+
+/* draining and refilling loses nothing */
+TEST(invariant, capacity_conserved_across_cycle) {
+    initialize_page_frame_array();
+    int c1 = exhaust_order0(); free_pages(c1);
+    int c2 = exhaust_order0(); free_pages(c2);
+    ASSERT_EQ((u64)c1, (u64)c2);
+}
+
+/* largest order the allocator can currently serve (non-destructive: alloc+free) */
+static u32 probe_max_order(void) {
+    for (u32 o = MAX_TEST_ORDER; o > 0; o--) {
+        u64 b = buddy_alloc((1ULL << o) * PAGE_SIZE);
+        if (b) { buddy_free((void *)(uintptr_t)b); return o; }
+    }
+    return 0;
+}
+
+/*
+ * Coalescing-completeness: after this returns, no free block may have a free
+ * same-order buddy left un-merged. This is the real "coalescing did its job"
+ * property and is independent of the region's exact shape -- so it does NOT
+ * false-fail on the fact that init lays blocks at the unaligned base while
+ * coalesce_up is XOR-aligned (both are valid maximal decompositions).
+ */
+static void assert_fully_coalesced(void) {
+    page_frame_t *PFA = host_pfa();
+    u64 RESV = host_reserved_pages();
+    u64 pfn = RESV;
+    while (pfn < HOST_NPAGES) {
+        page_frame_t *h = &PFA[pfn];
+        u64 o = h->order;
+        if (o >= 63) return;                      /* structure test covers validity */
+        u64 span = 1ULL << o;
+        if (h->flags.bits.state == PAGE_FREE) {
+            u64 buddy = pfn ^ span;               /* the aligned buddy */
+            if (buddy >= RESV && buddy < HOST_NPAGES) {
+                page_frame_t *b = &PFA[buddy];
+                if (b->flags.bits.state == PAGE_FREE &&
+                    (b->flags.bits.flags & PAGE_BUDDY_HEAD) &&
+                    b->order == o)
+                    test_failf(__FILE__, __LINE__,
+                        "not fully coalesced: free order-%llu blocks 0x%llx and its "
+                        "buddy 0x%llx were left un-merged", ULL(o), ULL(pfn), ULL(buddy));
+            }
+        }
+        pfn += span;
+    }
+}
+
+/*
+ * THE coalescing test. Shatter the whole region into order-0 pages, free them
+ * all, then demand two things: the largest block is still allocatable (capacity
+ * survived), AND nothing mergeable remains (coalescing ran to completion). The
+ * second check is what makes this real -- a partial coalescer that leaves an
+ * order-17 block but strands mergeable pairs elsewhere passes the max-order
+ * check yet fails here.
+ */
+TEST(invariant, full_drain_coalesces_to_max) {
+    initialize_page_frame_array();
+
+    u32 before = probe_max_order();
+    ASSERT_TRUE(before > 0);
+
+    int n = exhaust_order0();
+    free_pages(n);
+
+    u32 after = probe_max_order();
+    if (after < before)
+        test_failf(__FILE__, __LINE__,
+            "largest block fell from order %u to %u after a full drain + free",
+            before, after);
+
+    check_structure("after full drain", -1, 0);   /* region still tiles validly */
+    assert_fully_coalesced();                      /* and nothing mergeable is stranded */
+}
+
+/* direct merge: two order-1 buddies, freed, must fuse into an order-2 head --
+ * and in every case nothing mergeable may be left behind */
+TEST(invariant, adjacent_buddies_coalesce) {
+    initialize_page_frame_array();
+    u64 a = buddy_alloc(2 * PAGE_SIZE);  ASSERT_NE(a, 0);
+    u64 b = buddy_alloc(2 * PAGE_SIZE);  ASSERT_NE(b, 0);
+    u64 pa = va_to_pa(a) >> 12, pb = va_to_pa(b) >> 12;
+
+    buddy_free((void *)(uintptr_t)a);
+    buddy_free((void *)(uintptr_t)b);
+
+    if ((pa ^ 2) == pb) {                          /* they were aligned order-1 buddies */
+        u64 head = (pa < pb) ? pa : pb;
+        page_frame_t *h = &host_pfa()[head];
+        if (!(h->flags.bits.flags & PAGE_BUDDY_HEAD) ||
+            h->order != 2 || h->flags.bits.state != PAGE_FREE)
+            test_failf(__FILE__, __LINE__,
+                "order-1 buddies 0x%llx/0x%llx did not fuse into an order-2 head "
+                "(order=%llu state=%u flags=0x%x)",
+                ULL(pa), ULL(pb), ULL(h->order), h->flags.bits.state, h->flags.bits.flags);
+    }
+    assert_fully_coalesced();
+}
+
+/* a single deep split (order-0 from a fresh large-block region) must leave the
+ * whole region tiled with valid head/tail blocks -- guards _split_down's
+ * flagging of the split-off halves (its own "// BUG" concern) */
+TEST(invariant, split_produces_valid_heads) {
+    initialize_page_frame_array();
+    u64 p = buddy_alloc(PAGE_SIZE);
+    ASSERT_NE(p, 0);
+    u64 pfn = va_to_pa(p) >> 12;
+    page_frame_t *h = &host_pfa()[pfn];
+    ASSERT_TRUE(h->flags.bits.flags & PAGE_BUDDY_HEAD);
+    ASSERT_EQ(h->order, 0);
+    check_structure("after single split-alloc", 0, (unsigned long)pfn);
+}
+
+/* ---- robustness / adversarial inputs ------------------------------------ */
+
+/* every buddy allocation is page-aligned (guards the contract callers rely on) */
+TEST(invariant, buddy_returns_page_aligned) {
+    initialize_page_frame_array();
+    for (u8 o = 0; o <= 5; o++) {
+        u64 v = buddy_alloc((1ULL << o) * PAGE_SIZE);
+        ASSERT_NE(v, 0);
+        if (v & (PAGE_SIZE - 1))
+            test_failf(__FILE__, __LINE__,
+                "buddy_alloc(order %u) returned 0x%llx, not page-aligned", o, ULL(v));
+        buddy_free((void *)(uintptr_t)v);
+    }
+}
+
+/* freeing the same page twice must not vend it twice (or corrupt the lists) */
+TEST(invariant, double_free_no_double_vend) {
+    initialize_page_frame_array();
+    u64 p = buddy_alloc(PAGE_SIZE);
+    ASSERT_NE(p, 0);
+    buddy_free((void *)(uintptr_t)p);
+    buddy_free((void *)(uintptr_t)p);          /* double free */
+
+    for (u64 i = 0; i < HOST_NPAGES; i++) g_owner[i] = 0;
+    for (int i = 0; i < 4096; i++) {
+        u64 v = buddy_alloc(PAGE_SIZE);
+        if (!v) break;
+        u64 pfn = va_to_pa(v) >> 12;
+        if (g_owner[pfn])
+            test_failf(__FILE__, __LINE__,
+                "page 0x%llx vended twice after a double-free -- free list corrupted",
+                ULL(pfn));
+        g_owner[pfn] = 1;
+    }
 }
 
 /* ---- edge branches the happy-path tests never touched ------------------- */
