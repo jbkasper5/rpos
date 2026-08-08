@@ -17,8 +17,8 @@ HOST_KLOG=1 make test     # also surface the kernel's kprintf() output
 
 ## Continuous integration
 
-`.github/workflows/memtests.yml` runs `make test` on every push and pull
-request to any branch (macOS runner = clang/arm64, matching the validated
+`.github/workflows/memtests.yml` runs `make test` on every pull request
+targeting any branch (macOS runner = clang/arm64, matching the validated
 toolchain). The job fails if any test fails, crashes, or times out.
 
 To make it a **merge-blocking gate**, the workflow file isn't enough — GitHub

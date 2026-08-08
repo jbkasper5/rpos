@@ -1,12 +1,10 @@
 name: memtests
 
-# Build and run the allocator (buddy + slab) host test suite on every push and
-# every pull request to ANY branch, so a change that breaks memory management
-# turns the check red. Pair with a branch-protection rule (see tests/README.md)
-# to make it a required, merge-blocking gate.
+# Build and run the allocator (buddy + slab) host test suite on every pull
+# request targeting ANY branch, so a change that breaks memory management turns
+# the check red. Pair with a branch-protection rule (see tests/README.md) to
+# make it a required, merge-blocking gate.
 on:
-  push:
-    branches: ['**']
   pull_request:
     branches: ['**']
 
