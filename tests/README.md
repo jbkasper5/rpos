@@ -15,6 +15,17 @@ make clean
 HOST_KLOG=1 make test     # also surface the kernel's kprintf() output
 ```
 
+## Continuous integration
+
+`.github/workflows/memtests.yml` runs `make test` on every push and pull
+request to any branch (macOS runner = clang/arm64, matching the validated
+toolchain). The job fails if any test fails, crashes, or times out.
+
+To make it a **merge-blocking gate**, the workflow file isn't enough — GitHub
+requires the check explicitly: Settings → Rules/Branches → add a branch
+protection rule or ruleset (pattern `**` for all branches) with *Require status
+checks to pass* → select **memtests**. Then a red suite blocks the merge.
+
 ## Guarantees / ground rules
 
 - **No kernel source is modified.** The harness *compiles* unmodified kernel
