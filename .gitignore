@@ -12,3 +12,4 @@ tutorial/*
 dmp/
 resources/
 *.txt
+*.o
