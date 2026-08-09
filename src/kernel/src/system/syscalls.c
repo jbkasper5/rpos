@@ -111,6 +111,15 @@ u64 sys_getcwd(u64 buffer, u64 size, u64, u64, u64, u64){
     return 0;
 }
 
+
+// NR 93
+u64 sys_exit(u64 status, u64, u64, u64, u64, u64){
+    INFO("Current running process number: %d\n", get_current()->pid);
+    reap();
+    return SYS_SUCCESS;
+}
+
+// NR 94
 u64 sys_exit_group(u64 status, u64, u64, u64, u64, u64){
     INFO("Current running process number: %d\n", get_current()->pid);
     reap();

@@ -23,6 +23,7 @@ u64 sys_munmap(u64 addr, u64 len, u64, u64, u64, u64);
 u64 sys_clone3(u64 cl_args, u64 size, u64, u64, u64, u64);
 u64 sys_execve(u64 path, u64 argv, u64 envp, u64, u64, u64);
 u64 sys_waitid(u64 pid, u64, u64, u64, u64, u64);
+u64 sys_exit(u64 status, u64, u64, u64, u64, u64);
 u64 sys_exit_group(u64 status, u64, u64, u64, u64, u64);
 u64 sys_get_framebuffer(u64, u64, u64, u64, u64, u64);
 u64 sys_open(u64 path, u64 flags, u64, u64, u64, u64);
@@ -42,6 +43,7 @@ syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_CLONE3] = sys_clone3,
     [SYS_EXECVE] = sys_execve,
     [SYS_MUNMAP] = sys_munmap,
+    [SYS_EXIT] = sys_exit,
     [SYS_EXIT_GROUP] = sys_exit_group,
     [SYS_NANOSLEEP] = sys_nanosleep,
     [SYS_CLOCK_GETTIME] = sys_clock_gettime,

@@ -26,12 +26,6 @@ uintptr_t _split_down(u8 req_order, u8 curr_order){
     u32 pfn = og_frame - frame_metadata;
     u32 buddy_pfn = pfn + (1u << (curr_order - 1));
 
-    // BUG: buddy PFN metadata never allocated, needs fix later
-    DEBUG("PFN: %d\n", pfn);
-    DEBUG("Buddy PFN: %d\n", buddy_pfn);
-
-
-    // TODO: at some point, verify if any coalescing is required as we split blocks downward
     list_remove(buddy_lists[curr_order].next);
     list_add(&frame_metadata[buddy_pfn].list, &buddy_lists[curr_order - 1]);
     list_add(&og_frame->list, &buddy_lists[curr_order - 1]);
@@ -137,7 +131,7 @@ void buddy_free(void* page){
     // then add the new block to the higher order buddy list
 
     // get the frame from the page address
-    u64 pfn = va_to_pa(page) >> 12;
+    u64 pfn = va_to_pa((u64) page) >> 12;
     page_frame_t* frame = frame_metadata + pfn;
 
     // already free, don't do anything else
@@ -189,14 +183,14 @@ u64 buddy_alloc(u64 bytes){
  * @return          Address of the page      
  */
 u64 buddy_alloc_pt(){
-    void* new_page = buddy_alloc(PAGE_SIZE);
+    u64 new_page = buddy_alloc(PAGE_SIZE);
     if(!new_page) return NULL;
 
     // map new page table into kernel memory
-    map(new_page, va_to_pa(new_page), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);
+    map(new_page, va_to_pa(new_page), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);
 
     // zero out the page
-    memset(new_page, 0, PAGE_SIZE);
+    memset((void*) new_page, 0, PAGE_SIZE);
     return (u64) new_page;
 }
 
@@ -233,7 +227,7 @@ static u64 decrement_ref(void* addr){
 
 
 void set_page_owner(void* page_addr, page_state new_owner){
-    u64 pfn = va_to_pa(page_addr) >> 12;
+    u64 pfn = va_to_pa((u64) page_addr) >> 12;
 
     if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
         // if it's a tail page, get the head page first
@@ -245,7 +239,7 @@ void set_page_owner(void* page_addr, page_state new_owner){
 }
 
 page_state get_page_owner(void* page_addr){
-    u64 pfn = va_to_pa(page_addr) >> 12;
+    u64 pfn = va_to_pa((u64) page_addr) >> 12;
 
     if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
         // if it's a tail page, get the head page first
@@ -257,7 +251,7 @@ page_state get_page_owner(void* page_addr){
 }
 
 void* head_from_page(void* page_addr){
-    u64 pfn = va_to_pa(page_addr) >> 12;
+    u64 pfn = va_to_pa((u64) page_addr) >> 12;
 
     page_frame_t* pf = &frame_metadata[pfn];
 
@@ -269,7 +263,7 @@ void* head_from_page(void* page_addr){
 
     // if the page is a head, return it
     if(pf->flags.bits.flags & PAGE_BUDDY_HEAD){
-        return pa_to_va(pfn << 12);
+        return (void*) pa_to_va(pfn << 12);
     }else{
         return NULL;
     }
@@ -345,15 +339,15 @@ static void* clone_page_table(pte* parent_table, u8 level){
 
         if(level < 3 && parent_table[i].td.type == 1) {
             // This is a table, recurse!
-            u64 new_table_address = clone_page_table(pa_to_va(parent_table[i].td.address << 12), level + 1);
-            if(!child_table) child_table = buddy_alloc_pt();
+            u64 new_table_address = clone_page_table((pte*) pa_to_va(parent_table[i].td.address << 12), level + 1);
+            if(!child_table) child_table = (pte*) buddy_alloc_pt();
             child_table[i].value = parent_table[i].value;
             child_table[i].td.address = va_to_pa(new_table_address) >> 12;
         }else{
             parent_table[i].md.cow = 1;
             parent_table[i].md.ap = EL0_RO_EL1_RO;
             DEBUG("CLONE L%d[%d] marked COW, PTE=0x%x\n", level, i, parent_table[i].value);
-            if(!child_table) child_table = buddy_alloc_pt();
+            if(!child_table) child_table = (pte*) buddy_alloc_pt();
             child_table[i].value = parent_table[i].value;
             page_frame_t* pf = ((page_frame_t*) page_frame_array_start()) + parent_table[i].md.address;
             pf->refcount++;
@@ -370,7 +364,7 @@ static void* clone_page_table(pte* parent_table, u8 level){
  */
 void* clone_virtual_memory(pte* parent_table){
     // step 1: need to walk the entire page table
-    pte* new_l0_table = buddy_alloc_pt();
+    pte* new_l0_table = (pte*) buddy_alloc_pt();
     u32 n_entries = PAGE_SIZE / 8;
     for(int i = 0; i < n_entries; i++){
         if(parent_table[i].td.valid){
@@ -378,7 +372,7 @@ void* clone_virtual_memory(pte* parent_table){
             new_l0_table[i].value = parent_table[i].value;
 
             // convert the page table entry address to a virtual address for the kernel
-            u64 new_table_address = clone_page_table(pa_to_va(parent_table[i].td.address << 12), 1);
+            u64 new_table_address = clone_page_table((pte*) pa_to_va(parent_table[i].td.address << 12), 1);
             if(new_table_address){
                 new_l0_table[i].td.address = va_to_pa(new_table_address) >> 12;
             }else{

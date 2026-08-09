@@ -10,6 +10,8 @@ struct wait_queue_head {
 	list_head_t     	head;
 };
 
+struct wait_queue_entry;
+
 typedef int (*wait_queue_func_t)(struct wait_queue_entry *wq_entry);
 
 typedef struct wait_queue_entry {

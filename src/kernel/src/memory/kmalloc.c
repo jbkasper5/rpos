@@ -60,11 +60,9 @@ static void* _addr_from_slab(slab* s){
 void* kmalloc(size_t bytes){
     if(bytes > (1ULL << (MAX_BUDDY_ORDER + PAGE_SHIFT))) return NULL;
 
-    size_t aligned_bytes = 1;
-    u32 shift = 1;
+    // align the requested number of bytes to the nearest slab_order    
+    size_t aligned_bytes = 1ULL << (64 - __builtin_clzll(MAX(bytes, (size_t)1 << MIN_SLAB_ORDER) - 1));
 
-    // align the requested number of bytes to the nearest slab_order
-    aligned_bytes = 1ULL << (64 - __builtin_clzll(MAX(bytes, (size_t)1 << MIN_SLAB_ORDER) - 1));
     DEBUG("Allocating %d bytes...\n", aligned_bytes);
 
     u32 log2 = log2_pow2(aligned_bytes);
@@ -75,7 +73,7 @@ void* kmalloc(size_t bytes){
         u64 pages = buddy_alloc(aligned_bytes);
 
         // need to map the page(s) into memory first
-        map(pages, va_to_pa(pages), log2 - PAGE_SHIFT, MAP_KERNEL, L0_TABLE);
+        map(pages, va_to_pa(pages), log2 - PAGE_SHIFT, MAP_KERNEL, (u64) L0_TABLE);
 
         return (void*) pages;
     }
@@ -95,8 +93,6 @@ void* kmalloc(size_t bytes){
 
         // add it to kcache partial slab list
         list_add(&new_slab->list, &kcaches[cache_idx].partial_slabs);
-    }else{
-        slab* partial_slab = list_entry(kcaches[cache_idx].partial_slabs.next, slab, list);
     }
 
     // once we have the partial slab, we need to "traverse" the bitfield
@@ -111,7 +107,7 @@ void* kmalloc(size_t bytes){
     }
 
     INFO("Allocated address 0x%x\n", addr);
-    return addr;
+    return (void*) addr;
 }
 
 static void _slab_free(void* ptr){
@@ -120,7 +116,7 @@ static void _slab_free(void* ptr){
 
     // first, we align ptr to a page boundary 
     // then we ask the buddy to give us the head of that page block since all slabs come from the buddy
-    slab* slab_head = (slab*) (head_from_page(ALIGN_DOWN((uintptr_t) ptr, PAGE_SIZE)));
+    slab* slab_head = (slab*) (head_from_page((void*) (ALIGN_DOWN((u64) ptr, PAGE_SIZE))));
 
     // get the item size
     size_t item_size = 1 << slab_head->slab_order;
@@ -154,7 +150,7 @@ static void _slab_free(void* ptr){
     if(slab_head->inuse == 0){
         DEBUG("INUSE reached 0, determine if buddy_free is necessary.\n", slab_head);
         list_remove(&slab_head->list);
-        buddy_free((uintptr_t) slab_head);
+        buddy_free((void*) slab_head);
     }
 }
 
@@ -162,7 +158,7 @@ void kfree(void* ptr){
     // check dem nulls
     if(!ptr) return;
 
-    void* aligned_ptr = ALIGN_DOWN((uintptr_t) ptr, PAGE_SIZE);
+    void* aligned_ptr = (void*) ALIGN_DOWN((u64) ptr, PAGE_SIZE);
     page_state owner = get_page_owner(aligned_ptr);
     if(owner == PAGE_BUDDY){
         DEBUG("kmalloc freeing buddy allocation at address 0x%x\n", aligned_ptr);
@@ -170,7 +166,7 @@ void kfree(void* ptr){
         // TODO: need to munmap the virtual memory mappings for this page
         // munmap();
 
-        buddy_free((uintptr_t) aligned_ptr);
+        buddy_free((void*) aligned_ptr);
         return;
     }else if(owner == PAGE_SLAB){
         DEBUG("kmalloc freeing slab allocation at address 0x%x\n", aligned_ptr);

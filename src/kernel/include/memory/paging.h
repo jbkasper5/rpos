@@ -9,6 +9,8 @@
 
 
 u64 buddy_alloc(u64 bytes);
+void buddy_free(void* page);
+
 u64 buddy_alloc_pt();
 u64 initialize_page_frame_array();
 u8 get_block_order(u64 addr);
