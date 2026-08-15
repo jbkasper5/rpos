@@ -23,6 +23,7 @@ static inline void set_current(pcb_t* pcb) {
 pcb_t* procalloc(u64 entrypoint);
 pcb_t* clone_active_proc();
 int fd_alloc(pcb_t* proc, file_t* file);
+void check_and_reap(u64* old_kernel_stack);
 u32 atomic_increment(u64 address, u32 increment);
 
 #endif

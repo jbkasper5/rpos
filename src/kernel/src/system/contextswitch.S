@@ -25,6 +25,9 @@ context_switch:
     dsb sy                  // Wait for TLB wipe to complete
     isb                     // Flush pipeline
 
+    mov x0, x1
+    bl check_and_reap
+
     // load registers back on new kernel stack
     ldp x29, x30, [sp], #16
     ldp x27, x28, [sp], #16

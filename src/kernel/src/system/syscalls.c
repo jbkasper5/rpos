@@ -266,8 +266,10 @@ u64 sys_waitid(u64 pid, u64, u64, u64, u64, u64){
 
     pcb_t* child = NULL;
     bool found = FALSE;
+    INFO("Checking children for pid %d...\n", pid);
     for (list_head_t* p = current->children.next; p != &current->children; p = p->next) {
         child = list_entry(p, pcb_t, siblings);
+        INFO("Child found: %d\n", child->pid);
         if(child->pid == pid){
             found = TRUE;
             break;

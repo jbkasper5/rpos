@@ -1,3 +1,7 @@
+.section .data
+panic_str: 
+    .asciz "Panic received from 0x%x\n"    // Null-terminated string
+
 .section .text
 .globl delay
 delay:
@@ -156,4 +160,7 @@ seconds_since_boot:
 
 .globl panic
 panic:
+    mov x1, x30
+    ldr x0, =panic_str
+    bl kprintf
     brk #0xBEEF

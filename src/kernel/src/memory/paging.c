@@ -35,8 +35,12 @@ uintptr_t _split_down(u8 req_order, u8 curr_order){
     // mark the buddy as having a valid order now, and mark it as a head page
     frame_metadata[buddy_pfn].order = curr_order - 1;
     frame_metadata[buddy_pfn].flags.bits.flags = PAGE_BUDDY_HEAD;
+    
+    // clear any stale states of internal metadata, explicitly mark this new block as free
+    frame_metadata[buddy_pfn].flags.bits.state = PAGE_FREE;
 
     // now update the tail pages for the two new blocks
+    // TODO: Eventually replace with more efficient memset.
     for(int j = 1; j < (1ULL << (curr_order - 1)); j++){
         frame_metadata[buddy_pfn + j].order = buddy_pfn;
         frame_metadata[buddy_pfn + j].flags.bits.flags = PAGE_BUDDY_TAIL;
@@ -104,11 +108,11 @@ static void coalesce_up(page_frame_t* frame){
         list_remove(&next_frame->list);
 
         // since we're coalescing, the later page frame becomes a tail page
-        next_frame->flags.bits.state = PAGE_BUDDY_TAIL;
+        next_frame->flags.bits.flags = PAGE_BUDDY_TAIL;
 
         // now we need to updated the reference back to the head page for all buddy tail pages
         u64 updated_pfn = MIN(buddy, curr_pfn);
-        for(int i = 0; i < prev_frame->order; i++) (next_frame + i)->order = updated_pfn;
+        for(int i = 0; i < (1 << block_order); i++) (next_frame + i)->order = updated_pfn;
         prev_frame->order++;
 
         // // add congealed block to the next buddy list
@@ -133,6 +137,11 @@ void buddy_free(void* page){
     // get the frame from the page address
     u64 pfn = va_to_pa((u64) page) >> 12;
     page_frame_t* frame = frame_metadata + pfn;
+
+    if(!(frame->flags.bits.flags & PAGE_BUDDY_HEAD)){
+        WARNING("Attempting to free a non-head page.\n");
+        return;
+    }
 
     // already free, don't do anything else
     if(frame->flags.bits.state == PAGE_FREE) return;

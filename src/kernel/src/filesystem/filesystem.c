@@ -134,6 +134,9 @@ static u64 read_single_indirect(file_t* file, void* buf, u64 count, u64 offset){
 
     // load in the list of direct blocks
     u32* blocks = (u32*) kmalloc(sizeof(ext4_block));
+
+    DEBUG("Allocated buffer block at 0x%x\n", blocks);
+    
     read_block(blocks, single_indirect_blockno);
 
     // get the proper start direct block

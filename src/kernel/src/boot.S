@@ -122,7 +122,6 @@ el1_entry:
    # clear the bss segment
    bl memzero
 
-
    mov x0, #0b00000 // DAIF=0000 M[4:0]=00000 EL0t.
    msr SPSR_EL1, x0
 
@@ -134,20 +133,7 @@ el1_entry:
 
    mrs x0, cpacr_el1
 
-   mov w1, #0xBEEF
-   dup v0.16b, w1
-
    ldr x0, =__kstack_top_hi
    mov sp, x0
-
-   at s1e1r, x0
-   isb
-   mrs x1, par_el1
-
-
-   # ldr x0, =kernel_main
-   # at s1e1x, x0
-   # isb
-   # mrs x1, par_el1
 
    bl kernel_main

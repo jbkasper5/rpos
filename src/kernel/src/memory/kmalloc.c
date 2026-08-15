@@ -45,7 +45,6 @@ static void* _addr_from_slab(slab* s){
         u8 byte = i / 8;
         u8 offset = i % 8;
         if(!(s->bitmap[byte] & (1 << offset))){
-            INFO("Found free block at index %d\n", i);
             s->bitmap[byte] |= (1 << offset);
             s->inuse++;
 
@@ -62,8 +61,6 @@ void* kmalloc(size_t bytes){
 
     // align the requested number of bytes to the nearest slab_order    
     size_t aligned_bytes = 1ULL << (64 - __builtin_clzll(MAX(bytes, (size_t)1 << MIN_SLAB_ORDER) - 1));
-
-    DEBUG("Allocating %d bytes...\n", aligned_bytes);
 
     u32 log2 = log2_pow2(aligned_bytes);
     u32 cache_idx = log2 - MIN_SLAB_ORDER;
@@ -106,7 +103,6 @@ void* kmalloc(size_t bytes){
         list_add(&s->list, &kcaches[cache_idx].full_slabs);
     }
 
-    INFO("Allocated address 0x%x\n", addr);
     return (void*) addr;
 }
 
@@ -148,7 +144,6 @@ static void _slab_free(void* ptr){
 
     // free the entire slab back to the buddy if nothing is in use
     if(slab_head->inuse == 0){
-        DEBUG("INUSE reached 0, determine if buddy_free is necessary.\n", slab_head);
         list_remove(&slab_head->list);
         buddy_free((void*) slab_head);
     }
@@ -161,7 +156,6 @@ void kfree(void* ptr){
     void* aligned_ptr = (void*) ALIGN_DOWN((u64) ptr, PAGE_SIZE);
     page_state owner = get_page_owner(aligned_ptr);
     if(owner == PAGE_BUDDY){
-        DEBUG("kmalloc freeing buddy allocation at address 0x%x\n", aligned_ptr);
 
         // TODO: need to munmap the virtual memory mappings for this page
         // munmap();
@@ -169,7 +163,6 @@ void kfree(void* ptr){
         buddy_free((void*) aligned_ptr);
         return;
     }else if(owner == PAGE_SLAB){
-        DEBUG("kmalloc freeing slab allocation at address 0x%x\n", aligned_ptr);
         _slab_free(ptr);
         return;
     }else if(owner == PAGE_FREE){

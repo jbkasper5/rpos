@@ -137,6 +137,7 @@ sync_invalid_el1h:
     mrs x10, esr_el1
     mrs x11, far_el1
     mrs x12, elr_el1
+    handle_invalid_entry SYNC_INVALID_EL1H
 sync_invalid_el1h_hold:
     wfi
     b sync_invalid_el1h_hold   // halt here for GDB to inspect

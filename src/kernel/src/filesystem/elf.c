@@ -50,6 +50,8 @@ void readelf(file_t* file){
         INFO("  Offset: %d\n", program_header->p_offset);
         INFO("  Virtual address: 0x%x\n", program_header->p_vaddr);
 
+        if(!program_header->p_memsz) continue;
+
         // if the section requires allocation, then allocate it
         u64 flags = MAP_USER;
         if(program_header->p_flags & PF_R) flags |= MAP_READ;

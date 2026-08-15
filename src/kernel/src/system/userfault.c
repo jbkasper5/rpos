@@ -80,6 +80,8 @@ void handle_el0_fault(u64 faulting_address){
         // mark it as read/write again
         l3_pte->md.ap = EL0_RW_EL1_RW;
 
+        // BUG: Need to update the frame pointed to by this PTE to decrement its ref
+
         // update the PTE address to point to the new page
         l3_pte->md.address = va_to_pa((u64) new_page) >> 12;
 

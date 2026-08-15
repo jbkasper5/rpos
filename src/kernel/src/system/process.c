@@ -153,3 +153,21 @@ pcb_t* clone_active_proc(){
     // return copied child process
     return process;
 }
+
+
+void check_and_reap(u64* old_kernel_stack){
+    // recover the old pcb from the kernel stack pointer
+    pcb_t* old_pcb = (pcb_t*) ((char*)(old_kernel_stack) - offsetof(pcb_t, kernel_stack));
+
+
+    // free the old processes kernel stack if the previous process was terminated
+    if(old_pcb->state == PROCESS_TERMINATED){
+        // recover the head page from a modified kernel stack pointer
+        void* stack_head = head_from_page(ALIGN_DOWN(old_pcb->kernel_stack, PAGE_SIZE));
+        buddy_free(stack_head);
+
+        // invalidate the terminated kernel stack pointer
+        old_pcb->kernel_stack = NULL;
+    }
+
+}
