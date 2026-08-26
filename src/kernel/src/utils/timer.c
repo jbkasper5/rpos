@@ -55,7 +55,7 @@ void handle_virtual_timer(){
     // element is the integer proclist index that finished the timer request
     pqnode_t node = pq_pop(&sleep_timer_queue);
 
-    reschedule((u64) node.element);
+    reschedule((pcb_t*) node.element);
 
     if(sleep_timer_queue.items){
         DEBUG("Items remaining in queue: %d\n", sleep_timer_queue.items);
@@ -90,7 +90,7 @@ void timer_nanosleep(u64 nanoseconds){
     u64 timer_request = ((nanoseconds * CLOCKHZ) / 1000000000ULL) + read_virtual_timer();
 
     // priority = absolute timer request, element = active process
-    pq_add(&sleep_timer_queue, timer_request, get_current());
+    pq_add(&sleep_timer_queue, timer_request, (uintptr_t) get_current());
 
     // in case the incoming request is less than that of the existing request, reprogram
     // the timer, since the queue always has the earliest deadline first

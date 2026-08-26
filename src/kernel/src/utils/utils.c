@@ -36,7 +36,7 @@ char* strtok(char* str, char delim, char** saveptr){
     char c;
 
     // match tokens and separate strings
-    while(c = *s){
+    while((c = *s)){
         if(c == delim){
             *s = '\0';
             *saveptr = s + 1;

@@ -8,6 +8,6 @@
 #define REGS_AUX_LO ((struct AuxRegs*)(PBASE_PHYS + 0x00215000))
 #define REGS_AUX ((struct AuxRegs*)(PBASE + 0x00215000))
 
-
+// 0xFFFF8000FE215000
 // 0xFE215000
 #endif

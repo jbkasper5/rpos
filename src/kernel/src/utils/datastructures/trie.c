@@ -50,6 +50,7 @@ static trie_node* trie_get_down(trie_node* node, char c){
             return NULL;
         }
     }
+    return NULL;
 }
 
 void trie_add(trie* t, const char* key, u64 value){

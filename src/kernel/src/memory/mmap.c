@@ -30,9 +30,9 @@ static inline void clean_pte(void *addr) {
 
 uintptr_t alloc_page_table(){
     if (allocated_pages >= STATIC_PAGE_REGION_PAGES) panic();
-    uintptr_t page_addr = (uintptr_t)__static_page_region_start + (PAGE_SIZE * allocated_pages);
+    u64 page_addr = (uintptr_t)__static_page_region_start + (PAGE_SIZE * allocated_pages);
     allocated_pages++;
-    memset(page_addr, 0, PAGE_SIZE);
+    memset((void*) page_addr, 0, PAGE_SIZE);
 
     // page tables are cacheable; clean the freshly-zeroed table to DRAM so the
     // non-cacheable walker sees zeros in the entries we don't explicitly write.
@@ -88,15 +88,20 @@ static mem_descriptor_t parse_block_flags(u64 flags, bool is_page){
     //     return md;
     // }
 
+    // page is valid
     md.bits.valid = 1;
     md.bits.af = 1;
     md.bits.ns = 0;
     md.bits.sh = 3;
-    md.bits.ap = 0;
-    md.bits.pxn = 0;
-    md.bits.uxn = 0;
     md.bits.attr_index = 0;
     md.bits.type = is_page;
+
+    // by default, kernel read only
+    md.bits.ap = EL0_NA_EL1_RO;
+
+    // by default, not executable
+    md.bits.pxn = 1;
+    md.bits.uxn = 1;
 
     if (flags & MAP_DEVICE){
         md.bits.attr_index = 1;
@@ -119,6 +124,12 @@ static mem_descriptor_t parse_block_flags(u64 flags, bool is_page){
             md.bits.ap = EL0_RW_EL1_RW;
         }else if(flags & MAP_READ){
             md.bits.ap = EL0_RO_EL1_RO;
+        }
+    }else if(flags & MAP_KERNEL){
+        if(flags & MAP_READ && flags & MAP_WRITE){
+            md.bits.ap = EL0_NA_EL1_RW;
+        }else if(flags & MAP_READ){
+            md.bits.ap = EL0_NA_EL1_RO;
         }
     }
 
@@ -160,20 +171,20 @@ bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_bas
         idx3 = (va >> 12) & 0x1FF;
 
         if(!l0_table[idx0].bits.valid){
-            ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
+            ptte.bits.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
             clean_pte(&l0_table[idx0]);
         }
         l1_table = (table_descriptor_t*) (((u64) l0_table[idx0].bits.address << PAGE_SHIFT) + virt_base());
         if (!l1_table[idx1].bits.valid) {
-            ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
+            ptte.bits.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
             clean_pte(&l1_table[idx1]);
         }
 
         l2_table = (table_descriptor_t*) (((u64) l1_table[idx1].bits.address << PAGE_SHIFT) + virt_base());
         if (!l2_table[idx2].bits.valid) {
-            ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
+            ptte.bits.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l2_table[idx2] = ptte;
             clean_pte(&l2_table[idx2]);
         }
@@ -225,13 +236,13 @@ bool map_blocks(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_ba
         idx2 = (va >> 21) & 0x1FF;
 
         if(!l0_table[idx0].bits.valid){
-            ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
+            ptte.bits.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
             clean_pte(&l0_table[idx0]);
         }
         l1_table = (table_descriptor_t*) (((u64) l0_table[idx0].bits.address << PAGE_SHIFT) + virt_base());
         if (!l1_table[idx1].bits.valid) {
-            ptte.bits.address = (alloc_page_table()) >> PAGE_SHIFT;
+            ptte.bits.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
             clean_pte(&l1_table[idx1]);
         }

@@ -35,6 +35,11 @@ enable_mmu:
     mov x1, #0x1000000     // low 16 MiB: covers kernel, page-frame array, page tables
     bl  __asm_invalidate_dcache_range
 
+    // load new mapped stack
+    ldr x0, =__kstack_top_hi
+    sub x0, x0, #0x10
+    mov sp, x0
+
     // 5. Enable MMU
     mrs x2, sctlr_el1
     orr x2, x2, #(1 << 0)    // M
@@ -42,9 +47,6 @@ enable_mmu:
     # orr x2, x2, #(1 << 12)   // I
     msr sctlr_el1, x2
     isb
-
-    ldr x0, =__kstack_top_hi
-    mov sp, x0
 
     // 6. Absolute Jump to High Memory
     ldr x0, =el1_entry

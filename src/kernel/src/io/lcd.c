@@ -11,7 +11,7 @@
 frame_t frame;
 bool LCD_READY = FALSE;
 
-static u32 mb[1024] __attribute__((aligned(16)));
+static u32 mailbox[1024] __attribute__((aligned(16)));
 
 static void _init_framebuffer(u32* mb, u32 width, u32 height, u32 depth) {
     u32 i = 0;
@@ -69,7 +69,7 @@ static void _init_framebuffer(u32* mb, u32 width, u32 height, u32 depth) {
     // display uses AARRGGBB
     u32* fb_bytes = (u32 *)GPU_BUS_TO_ARM(fb_addr);
 
-    frame.fb = fb_bytes ? pa_to_va(fb_bytes) : 0;
+    frame.fb = (u32*) (fb_bytes ? pa_to_va((u64) fb_bytes) : 0);
     frame.width = width;
     frame.height = height;
     frame.pitch = pitch;
@@ -83,20 +83,20 @@ int panel_ready(){
     return LCD_READY;
 }
 
-static void fill_screen(frame_t* frame, u32 argb){
+static void fill_screen(frame_t* f, u32 argb){
     // frame width = 800
     // frame hieght = 480
     // sizeof(argb) = 4
-    memset(frame->fb, argb, frame->width * frame->height * sizeof(argb));
+    memset(f->fb, argb, f->width * f->height * sizeof(argb));
 }
 
 int init_framebuffer(){
-    _init_framebuffer(mb, 800, 480, 32);
+    _init_framebuffer(mailbox, 800, 480, 32);
     DEBUG("Frame buffer address: 0x%x\n", frame.fb);
     LCD_READY = (frame.fb) ? TRUE : FALSE;
 
     if(frame.fb){
-        map_pages(frame.fb, va_to_pa(frame.fb), 376, MAP_KERNEL, (u64) L0_TABLE);
+        map_pages((u64) frame.fb, va_to_pa((u64) frame.fb), 376, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);
         fill_screen(&frame, 0xFF000000);
     }
 

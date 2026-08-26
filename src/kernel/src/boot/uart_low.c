@@ -2,6 +2,8 @@
 #include "io/gpio.h"
 #include "macros.h"
 
+extern void delay_lo(u64 ms);
+
 #define TXD 14
 #define RXD 15
 

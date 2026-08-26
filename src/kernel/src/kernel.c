@@ -72,7 +72,6 @@ void hardware_init(){
 }
 
 int kernel_main(){
-    panic();
     hardware_init();
     add_test_section_to_scheduler(); 
     start_scheduler();

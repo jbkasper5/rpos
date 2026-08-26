@@ -21,7 +21,7 @@ static void* _slab_alloc(u32 order){
     if(!phys_page) panic();
 
     // map the page into memory
-    map(phys_page, va_to_pa(phys_page), order, MAP_KERNEL, (u64) L0_TABLE);
+    map(phys_page, va_to_pa(phys_page), order, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);
 
     // for now, convert this to virtual later
     return (void*) phys_page;

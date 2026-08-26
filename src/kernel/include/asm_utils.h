@@ -19,9 +19,6 @@ extern u64 virt_base();
 extern u64 kernel_start();
 extern u64 kernel_end();
 
-extern u64 get_bss_begin();
-extern u64 get_bss_end();
-
 extern u64 get_device_tree_start();
 
 extern u64 get_virt_test_region();

@@ -279,7 +279,6 @@ void* head_from_page(void* page_addr){
 }
 
 static void _initialize_buddy_allocator(u64 start_page_addr, u64 available_pages){
-    DEBUG("Initializing buddy allocator for 0x%x available pages...\n", available_pages)
     u64 curr_pfn = start_page_addr >> 12;
     page_frame_flags_t base_flags = {
         .bits.state = PAGE_FREE,
@@ -348,7 +347,7 @@ static void* clone_page_table(pte* parent_table, u8 level){
 
         if(level < 3 && parent_table[i].td.type == 1) {
             // This is a table, recurse!
-            u64 new_table_address = clone_page_table((pte*) pa_to_va(parent_table[i].td.address << 12), level + 1);
+            u64 new_table_address = (u64) clone_page_table((pte*) pa_to_va(parent_table[i].td.address << 12), level + 1);
             if(!child_table) child_table = (pte*) buddy_alloc_pt();
             child_table[i].value = parent_table[i].value;
             child_table[i].td.address = va_to_pa(new_table_address) >> 12;
@@ -381,7 +380,7 @@ void* clone_virtual_memory(pte* parent_table){
             new_l0_table[i].value = parent_table[i].value;
 
             // convert the page table entry address to a virtual address for the kernel
-            u64 new_table_address = clone_page_table((pte*) pa_to_va(parent_table[i].td.address << 12), 1);
+            u64 new_table_address = (u64) clone_page_table((pte*) pa_to_va(parent_table[i].td.address << 12), 1);
             if(new_table_address){
                 new_l0_table[i].td.address = va_to_pa(new_table_address) >> 12;
             }else{
@@ -391,7 +390,7 @@ void* clone_virtual_memory(pte* parent_table){
     }
     flush_tlb();
 
-    return (void*) va_to_pa(new_l0_table);
+    return (void*) new_l0_table;
 }
 
 void reap_virtual_memory(pte* parent_table, u32 level){
@@ -401,10 +400,10 @@ void reap_virtual_memory(pte* parent_table, u32 level){
 
         if(level < 3 && parent_table[i].td.type == 1) {
             // This is a table, recurse!
-            reap_virtual_memory(pa_to_va(parent_table[i].td.address << 12), level + 1);
+            reap_virtual_memory((pte*) pa_to_va(parent_table[i].td.address << 12), level + 1);
         }else{
             // check if page pointed to by the 
-            decrement_ref(pa_to_va(parent_table[i].md.address << 12));
+            decrement_ref((void*) pa_to_va(parent_table[i].md.address << 12));
         }
     }
 }

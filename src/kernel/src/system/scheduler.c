@@ -57,8 +57,8 @@ static void pre_context_switch(pcb_t* newproc, void* old_sp_buffer){
     // set process to running
     newproc->state = PROCESS_RUNNING;
 
-    // switch
-    context_switch(new_sp, old_sp_buffer, new_ttbr);
+    // switch (and convert virtual table addr to physical, since TTBR needs the physical)
+    context_switch(new_sp, old_sp_buffer, va_to_pa(new_ttbr));
 }
 
 void scheduler_init(){
@@ -205,7 +205,7 @@ void reap(){
     // before + after check of the memory
     profile(&(memprofiler_cfg){ .pid = current->pid });
 
-    reap_virtual_memory(pa_to_va(current->ttbr), 0);
+    reap_virtual_memory(current->ttbr, 0);
 
     profile(&(memprofiler_cfg){ .pid = current->pid });
 
@@ -223,7 +223,7 @@ void add_test_section_to_scheduler(){
     u64 test_size = get_test_size();
     u16 order = log2_pow2(test_size / 4096);
 
-    map(test_virt, test_phys, order, MAP_USER | MAP_READ | MAP_WRITE | MAP_EXEC, proc->ttbr);
+    map(test_virt, test_phys, order, MAP_USER | MAP_READ | MAP_EXEC, proc->ttbr);
 
     // write the return pointer into the user stack
     trap_frame_t* tf = proc->kernel_stack - sizeof(trap_frame_t);

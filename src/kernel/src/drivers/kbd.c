@@ -24,8 +24,8 @@ void keyboard_init(){
     // register a flag with the IRQ to start accepting redirects to handle_keyboard_event
     kbd_pipe.buf = (u8*) kmalloc(PAGE_SIZE);
 
-    kbd_pipe.head = (u32) kbd_pipe.buf;
-    kbd_pipe.tail = (u32) kbd_pipe.buf;
+    kbd_pipe.head = (u64) kbd_pipe.buf;
+    kbd_pipe.tail = (u64) kbd_pipe.buf;
     kbd_pipe.ring_size = PAGE_SIZE;
 
     // initialize the wait lists

@@ -39,6 +39,7 @@ static TEST_FN void process_command(char* cmd){
     int pid = syscall(SYS_FORK);
     if(pid){
         // parent
+        // BUG: somehow pid gets corrupted and passes itself in
         syscall(SYS_WAITID, pid);
     }else{
         syscall(SYS_NANOSLEEP, 1000000000);
@@ -49,7 +50,11 @@ static TEST_FN void process_command(char* cmd){
         } 
         printf("Attempting to open binary '%s'\n", path);
         int fd = syscall(SYS_EXECVE, path);
-        printf("Opened file at %d\n", fd);
+        if(fd < 0){
+            printf("Could not open file: %d\n", fd);
+        }else{
+            printf("Opened file at %d\n", fd);     
+        }
         syscall(SYS_EXIT_GROUP);
     }
 }

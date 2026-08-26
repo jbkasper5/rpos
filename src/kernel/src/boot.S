@@ -38,7 +38,7 @@ master:
    // initialize UART
    bl uart_init_lo
    
-   // initialize JLINK (if requested)
+   // initialize JLINK (if requessted)
    #ifdef DEBUG
    bl debug_init_lo
    #endif
@@ -53,6 +53,7 @@ master:
 
    // initialize kernel stack for when we enter the trap handler
    ldr x0, =__kstack_top
+   sub x0, x0, #0x10
    mov sp, x0
    msr SP_EL1, x0
 
@@ -115,23 +116,22 @@ _infinite:
 .section .text
 .globl el1_entry
 el1_entry:
-   ldr x0, =bss_begin
-   ldr x1, =bss_end
-   sub x1, x1, x0
-
-   # clear the bss segment
-   bl memzero
-
    mov x0, #0b00000 // DAIF=0000 M[4:0]=00000 EL0t.
    msr SPSR_EL1, x0
 
-   // At EL1, MMU off
    mrs x0, cpacr_el1
    orr x0, x0, #(3<<20)    // enable FP/NEON
    msr cpacr_el1, x0
    isb
 
    mrs x0, cpacr_el1
+
+   ldr x0, =__bss_start
+   ldr x1, =__bss_end
+   sub x1, x1, x0
+
+   # clear the bss segment
+   bl memzero
 
    ldr x0, =__kstack_top_hi
    mov sp, x0

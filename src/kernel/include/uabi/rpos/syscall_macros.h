@@ -29,6 +29,7 @@
 #define SYS_KILL                    129
 #define SYS_REBOOT                  142
 #define SYS_GETPID                  172
+#define SYS_GETPPID                 173
 
 #define SYS_MUNMAP                  215
 #define SYS_CLONE3                  220

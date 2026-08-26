@@ -102,14 +102,9 @@ static bool pcie_clock_on(){
 }
 
 bool mailbox_pcie_usb_power_on(){
-    u64* testptr = 0xFFFF8000FD50406C;
-    u64* testptr2 = 0xFFFF8000FD504068;
-
-    u64 test = *testptr;
-    u64 test2 = *testptr2;
-
     int ret = pcie_clock_on();
-
+    if(!ret) return FALSE;
+    
     mailbox_power mbx;
 
     mbx.tag.id = RPI_FIRMWARE_SET_POWER_STATE;

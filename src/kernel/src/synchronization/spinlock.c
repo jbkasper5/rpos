@@ -6,5 +6,5 @@ void spinlock_acquire(raw_spinlock_t* l){
 }
 
 void spinlock_release(raw_spinlock_t* l){
-    atomic_store_release(&l->lock, 0);
+    atomic_store_release((u64*) &l->lock, 0);
 }

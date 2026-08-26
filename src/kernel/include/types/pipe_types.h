@@ -18,8 +18,8 @@ typedef struct pipe_data_s{
     mutex_t mutex;           // Mutex for serializing access
     wait_queue_head_t rd_wait;    // Wait queue for readers
     wait_queue_head_t wr_wait;    // Wait queue for writers
-    u32 head;            // Pointer to the next slot to write
-    u32 tail;            // Pointer to the next slot to read
+    u64 head;            // Pointer to the next slot to write
+    u64 tail;            // Pointer to the next slot to read
     u32 ring_size;       // Total number of buffers in the ring
     u32 readers;         // Number of processes reading
     u32 writers;         // Number of processes writing

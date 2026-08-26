@@ -1,6 +1,7 @@
 #include "synchronization/mutex.h"
 #include "synchronization/spinlock.h"
 #include "memory/kmalloc.h"
+#include "system/scheduler.h"
 
 #define ACQUIRE(mutex, current) (atomic_swap(&mutex->owner, current) == 0)
 
@@ -16,15 +17,14 @@ mutex_t* mutex_init(){
 void mutex_acquire(mutex_t* mutex){
     pcb_t* current = get_current();
 
-    int pid = current->pid;
-    DEBUG("Process %d attempting to acquire mutex at 0x%x...\n", pid, mutex);
+    DEBUG("Process %d attempting to acquire mutex at 0x%x...\n", current->pid, mutex);
     
     // otherwise, the mutex has been acquired already, we need to add it to the mutex's wait queue
     // enqueue a wait item for this mutex
     DEFINE_WAIT(waitqueue_entry);
 
     while(TRUE){
-        if (ACQUIRE(mutex, current)){
+        if (ACQUIRE(mutex, (u64) current)){
             DEBUG("Mutex at 0x%x acquired.\n", mutex);
             return;
         }

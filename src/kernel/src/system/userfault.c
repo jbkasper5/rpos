@@ -8,7 +8,7 @@ void handle_el0_fault();
 
 pte* check_cow(u64 addr){
     pcb_t* current = get_current();
-    pte* page_table = (pte*) pa_to_va(current->ttbr);
+    pte* page_table = (pte*) current->ttbr;
 
     int idx0 = (addr >> 39) & 0x1FF;
     int idx1 = (addr >> 30) & 0x1FF;

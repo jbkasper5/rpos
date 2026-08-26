@@ -63,7 +63,7 @@ void readelf(file_t* file){
         u64 phys_block = buddy_alloc(program_header->p_memsz);
 
         // map physical block into kernel memory so we can set up the process
-        map(phys_block, va_to_pa(phys_block), order, MAP_KERNEL | MAP_WRITE, L0_TABLE);
+        map(phys_block, va_to_pa(phys_block), order, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);
 
         seek(file, program_header->p_offset, SEEK_SET);
         read(file, rootfs.block_buf, program_header->p_filesz);
@@ -86,7 +86,7 @@ void readelf(file_t* file){
     // switch over ttbr
     u64* old_ttbr = current->ttbr;
 
-    current->ttbr = va_to_pa(new_proc_l0);
+    current->ttbr = new_proc_l0;
 
     // tear down old_ttbr
     // teardown_vm(old_ttbr);
@@ -107,8 +107,8 @@ void readelf(file_t* file){
     // 0x7fffffff0
 
     // swap the base table for the process
-    switch_user_tlb(current->ttbr);
+    switch_user_tlb(va_to_pa(current->ttbr));
 
     // reap the virtual memory for the abandoned process state
-    reap_virtual_memory(pa_to_va(old_ttbr), 0);
+    reap_virtual_memory(old_ttbr, 0);
 }

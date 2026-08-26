@@ -22,11 +22,11 @@ u32 DEFAULT_BACKGROUND_COLOR = COLOR_BLACK;
 u32 TEXT_COLOR = COLOR_WHITE;
 u32 DEFAULT_TEXT_COLOR = COLOR_WHITE;
 
-void fill_screen(frame_t* frame, u32 argb){
+void fill_screen(frame_t* f, u32 argb){
     // frame width = 800
     // frame hieght = 480
     // sizeof(argb) = 4
-    memset(frame->fb, argb, frame->width * frame->height * sizeof(argb));
+    memset(f->fb, argb, f->width * f->height * sizeof(argb));
 }
 
 static void newline(){

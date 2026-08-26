@@ -58,6 +58,18 @@ u64 sys_nanosleep(u64 ns, u64, u64, u64, u64, u64){
     return 0;
 }
 
+u64 sys_getpid(u64, u64, u64, u64, u64, u64){
+    pcb_t* current = get_current();
+    if(current && current->pid > 0) return current->pid;
+    else return -1;
+}
+
+u64 sys_getppid(u64, u64, u64, u64, u64, u64){
+    pcb_t* parent = get_current()->parent;
+    if(parent && parent->pid > 0) return parent->pid;
+    else return -1;
+}
+
 u64 sys_clock_gettime(u64 clock, u64 kernel_timespec, u64, u64, u64, u64){
     return 0;
 }

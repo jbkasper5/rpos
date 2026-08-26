@@ -57,16 +57,6 @@ kernel_start:
     ldr x0, =__kernel_start
     ret
 
-.globl get_bss_begin
-get_bss_begin:
-   ldr x0, =bss_begin
-   ret
-
-.globl get_bss_end
-get_bss_end:
-   ldr x0, =bss_end
-   ret
-
 .globl virt_base
 virt_base:
     ldr x0, =VIRT_BASE

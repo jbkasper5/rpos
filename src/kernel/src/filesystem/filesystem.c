@@ -110,15 +110,15 @@ static u32 read_file_block(file_t* file, void* buf, u64 count, u32 blockno){
 
 static u64 read_direct(file_t* file, void* buf, u64 count){
     u32 block_no = file->pos / 4096;
-    u32 block_offset = file->pos % 4096;
+    // u32 block_offset = file->pos % 4096;
 
+    // BUG: don't yet account for offsets
     u64 bytes_read = 0;
-    u64 bytes_to_read = count;
     for(int i = block_no; i < 15; i++){
         void* buf_advanced = UNSCALED_POINTER_ADD(buf, bytes_read);
         bytes_read += read_file_block(file, buf_advanced, count - bytes_read, file->inode->i_block[i]);
 
-        block_offset = 0; // only offset for the first block
+        // block_offset = 0; // only offset for the first block
 
         if(bytes_read >= count){
             break;
@@ -167,12 +167,15 @@ static u64 read_single_indirect(file_t* file, void* buf, u64 count, u64 offset){
 
 static u64 read_double_indirect(file_t* file, void* buf, u64 count, u64 offset){
     u64 double_indirect_blockno = file->inode->i_block[13];
-    u32* blocks = (u32) rootfs.block_buf;
+    u32* blocks = (u32*) rootfs.block_buf;
     read_block(blocks, double_indirect_blockno);
+
+    // BUG: needs to be something else
+    return NULL;
 }
 
 static u64 read_triple_indirect(file_t* file, void* buf, u64 count, u64 offset){
-    
+    return NULL;
 }
 
 
