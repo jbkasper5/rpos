@@ -12,7 +12,7 @@ void pq_destroy(){
     return;
 }
 
-void pq_add(pq_t* pq, uint64_t priority, uintptr_t element){
+void pq_add(pq_t* pq, u64 priority, uintptr_t element){
     if(pq->items >= pq->size) return; // or realloc
     pq->heap[pq->items].priority = priority;
     pq->heap[pq->items].element = element;
@@ -24,11 +24,10 @@ pqnode_t pq_pop(pq_t* pq){
     if(!pq->items) return node;
     node = pq->heap[0];
 
-    // copy last item into index 0
-    _pq_swap(pq, 0, --pq->items);
-
-    // sink
+    _pq_swap(pq, 0, pq->items - 1);  // swap root with actual last valid item
+    pq->items--;                       // then shrink
     _pq_sink(pq, 0);
+
     return node;
 }
 
@@ -43,9 +42,9 @@ void _pq_sink(pq_t* pq, int idx) {
         int rchild = RCHILD(idx);
         int largest = idx;
 
-        if (lchild < n && pq->heap[lchild].priority > pq->heap[largest].priority)
+        if (lchild < n && pq->heap[lchild].priority < pq->heap[largest].priority)
             largest = lchild;
-        if (rchild < n && pq->heap[rchild].priority > pq->heap[largest].priority)
+        if (rchild < n && pq->heap[rchild].priority < pq->heap[largest].priority)
             largest = rchild;
 
         if (largest == idx)
@@ -59,7 +58,7 @@ void _pq_sink(pq_t* pq, int idx) {
 void _pq_swim(pq_t* pq, int idx) {
     while (idx > 0) {
         int parent_idx = PARENT(idx);
-        if (pq->heap[parent_idx].priority >= pq->heap[idx].priority)
+        if (pq->heap[parent_idx].priority <= pq->heap[idx].priority)
             break;
         _pq_swap(pq, parent_idx, idx);
         idx = parent_idx;

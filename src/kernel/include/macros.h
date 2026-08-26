@@ -1,23 +1,31 @@
 #ifndef __MACROS_H__
 #define __MACROS_H__
 
-#include <stdint.h>
-#include <stddef.h>
+#include "types/scalar.h"
 
-typedef volatile uint32_t reg32_t;
-typedef volatile uint64_t reg64_t;
-typedef uint8_t bool;
-typedef uint16_t pid_t;
+double seconds_since_boot();
+u64 ticks_since_boot();
+
+// #ifdef DEBUG
+// #define DEBUG(...) kprintf("[\e[35mDEBUG\e[0m] "); kprintf(__VA_ARGS__);
+// #else
+// #define DEBUG(...)
+// #endif
+
+// #define INFO(...) kprintf("[\e[32mINFO\e[0m] "); kprintf(__VA_ARGS__);
+// #define WARNING(...) kprintf("[\e[33mWARNING\e[0m] "); kprintf(__VA_ARGS__);
+// #define ERROR(...) kprintf("[\e[31mERROR\e[0m] "); kprintf(__VA_ARGS__);
 
 #ifdef DEBUG
-#define DEBUG(...) kprintf("[\e[35mDEBUG\e[0m] "); kprintf(__VA_ARGS__);
+#define DEBUG(...) kprintf("[\e[35mDEBUG %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
 #else
 #define DEBUG(...)
 #endif
 
-#define INFO(...) kprintf("[\e[32mINFO\e[0m] "); kprintf(__VA_ARGS__);
-#define WARNING(...) kprintf("[\e[33mWARNING\e[0m] "); kprintf(__VA_ARGS__);
-#define ERROR(...) kprintf("[\e[31mERROR\e[0m] "); kprintf(__VA_ARGS__);
+#define INFO(...) kprintf("[\e[32mINFO %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
+#define WARNING(...) kprintf("[\e[33mWARNING %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
+#define ERROR(...) kprintf("[\e[31mERROR %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
+
 
 #ifdef NULL
 #undef NULL
@@ -38,14 +46,20 @@ typedef uint16_t pid_t;
 #define UNSCALED_POINTER_SUB(ptr, val)      ((void*)((char*)ptr - val))
 
 
-#define WFI()       __asm__("wfi");
+#define WFI()       asm volatile("wfi")
 #define PACKED      __attribute__((packed))
 #define BOOT_FN     __attribute__((section(".text.boot")))
 #define BOOT_DATA   __attribute__((section(".boot.data")))
 #define BOOT_BSS    __attribute__((section(".boot.bss")))
 #define BOOT_RODATA __attribute__((section(".boot.rodata")))
 
-#define TEST_FN     __attribute__((section(".test.text")))
+#define TEST_FN         __attribute__((section(".text.test")))
+#define TEST_DATA       __attribute__((section(".test.data")))
+#define TEST_BSS        __attribute__((section(".test.bss")))
+#define TEST_RODATA     __attribute__((section(".test.rodata")))
+
+#define INTERRUPT_ENABLE()        asm volatile("msr daifclr, #0xf")
+#define INTERRUPT_DISABLE()       asm volatile("msr daifset, #0xf")
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
@@ -54,8 +68,14 @@ typedef uint16_t pid_t;
 #define ALIGN_DOWN(addr, align) ((addr) & ~((align) - 1))
 #define ALIGN_UP(addr, align)   (((addr) + ((align) - 1)) & ~((align) - 1))
 
+#define READ_SYSREG(reg) ({                                  \
+    u64 _v;                                                  \
+    __asm__ volatile("mrs %0, " #reg : "=r"(_v));            \
+    _v;                                                      \
+})
+
 extern void panic();
-extern uint64_t pa_to_va(uint64_t pa);
-extern uint64_t va_to_pa(uint64_t va);
+extern u64 pa_to_va(u64 pa);
+extern u64 va_to_pa(u64 va);
 
 #endif

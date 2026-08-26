@@ -1,41 +1,59 @@
 #include "memory/paging.h"
 #include "memory/virtual_memory.h"
 #include "memory/mem.h"
+#include "memory/mmap.h"
 
 #include "asm_utils.h"
 
-#define MAX_ORDER 20
+#include "definitions/linker_symbols.h"
+
+// 20 is for a 4GiB system, right now we operate on 1GiB
+// #define MAX_ORDER 20
+#define MAX_ORDER 18
 
 // one list per order
 static list_head_t buddy_lists[MAX_ORDER + 1];
 static page_frame_t* frame_metadata;
 
 // split a higher order block in 2
-uintptr_t _split_down(uint8_t req_order, uint8_t curr_order){
+uintptr_t _split_down(u8 req_order, u8 curr_order){
     // get the page frame number in the larger array
     page_frame_t* og_frame = list_entry(buddy_lists[curr_order].next, page_frame_t, list);
     if(req_order == curr_order){
         // placeholder
         return (uintptr_t) &og_frame->list;
     }
-    uint32_t pfn = og_frame - frame_metadata;
-    uint32_t buddy_pfn = pfn + (1UL << (curr_order - 1));
-    DEBUG("PFN: %d\n", pfn);
-    DEBUG("Buddy PFN: %d\n", buddy_pfn);
+    u32 pfn = og_frame - frame_metadata;
+    u32 buddy_pfn = pfn + (1u << (curr_order - 1));
 
-
-    // TODO: at some point, verify if any coalescing is required as we split blocks downward
     list_remove(buddy_lists[curr_order].next);
     list_add(&frame_metadata[buddy_pfn].list, &buddy_lists[curr_order - 1]);
     list_add(&og_frame->list, &buddy_lists[curr_order - 1]);
 
     frame_metadata[pfn].order = curr_order - 1;
+
+    // mark the buddy as having a valid order now, and mark it as a head page
     frame_metadata[buddy_pfn].order = curr_order - 1;
+    frame_metadata[buddy_pfn].flags.bits.flags = PAGE_BUDDY_HEAD;
+    
+    // clear any stale states of internal metadata, explicitly mark this new block as free
+    frame_metadata[buddy_pfn].flags.bits.state = PAGE_FREE;
+
+    // now update the tail pages for the two new blocks
+    // TODO: Eventually replace with more efficient memset.
+    for(int j = 1; j < (1ULL << (curr_order - 1)); j++){
+        frame_metadata[buddy_pfn + j].order = buddy_pfn;
+        frame_metadata[buddy_pfn + j].flags.bits.flags = PAGE_BUDDY_TAIL;
+
+        frame_metadata[pfn + j].order = pfn;
+        frame_metadata[pfn + j].flags.bits.flags = PAGE_BUDDY_TAIL;
+    }
+
     return _split_down(req_order, curr_order - 1);
 }
 
 
-uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
+uintptr_t _alloc_and_return(list_head_t* head, u32 req_order){
     // get the correctly sized frame from the buddy list
     page_frame_t* block = list_entry(buddy_lists[req_order].next, page_frame_t, list);
 
@@ -48,15 +66,19 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
     // declare ownership of the block to the buddy allocator
     block->flags.bits.state = PAGE_BUDDY;
 
+    // make it a head page
+    block->flags.bits.flags |= PAGE_BUDDY_HEAD;
+
     // convert the relative coordinate of the block within the frame metadata to a physical page address
-    uint64_t pfn = block - frame_metadata;
+    u64 pfn = block - frame_metadata;
 
 
-    // mark the following pages as tail pages and define their offset from the head pfn
+    // mark the following pages as tail pages and define what the head PFN is
     for(int i = 1; i < (1U << req_order); i++){
         frame_metadata[pfn + i].flags.bits.flags = PAGE_BUDDY_TAIL;
+        frame_metadata[pfn + i].flags.bits.state = PAGE_BUDDY;
         frame_metadata[pfn + i].refcount = 1;
-        frame_metadata[pfn + i].order = i;
+        frame_metadata[pfn + i].order = pfn;
     }
 
     // return the pointer to the start of the allocated page
@@ -65,30 +87,39 @@ uintptr_t _alloc_and_return(list_head_t* head, uint32_t req_order){
 
 
 static void coalesce_up(page_frame_t* frame){
-    DEBUG("Trying to coalesce pfn 0x%x of order %d\n", (uintptr_t) frame >> 12, frame->order);
     size_t block_order = frame->order;
+    u64 curr_pfn = (frame - frame_metadata);
+    u64 buddy = curr_pfn ^ (1u << block_order);
+
+    DEBUG("Trying to coalesce pfn 0x%x of order %d\n", curr_pfn, frame->order);
 
     // slide back to the previous frame in memory
-    page_frame_t* prev_frame = frame - (1 << block_order);
-    page_frame_t* next_frame = frame + (1 << block_order);
+    page_frame_t* prev_frame = frame_metadata + MIN(buddy, curr_pfn);
+    page_frame_t* next_frame = frame_metadata + MAX(buddy, curr_pfn);
 
-    if(prev_frame->order == block_order && prev_frame->flags.bits.state == PAGE_FREE && prev_frame->flags.bits.flags & PAGE_BUDDY_HEAD){
-        DEBUG("Coalescing pfn 0x%x with prior pfn 0x%x\n", (uintptr_t) frame >> 12, (uintptr_t) prev_frame >> 12);
+    // in order to coalesce, both buddies must be of the same order
+    if(prev_frame->order != next_frame->order) return;
 
-        list_remove(&frame->list);
+    // they also must both be free
+    if(prev_frame->flags.bits.state == PAGE_FREE && next_frame->flags.bits.state == PAGE_FREE){
+        DEBUG("Coalescing pfn 0x%x with pfn 0x%x\n", curr_pfn, buddy);
+
         list_remove(&prev_frame->list);
-        prev_frame->order++;
+        list_remove(&next_frame->list);
 
         // since we're coalescing, the later page frame becomes a tail page
-        frame->flags.bits.state = PAGE_BUDDY_TAIL;
+        next_frame->flags.bits.flags = PAGE_BUDDY_TAIL;
 
-        // add congealed block to the next buddy list
+        // now we need to updated the reference back to the head page for all buddy tail pages
+        u64 updated_pfn = MIN(buddy, curr_pfn);
+        for(int i = 0; i < (1 << block_order); i++) (next_frame + i)->order = updated_pfn;
+        prev_frame->order++;
+
+        // // add congealed block to the next buddy list
         list_add(&prev_frame->list, &buddy_lists[block_order + 1]);
 
-        // recurse up in case prev_frame also needs coalescing
+        // // recurse up in case prev_frame also needs coalescing
         coalesce_up(prev_frame);
-    }else if(FALSE){
-        // check the frame ahead in case the one behind isn't suitable for coalescing
     }
 }
 
@@ -104,8 +135,16 @@ void buddy_free(void* page){
     // then add the new block to the higher order buddy list
 
     // get the frame from the page address
-    uint64_t pfn = va_to_pa(page) >> 12;
-    page_frame_t* frame = &frame_metadata[pfn];
+    u64 pfn = va_to_pa((u64) page) >> 12;
+    page_frame_t* frame = frame_metadata + pfn;
+
+    if(!(frame->flags.bits.flags & PAGE_BUDDY_HEAD)){
+        WARNING("Attempting to free a non-head page.\n");
+        return;
+    }
+
+    // already free, don't do anything else
+    if(frame->flags.bits.state == PAGE_FREE) return;
 
     // step 1: mark the frame as free
     frame->flags.bits.state = PAGE_FREE;
@@ -113,14 +152,11 @@ void buddy_free(void* page){
     // step 2: add it to the buddy list of the appropriate order
     size_t block_order = frame->order;
 
-    // quick panic if block order exceeds the buddy list
-    if(block_order > MAX_ORDER) panic();
-
     // add the frame to the free list
     list_add(&frame->list, &buddy_lists[block_order]);
 
     // perform any coalescing if necessary
-    coalesce_up(frame);
+    if(block_order < MAX_ORDER) coalesce_up(frame);
 }
 
 /**
@@ -128,13 +164,15 @@ void buddy_free(void* page){
  * @param bytes     Number of bytes to allocate 
  * @return          Address of the header page   
  */
-uint64_t buddy_alloc(uint64_t bytes){
+u64 buddy_alloc(u64 bytes){
     // round bytes up to the nearest page granule
-    uint32_t n_pages = (bytes + 4095) >> 12;  // For 4 KiB pages
+    u32 n_pages = (bytes + 4095) >> 12;  // For 4 KiB pages
 
     // convert number of pages into minimum order
-    uint8_t requested_order = 0;
+    u8 requested_order = 0;
     while ((1U << requested_order) < n_pages) requested_order++;
+
+    if(requested_order > MAX_ORDER) return NULL;
 
     if(!list_empty(&buddy_lists[requested_order])) return _alloc_and_return(&buddy_lists[requested_order], requested_order);
 
@@ -150,21 +188,59 @@ uint64_t buddy_alloc(uint64_t bytes){
 
 
 /**
- * @brief Allocates and zeroes a single page for a page table   
+ * @brief Allocates, maps, zeroes a single page for a page table   
  * @return          Address of the page      
  */
-uint64_t buddy_alloc_pt(){
-    uintptr_t pt = buddy_alloc(PAGE_SIZE);
-    memset((void*) pt, 0, PAGE_SIZE);
-    return pt;
+u64 buddy_alloc_pt(){
+    u64 new_page = buddy_alloc(PAGE_SIZE);
+    if(!new_page) return NULL;
+
+    // map new page table into kernel memory
+    map(new_page, va_to_pa(new_page), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);
+
+    // zero out the page
+    memset((void*) new_page, 0, PAGE_SIZE);
+    return (u64) new_page;
 }
 
+
+/**
+ * @brief Decrements the reference count for a block
+ * @return          Address of the page. Assumes this is the head     
+ */
+static u64 decrement_ref(void* addr){
+    u64 pfn = va_to_pa((u64) addr) >> 12;
+
+    page_frame_t* base = (page_frame_t*) page_frame_array_start();
+    page_frame_t* pf = base + pfn;
+
+    if(pf->flags.bits.state == PAGE_RESERVED){
+        return -2;
+    }
+
+    if(!(pf->flags.bits.flags & PAGE_BUDDY_HEAD)){
+        WARNING("Attempting to decrement refcount of non-head page.\n");
+        return -1;
+    }
+
+    // decrement the refcount of the head page
+    pf->refcount--;
+
+    // if refcount for the page hit 0, free it
+    if(!pf->refcount){
+        buddy_free(addr);
+    }
+
+    return pf->refcount;
+}
+
+
 void set_page_owner(void* page_addr, page_state new_owner){
-    uint64_t pfn = va_to_pa(page_addr) >> 12;
+    u64 pfn = va_to_pa((u64) page_addr) >> 12;
 
     if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
         // if it's a tail page, get the head page first
-        pfn -= frame_metadata[pfn].order;
+        pfn = frame_metadata[pfn].order;
     }
 
     page_frame_t* pf = &frame_metadata[pfn];
@@ -172,11 +248,11 @@ void set_page_owner(void* page_addr, page_state new_owner){
 }
 
 page_state get_page_owner(void* page_addr){
-    uint64_t pfn = va_to_pa(page_addr) >> 12;
+    u64 pfn = va_to_pa((u64) page_addr) >> 12;
 
     if(frame_metadata[pfn].flags.bits.flags & PAGE_BUDDY_TAIL){
         // if it's a tail page, get the head page first
-        pfn -= frame_metadata[pfn].order;
+        pfn = frame_metadata[pfn].order;
     }
 
     page_frame_t* pf = &frame_metadata[pfn];
@@ -184,28 +260,26 @@ page_state get_page_owner(void* page_addr){
 }
 
 void* head_from_page(void* page_addr){
-    uint64_t pfn = va_to_pa(page_addr) >> 12;
+    u64 pfn = va_to_pa((u64) page_addr) >> 12;
 
     page_frame_t* pf = &frame_metadata[pfn];
 
-    // if we don't belong to the buddy or the slab, it wasn't allocated so we can't compute the head
-    if (pf->flags.bits.state != PAGE_BUDDY && pf->flags.bits.state != PAGE_SLAB) {
+    // if we're a tail page, we can find the head through the order property
+    if(pf->flags.bits.flags == PAGE_BUDDY_TAIL){
+        pfn = pf->order;
+        pf = &frame_metadata[pfn];
+    }
+
+    // if the page is a head, return it
+    if(pf->flags.bits.flags & PAGE_BUDDY_HEAD){
+        return (void*) pa_to_va(pfn << 12);
+    }else{
         return NULL;
     }
-
-    // if the page is already a head, return it
-    if(pf->flags.bits.flags & PAGE_BUDDY_HEAD){
-        return page_addr;
-    }
-
-    // otherwise, use the order to compute the head address
-    size_t offset_from_head = pf->order;
-    return (void*) pa_to_va(((pfn - offset_from_head) << 12));
 }
 
-static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t available_pages){
-    DEBUG("Initializing buddy allocator for 0x%x available pages...\n", available_pages)
-    uint64_t curr_pfn = start_page_addr >> 12;
+static void _initialize_buddy_allocator(u64 start_page_addr, u64 available_pages){
+    u64 curr_pfn = start_page_addr >> 12;
     page_frame_flags_t base_flags = {
         .bits.state = PAGE_FREE,
         .bits.flags = PAGE_BUDDY_HEAD
@@ -214,6 +288,10 @@ static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t avail
     for(int64_t i = MAX_ORDER; i >= 0; i--){
         if(available_pages & (1ULL << i)){
             frame_metadata[curr_pfn].order = i;
+            for(int j = 1; j < (1ULL << i); j++){
+                frame_metadata[curr_pfn + j].order = curr_pfn;
+                frame_metadata[curr_pfn + j].flags.bits.state = PAGE_BUDDY_TAIL;
+            }
             frame_metadata[curr_pfn].flags = base_flags;
             list_add(&frame_metadata[curr_pfn].list, &buddy_lists[i]);
             curr_pfn += (1ULL << i);
@@ -221,31 +299,111 @@ static void _initialize_buddy_allocator(uint64_t start_page_addr, uint64_t avail
     }
 }
 
-uint8_t get_block_order(uint64_t addr){
+u8 get_block_order(u64 addr){
     if(addr & 0xFFF){
         return -1;
     }
 
-    uint64_t pfn = addr >> 12;
+    u64 pfn = addr >> 12;
     return frame_metadata[pfn].order;
 }
 
-uint64_t initialize_page_frame_array(){
+u64 initialize_page_frame_array(){
     for(int i = 0; i <= MAX_ORDER; i++) INIT_LIST_HEAD(&buddy_lists[i]);
     frame_metadata = (page_frame_t*) (page_frame_array_start());
-    uint64_t reserved_memory = (uint64_t) va_to_pa(static_page_region_end());
-    uint64_t reserved_pages = (reserved_memory + 0xFFF) >> 12;
+    u64 reserved_memory = ((u64) get_phys_test_region()) + get_test_size();
+    u64 reserved_pages = (reserved_memory + 0xFFF) >> 12;
 
     // this is now the physical address
-    uint64_t start_page_addr = (reserved_memory + 0xFFF) & (~0xFFF);
+    u64 start_page_addr = (reserved_memory + 0xFFF) & (~0xFFF);
 
     // stay in the lower 1 GiB for now
-    uint64_t available_pages = (1ULL << 18) - reserved_pages;
+    u64 available_pages = (1ULL << 18) - reserved_pages;
 
     // zero out the page frame metadata (which internally sets the state to free and )
     // for 1 GiB of RAM, there are 2^18 pages
     memset(frame_metadata, 0, (1 << 18) * sizeof(page_frame_t));
 
+    // mark all pages belonging to the page frame array as reserved
+    for(int i = 0; i < reserved_pages; i++){
+        frame_metadata[i].flags.bits.state = PAGE_RESERVED;
+    }
+
+
     _initialize_buddy_allocator(start_page_addr, available_pages);   
     return reserved_pages;
+}
+
+/**
+ * @brief Recursive cloner to copy an entire virtual memory system
+ * @param bytes     Number of bytes to allocate 
+ * @return          Address of the child's new L0 page table.   
+ */
+static void* clone_page_table(pte* parent_table, u8 level){
+    pte* child_table = NULL;
+    u32 n_entries = PAGE_SIZE / 8;
+    for(int i = 0; i < n_entries; i++){
+        if(!parent_table[i].md.valid) continue;
+
+        if(level < 3 && parent_table[i].td.type == 1) {
+            // This is a table, recurse!
+            u64 new_table_address = (u64) clone_page_table((pte*) pa_to_va(parent_table[i].td.address << 12), level + 1);
+            if(!child_table) child_table = (pte*) buddy_alloc_pt();
+            child_table[i].value = parent_table[i].value;
+            child_table[i].td.address = va_to_pa(new_table_address) >> 12;
+        }else{
+            parent_table[i].md.cow = 1;
+            parent_table[i].md.ap = EL0_RO_EL1_RO;
+            DEBUG("CLONE L%d[%d] marked COW, PTE=0x%x\n", level, i, parent_table[i].value);
+            if(!child_table) child_table = (pte*) buddy_alloc_pt();
+            child_table[i].value = parent_table[i].value;
+            page_frame_t* pf = ((page_frame_t*) page_frame_array_start()) + parent_table[i].md.address;
+            pf->refcount++;
+        }
+    }
+    return child_table;
+}
+
+/**
+ * @brief Clones the virtual memory system for a parent. Marks all writeable memory as read-only and 
+ * marks the copy-on-write bit as pending. 
+ * @param bytes     Number of bytes to allocate 
+ * @return          Address of the child's new L0 page table.   
+ */
+void* clone_virtual_memory(pte* parent_table){
+    // step 1: need to walk the entire page table
+    pte* new_l0_table = (pte*) buddy_alloc_pt();
+    u32 n_entries = PAGE_SIZE / 8;
+    for(int i = 0; i < n_entries; i++){
+        if(parent_table[i].td.valid){
+            // clone the table entry
+            new_l0_table[i].value = parent_table[i].value;
+
+            // convert the page table entry address to a virtual address for the kernel
+            u64 new_table_address = (u64) clone_page_table((pte*) pa_to_va(parent_table[i].td.address << 12), 1);
+            if(new_table_address){
+                new_l0_table[i].td.address = va_to_pa(new_table_address) >> 12;
+            }else{
+                WARNING("NO VALID ENTRIES TO CLONE");
+            }
+        }
+    }
+    flush_tlb();
+
+    return (void*) new_l0_table;
+}
+
+void reap_virtual_memory(pte* parent_table, u32 level){
+    u32 n_entries = PAGE_SIZE / 8;
+    for(int i = 0; i < n_entries; i++){
+        if(!parent_table[i].md.valid) continue;
+
+        if(level < 3 && parent_table[i].td.type == 1) {
+            // This is a table, recurse!
+            reap_virtual_memory((pte*) pa_to_va(parent_table[i].td.address << 12), level + 1);
+        }else{
+            // check if page pointed to by the 
+            decrement_ref((void*) pa_to_va(parent_table[i].md.address << 12));
+        }
+    }
 }

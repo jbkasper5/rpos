@@ -7,6 +7,13 @@
 #include "utils/timer.h"
 #include "system/scheduler.h"
 #include "peripherals/gic.h"
+#include "system/gic.h"
+#include "drivers/kbd.h"
+
+// #define IRQ_DEBUG
+
+// keyboard flag for redirecting keypress IRQs
+u8 kbd_flag = 0;
 
 
 const char entry_error_messages[16][32] = {
@@ -31,8 +38,10 @@ const char entry_error_messages[16][32] = {
 	"ERROR_INVALID_EL0_32"	
 };
 
-void show_invalid_entry_message(uint32_t type, uint64_t esr, uint64_t instruction, uint64_t address){
+void show_invalid_entry_message(u32 type, u64 esr, u64 instruction, u64 address){
+	pcb_t* current = get_current();
 	ERROR("%s\n", entry_error_messages[type]);
+	ERROR("Procnum: %d\n", current->pid);
 	ERROR("\tException: 0x%x\n", esr);
 	ERROR("\tFaulting instruction: 0x%x\n", instruction);
 	ERROR("\tAddress causing fault: 0x%x\n", address);
@@ -45,26 +54,31 @@ void enable_interrupt_controller() {
 	// enable CPU interface for GIC
 	// interrupts have already been enabled in EL3 before dropping into kernel init
 	REGS_GICC->gicc_ctlr = 0x1;
+	REGS_BCMIRQ->irq0_enable_0 = AUX_IRQ;
+
+
 }
 
 
-void handle_irq(uint64_t reg_addr, uint8_t el){
+void handle_irq(u64 reg_addr, u8 el){
+    u32 irq = REGS_BCMIRQ->irq0_pending_0;
+	u32 gic_irq = REGS_GICC->gicc_iar;
+
+	#ifdef IRQ_DEBUG
 	DEBUG("Handling IRQ from EL %d\n", el);
-	// DEBUG("Handling IRQ (context: 0x%x)...\n", reg_addr);
-
-    uint32_t irq = REGS_BCMIRQ->irq0_pending_0;
-	uint32_t gic_irq = REGS_GICC->gicc_iar;
-
+	DEBUG("Handling IRQ (context: 0x%x)...\n", reg_addr);
 	DEBUG("BCM IRQ: %d, GIC IRQ: %d\n", irq, gic_irq);
+	#endif
+	
     while(irq){
         if(irq & AUX_IRQ){
             irq &= ~AUX_IRQ;
 
-            while((REGS_AUX->mu_iir & 4) == 4){
-                DEBUG("UART Recv: ");
-                uart_putc(uart_getc());
-                DEBUG("\n");
-            }
+            // while((REGS_AUX->mu_iir & 4) == 4){
+            //     DEBUG("UART Recv BCM: ");
+            //     uart_putc(uart_getc());
+            //     DEBUG("\n");
+            // }
         }
 
 		if (irq & SYS_TIMER_IRQ_1){
@@ -81,25 +95,36 @@ void handle_irq(uint64_t reg_addr, uint8_t el){
     }
 
 	// DEBUG("GIC IRQ: %d\n", gic_irq);
-
+	bool invoke_scheduler = FALSE;
     if (gic_irq < 1020) {  // 1020 = spurious interrupt ID threshold
         if (gic_irq == 30) {
+			#ifdef IRQ_DEBUG
 			DEBUG("Handling interrupt 30...\n");
-            // Handle ARM physical timer interrupt
-			// if in EL1, just prime the timer
-			// if in EL0, actually jump to scheduler code
-			if(el){
-				prime_physical_timer();
-			}else{
-				scheduler((reglist_t*) reg_addr);
-			}
+			#endif
+			invoke_scheduler = TRUE;
         }else if(gic_irq == 27){
 			DEBUG("Handling interrupt 27...\n");
 			
 			// handle the timer sleep stack
 			handle_virtual_timer();
+		}else if(gic_irq == 125){
+			uint32_t iir = REGS_AUX->mu_iir;
+			char c = REGS_AUX->mu_io & 0xFF;  // read clears the interrupt
+			// DEBUG("Mini UART Recieved interrupt 125: %c\n", c);	
+
+			// keyboard events now get routed here
+			if(kbd_flag){
+				handle_keyboard_event(c);
+				invoke_scheduler = TRUE;
+			}
+			
+		}else if(gic_irq == 89){
+			DEBUG("Mini UART Recv: ");
+			uart_putc(uart_getc());
+			DEBUG("\n");
 		}
         // Acknowledge end of interrupt
         REGS_GICC->gicc_eoir = gic_irq;
+		if(invoke_scheduler) scheduler();
     }
 }

@@ -12,3 +12,6 @@ armstub=armstub.bin
 enable_jtag_gpio=1
 gpio=22-27=a4
 gpio=22=a4,pu
+
+device_tree_address=0x10000
+device_tree=bcm2711-rpi-4-b.dtb

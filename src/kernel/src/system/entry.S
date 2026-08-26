@@ -10,12 +10,6 @@ my_string_3:
 pc_string:
     .asciz "Return PC: 0x%x\n"
 
-.section .data
-.align 3
-.global user_context_ptr
-user_context_ptr:
-    .quad 0               // 8 bytes, initialized to 0
-
 .section .text
 .macro ventry label
 .align 7
@@ -29,13 +23,6 @@ user_context_ptr:
     mrs x2, elr_el1
     mrs x3, far_el1
     bl show_invalid_entry_message
-.endm
-
-.macro store_context
-    adrp x0, user_context_ptr
-    add  x0, x0, :lo12:user_context_ptr
-    mov  x1, sp
-    str  x1, [x0]
 .endm
 
 .macro kernel_entry
@@ -56,6 +43,11 @@ user_context_ptr:
     stp x26, x27, [sp, #16 * 13]
     stp x28, x29, [sp, #16 * 14]
 
+    /*
+    stp v0, v1
+    
+    */
+
     // save SP_EL0 context
     mrs x0, SP_EL0
     stp x30, x0, [sp, #16 * 15]
@@ -65,21 +57,8 @@ user_context_ptr:
     mrs x1, SPSR_EL1
     stp x0, x1, [sp, #16 * 16]
 
-    // store user page table base into the stack as well
-    mrs x0, TTBR0_EL1
-    str x0, [sp, 16 * 17]
-
-    # #ifdef DEBUG
-    # mrs x1, ELR_EL1
-    # ldr x0, =pc_string
-    # bl kprintf
-    # #endif
-
     // reload x0 and x1 to preserve the parameters passed to the kernel
     ldp x0, x1, [sp, #16 * 0]
-
-    # move stack pointer into x0, so when we call the scheduler, we're passing the register file to it
-    # mov x0, sp
 .endm
 
 .macro kernel_exit
@@ -106,10 +85,6 @@ user_context_ptr:
     ldp x0, x1, [sp, #16 * 16]
     msr ELR_EL1, x0
     msr SPSR_EL1, x1
-
-    // restore user page table base from stack
-    ldr x0, [sp, #16 * 17]
-    msr TTBR0_EL1, x0
 
     ldp x0, x1, [sp, #16 * 0]
     add sp, sp, #S_FRAME_SIZE
@@ -158,31 +133,26 @@ error_invalid_el1t:
 
 # ERROR HANDLER FOR KERNEL MODE
 sync_invalid_el1h:
-    handle_invalid_entry SYNC_INVALID_EL1H
+    # handle_invalid_entry SYNC_INVALID_EL1H
     mrs x10, esr_el1
     mrs x11, far_el1
     mrs x12, elr_el1
-    b .   // halt here for GDB to inspect
+    handle_invalid_entry SYNC_INVALID_EL1H
+sync_invalid_el1h_hold:
+    wfi
+    b sync_invalid_el1h_hold   // halt here for GDB to inspect
 
 # IRQ HANDLER FOR KERNEL MODE
 handle_el1_irq:
     kernel_entry
 
-    #ifdef DEBUG
-    mrs x1, SPSR_EL1
-    lsr x1, x1, #2
-    and x1, x1, #3         // x1 = EL (0, 1, etc.)
-
-    ldr x0, =my_string_3
-    bl kprintf
-    #endif
+    // move context into first param
+    mov x0, sp
 
     mrs x1, SPSR_EL1
     lsr x1, x1, #2
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
-
-    // don't handle IRQs for EL1->EL1 yet
     bl handle_irq
     kernel_exit
     eret
@@ -199,22 +169,30 @@ error_invalid_el1h:
 # SYSTEM CALL HANDLER FOR USER MODE
 handle_el0_svc:
     # disable interrupts while we're handling the system call
-    msr daifset, #0xf
+    # msr daifset, #0xf
 
     // backup all user registers and processor state
     kernel_entry
 
-    // store user context into context variable
-    store_context
+    # msr daifclr, #0xf
 
     #ifdef DEBUG
-    mrs x1, SPSR_EL1
-    lsr x1, x1, #2
-    and x1, x1, #3         // x1 = EL (0, 1, etc.)
+    # mrs x1, SPSR_EL1
+    # lsr x1, x1, #2
+    # and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
-    ldr x0, =my_string_2
-    bl kprintf
+    # ldr x0, =my_string_2
+    # bl kprintf
     #endif
+
+    mrs x0, esr_el1
+
+    // extract the exception class from ESR
+    lsr x1, x0, #26
+
+    cmp x1, #0x24
+
+    b.eq handle_el0_fault_staging
 
     // prepare arguments for the system call
     ldp x0, x1, [sp, #16 * 0]
@@ -226,29 +204,44 @@ handle_el0_svc:
     // the syscall handler
     mov x6, x8
 
+    // sp contains the register file for the user process
+    mov x7, sp
+
     // handle the system call
     bl handle_syscall
 
+    // write the return value from handle_syscall into the x0 value of the 
+    str x0, [sp, #16 * 0]
+
+    // jump to the exit label
+    b handle_el0_irq_exit
+
+handle_el0_fault_staging:
+    // move the faulting address into the parameter register
+    mrs x0, far_el1
+
+    // branch and link to the fault handler
+    bl handle_el0_fault
+
+handle_el0_irq_exit:
     // restore registers and processor state
     kernel_exit
+
+    // eret will handle the re-enabling of interrupts with the SPSR register
     eret
 
 
 # IRQ HANDLER FOR USER MODE
 handle_el0_irq:
-    msr daifset, #0xf           // disable interrupts
     kernel_entry
 
-    // store user context into context variable
-    store_context
-
     #ifdef DEBUG
-    mrs x1, SPSR_EL1
-    lsr x1, x1, #2
-    and x1, x1, #3         // x1 = EL (0, 1, etc.)
+    # mrs x1, SPSR_EL1
+    # lsr x1, x1, #2
+    # and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
-    ldr x0, =my_string_3
-    bl kprintf
+    # ldr x0, =my_string_3
+    # bl kprintf
     #endif
 
     // put the register file pointer into x0
@@ -260,7 +253,9 @@ handle_el0_irq:
     and x1, x1, #3         // x1 = EL (0, 1, etc.)
 
     bl handle_irq
+
     kernel_exit
+    
     eret
 
 
@@ -290,6 +285,16 @@ error_invalid_el0_32:
     handle_invalid_entry ERROR_INVALID_EL0_32
     b err_hang
 
+
+
+.globl ret_from_fork
+ret_from_fork:
+
+    // needs to set the stack pointer backs
+    kernel_exit
+
+    eret
+    
 
 .globl err_hang
 err_hang:

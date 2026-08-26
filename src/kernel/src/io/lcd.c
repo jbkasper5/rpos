@@ -11,10 +11,10 @@
 frame_t frame;
 bool LCD_READY = FALSE;
 
-static uint32_t mb[1024] __attribute__((aligned(16)));
+static u32 mailbox[1024] __attribute__((aligned(16)));
 
-static void _init_framebuffer(uint32_t* mb, uint32_t width, uint32_t height, uint32_t depth) {
-    uint32_t i = 0;
+static void _init_framebuffer(u32* mb, u32 width, u32 height, u32 depth) {
+    u32 i = 0;
 
     mb[i++] = 104;       // Total size in bytes
     mb[i++] = 0;           // Request code
@@ -56,26 +56,26 @@ static void _init_framebuffer(uint32_t* mb, uint32_t width, uint32_t height, uin
     mb[i++] = TAG_END;
 
     // Send request
-    mailbox_write(CHANNEL_PROP, (uint64_t)mb & ~0xF);
+    mailbox_write(CHANNEL_PROP, (u64)mb & ~0xF);
 
     // Wait for response
     mailbox_read(CHANNEL_PROP);
 
-    uint64_t fb_addr = mb[19] & 0x3FFFFFFF;  // clear high flags
-    // uint32_t fb_size = mb[20] & 0x3FFFFFFF;
-    uint32_t pitch   = mb[23] & 0x7FFFFFFF;
+    u64 fb_addr = mb[19] & 0x3FFFFFFF;  // clear high flags
+    // u32 fb_size = mb[20] & 0x3FFFFFFF;
+    u32 pitch   = mb[23] & 0x7FFFFFFF;
 
 
     // display uses AARRGGBB
-    uint32_t* fb_bytes = (uint32_t *)GPU_BUS_TO_ARM(fb_addr);
+    u32* fb_bytes = (u32 *)GPU_BUS_TO_ARM(fb_addr);
 
-    frame.fb = fb_bytes ? pa_to_va(fb_bytes) : 0;
+    frame.fb = (u32*) (fb_bytes ? pa_to_va((u64) fb_bytes) : 0);
     frame.width = width;
     frame.height = height;
     frame.pitch = pitch;
 }
 
-void write_pixel(uint64_t idx, uint32_t argb){
+void write_pixel(u64 idx, u32 argb){
     frame.fb[idx] = argb;
 }
 
@@ -83,20 +83,20 @@ int panel_ready(){
     return LCD_READY;
 }
 
-static void fill_screen(frame_t* frame, uint32_t argb){
+static void fill_screen(frame_t* f, u32 argb){
     // frame width = 800
     // frame hieght = 480
     // sizeof(argb) = 4
-    memset(frame->fb, argb, frame->width * frame->height * sizeof(argb));
+    memset(f->fb, argb, f->width * f->height * sizeof(argb));
 }
 
 int init_framebuffer(){
-    _init_framebuffer(mb, 800, 480, 32);
+    _init_framebuffer(mailbox, 800, 480, 32);
     DEBUG("Frame buffer address: 0x%x\n", frame.fb);
     LCD_READY = (frame.fb) ? TRUE : FALSE;
 
     if(frame.fb){
-        map_pages(frame.fb, va_to_pa(frame.fb), 376, MAP_KERNEL, (uint64_t) L0_TABLE);
+        map_pages((u64) frame.fb, va_to_pa((u64) frame.fb), 376, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);
         fill_screen(&frame, 0xFF000000);
     }
 

@@ -1,39 +1,64 @@
 #ifndef __SYSCALLS_H__
 #define __SYSCALLS_H__
 
-#include "system/syscall_macros.h"
+#include "uabi/rpos/syscall_macros.h"
+#include "uabi/rpos/clone.h"
+#include "macros.h"
+#include "types/syscalls_types.h"
 
-typedef uint64_t (*syscall_fn_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
+#define SYS_ERROR           -1ULL
+#define SYS_SUCCESS         0
 
-uint64_t sys_io_setup(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 
-uint64_t sys_write(uint64_t fd, uint64_t buf, uint64_t count, uint64_t unused1, uint64_t unused2, uint64_t unused3);
-uint64_t sys_read(uint64_t fd, uint64_t buf, uint64_t count, uint64_t unused1, uint64_t unused2, uint64_t unused3);
-uint64_t sys_nanosleep(uint64_t ns, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5);
+u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64, u64, u64);
+u64 sys_getcwd(u64 buffer, u64 size, u64, u64, u64, u64);
+u64 sys_io_setup(u64, u64, u64, u64, u64, u64);
+u64 sys_write(u64 fd, u64 buf, u64 count, u64, u64, u64);
+u64 sys_read(u64 fd, u64 buf, u64 count, u64, u64, u64);
+u64 sys_nanosleep(u64 ns, u64, u64, u64, u64, u64);
+u64 sys_getpid(u64, u64, u64, u64, u64, u64);
+u64 sys_getppid(u64, u64, u64, u64, u64, u64);
+u64 sys_clock_gettime(u64 clock, u64 kernel_timespec, u64, u64, u64, u64);
+u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset);
+u64 sys_munmap(u64 addr, u64 len, u64, u64, u64, u64);
+u64 sys_clone3(u64 cl_args, u64 size, u64, u64, u64, u64);
+u64 sys_execve(u64 path, u64 argv, u64 envp, u64, u64, u64);
+u64 sys_waitid(u64 pid, u64, u64, u64, u64, u64);
+u64 sys_exit(u64 status, u64, u64, u64, u64, u64);
+u64 sys_exit_group(u64 status, u64, u64, u64, u64, u64);
+u64 sys_get_framebuffer(u64, u64, u64, u64, u64, u64);
+u64 sys_open(u64 path, u64 flags, u64, u64, u64, u64);
+u64 sys_getc(u64, u64, u64, u64, u64, u64);
+u64 sys_pipe2(u64 fd_rets, u64 flags, u64, u64, u64, u64);
+u64 sys_fork(u64, u64, u64, u64, u64, u64);
 
-uint64_t sys_clock_gettime(uint64_t clock, uint64_t kernel_timespec, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5);
-
-uint64_t sys_pulse_led(uint64_t pin_num, uint64_t turn_on, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4);
-
-uint64_t sys_mmap(uint64_t addr, uint64_t len, uint64_t prot, uint64_t flags, uint64_t fd, uint64_t offset);
-uint64_t sys_munmap(uint64_t addr, uint64_t len, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4);
-
-uint64_t sys_execve(uint64_t path, uint64_t argv, uint64_t envp, uint64_t unused1, uint64_t unused2, uint64_t unused3);
-
-uint64_t sys_exit_group(uint64_t status, uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5);
-
+u64 sys_test_mutex(u64, u64, u64, u64, u64, u64);
+u64 sys_pulse_led(u64 pin_num, u64 turn_on, u64, u64, u64, u64);
 
 syscall_fn_t syscall_table[SYS_MAX] = {
+    [SYS_IOCTL] = sys_ioctl,
     [SYS_IO_SETUP] = sys_io_setup,
+    [SYS_OPEN] = sys_open,
     [SYS_WRITE] = sys_write,
     [SYS_READ]  = sys_read,
     [SYS_MMAP] = sys_mmap,
+    [SYS_CLONE3] = sys_clone3,
     [SYS_EXECVE] = sys_execve,
     [SYS_MUNMAP] = sys_munmap,
+    [SYS_EXIT] = sys_exit,
     [SYS_EXIT_GROUP] = sys_exit_group,
     [SYS_NANOSLEEP] = sys_nanosleep,
+    [SYS_GETPID] = sys_getpid,
+    [SYS_GETPPID] = sys_getppid,
     [SYS_CLOCK_GETTIME] = sys_clock_gettime,
     [SYS_PULSE_LED] = sys_pulse_led,
+    [SYS_GET_FRAMEBUFFER] = sys_get_framebuffer,
+    [SYS_GETC] = sys_getc,
+    [SYS_PIPE2] = sys_pipe2,
+    [SYS_FORK] = sys_fork,
+    [SYS_TEST_MUTEX] = sys_test_mutex,
+    [SYS_WAITID] = sys_waitid,
+    [SYS_GETCWD] = sys_getcwd,
 };
 
 #endif

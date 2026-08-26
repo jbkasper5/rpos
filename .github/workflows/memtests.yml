@@ -1,0 +1,31 @@
+name: memtests
+
+# Build and run the allocator (buddy + slab) host test suite on every pull
+# request targeting ANY branch, so a change that breaks memory management turns
+# the check red. Pair with a branch-protection rule (see tests/README.md) to
+# make it a required, merge-blocking gate.
+on:
+  pull_request:
+    branches: ['**']
+
+# only keep the newest run per ref in flight
+concurrency:
+  group: memtests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  memtests:
+    # macos-latest is arm64 + clang, matching the toolchain the suite is
+    # validated on. (The kernel-TU warning flags in tests/Makefile are
+    # clang-specific, so an ubuntu/gcc runner would need them adjusted.)
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # `make test` also runs the `-DDEBUG` syntax gate and builds the kernel
+      # memory TUs unmodified; it exits non-zero if any test fails, crashes, or
+      # times out, which fails this job.
+      - name: Build and run the memory test suite
+        working-directory: tests
+        run: make test

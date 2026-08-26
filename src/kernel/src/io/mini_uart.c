@@ -9,7 +9,7 @@
 #define TXD 14
 #define RXD 15
 
-uint8_t USE_PANEL = TRUE;
+u8 USE_PANEL = TRUE;
 
 void disable_panel(){
     USE_PANEL = FALSE;

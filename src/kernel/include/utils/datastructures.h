@@ -2,23 +2,13 @@
 #define __DATASTRUCTURES_H__
 
 #include "macros.h"
+#include "types/datastructures_types.h"
 
 /* ============= PRIORITY QUEUES ============= */
-typedef struct pqnode_s{
-    uint64_t priority;
-    uintptr_t element; // generic element pointer
-} pqnode_t;
-
-typedef struct pq_s{
-    pqnode_t* heap;
-    int size;           // physical size
-    int items;          // logical size
-} pq_t;
-
 pq_t* pq_init();
 void pq_destroy();
 
-void pq_add(pq_t* pq, uint64_t priority, uintptr_t element);
+void pq_add(pq_t* pq, u64 priority, uintptr_t element);
 pqnode_t pq_pop(pq_t* pq);
 pqnode_t pq_peek(pq_t* pq);
 
@@ -28,11 +18,6 @@ void _pq_swim(pq_t* pq, int idx);
 /* =========================================== */
 
 /* ============= LINKED LISTS ============= */
-typedef struct list_head_s{
-    struct list_head_s* next;
-    struct list_head_s* prev;
-} list_head_t;
-
 #define LIST_HEAD(name) list_head_t name = { &(name), &(name) };
 #define list_entry(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
 
@@ -61,4 +46,10 @@ static inline int list_empty(list_head_t* head) {
 }
 /* ======================================== */
 
+/* ============= SEARCH TRIES ============= */
+trie* trie_init();
+void trie_add(trie* t, const char* key, u64);
+void trie_remove(trie* t, const char* key);
+u64 trie_get(trie* t, const char* key);
+/* ======================================== */
 #endif

@@ -15,6 +15,9 @@
 #include "filesystem/filesystem.h"
 #include "memory/kmalloc.h"
 #include "filesystem/elf.h"
+#include "drivers/dt.h"
+#include "drivers/kbd.h"
+#include "memory/memprofiler.h"
 
 void hardware_init(){
 
@@ -32,21 +35,6 @@ void hardware_init(){
     INFO("Enabling system timers...\n");
     timer_init();
 
-    // INFO("Enabling physical timer...\n");
-    // physical_timer_enable();
-
-    INFO("Enabling virtual timer...\n");
-    virtual_timer_enable();
-
-    INFO("Priming physical timer...\n");
-    prime_physical_timer();
-
-    INFO("Enabling IRQ interrupts...\n");
-    irq_enable();
-
-    INFO("Enabling system scheduler...\n");
-    scheduler_init();
-
     INFO("Enabling SD...\n");
     if(!emmc_init()){
         ERROR("SD card initialization failed.\n");
@@ -56,39 +44,36 @@ void hardware_init(){
     INFO("Initializing kernel heap...\n");
     kheap_init();
 
+    INFO("Enabling system scheduler...\n");
+    scheduler_init();
+
     INFO("Initializing filesystem...\n");
     filesystem_init();
+
+    INFO("Initializing device drivers...\n");
+    device_tree_init();
+
+    INFO("Initializing keyboard handler...\n");
+    keyboard_init();
+
+    INFO("Enabling physical timer...\n");
+    physical_timer_enable();
+
+    INFO("Enabling virtual timer...\n");
+    virtual_timer_enable();
+
+    INFO("Priming physical timer...\n");
+    prime_physical_timer();
+
+    // INFO("Enabling IRQ interrupts...\n");
+    // irq_enable();
 
     INFO("Hardware initialization complete.\n\n");
 }
 
 int kernel_main(){
-    
-    // DEBUG("Raspberry PI Baremetal OS Initializing...\n");
     hardware_init();
-
-    file_t* file = open("/bin/pwd", 0);
-    ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
-    if(!file){
-        ERROR("Failed to open file.\n");
-    }else{
-        INFO("Successfully opened file. FP: 0x%x. Starting ELF parsing.\n", file);
-        readelf(file);
-        close(file);
-    }
-    
-    // while(TRUE){
-    //     uart_putc(uart_getc());
-    // }
-
-    // DEBUG("Waiting complete, dropping to user mode...\n");
+    add_test_section_to_scheduler(); 
     start_scheduler();
     return 0;
 }
-
-/*
-TODO:
-    - Maintain the reference counter
-        - To know when pages can be delivered back to the buddy allocator
-    - Finish buddy free
-*/

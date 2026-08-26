@@ -10,3 +10,8 @@ screenlog.0
 debugging/*
 tutorial/*
 dmp/
+resources/
+*.txt
+*.o
+tests/build/
+.vscode/

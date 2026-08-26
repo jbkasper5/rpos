@@ -3,7 +3,7 @@
 
 #include "macros.h"
 
-void* memcpy(void* dest, const void* src, uint32_t bytes);
+void* memcpy(void* dest, const void* src, u32 bytes);
 void* memset(void* ptr, int value, size_t len);
 
 #endif
