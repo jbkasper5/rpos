@@ -123,15 +123,12 @@ u64 sys_getcwd(u64 buffer, u64 size, u64, u64, u64, u64){
     return 0;
 }
 
-
-// NR 93
 u64 sys_exit(u64 status, u64, u64, u64, u64, u64){
     INFO("Current running process number: %d\n", get_current()->pid);
     reap();
     return SYS_SUCCESS;
 }
 
-// NR 94
 u64 sys_exit_group(u64 status, u64, u64, u64, u64, u64){
     INFO("Current running process number: %d\n", get_current()->pid);
     reap();
@@ -176,22 +173,10 @@ u64 sys_open(u64 path, u64 flags, u64, u64, u64, u64){
 
 u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64, u64, u64){
     INFO("Handling IOCTL Request: fd=%d, cmd=0x%x, arg=0x%x\n", fd, cmd, arg);
-    switch(cmd){
-        case FBIOGET_VSCREENINFO: 
-            fb_var_screeninfo test = {
-                .bits_per_pixel = 10
-            };
-            memcpy((void*) arg, &test, sizeof(fb_var_screeninfo));
-            return SYS_SUCCESS;
-        case FBIOPUT_VSCREENINFO: break;
-        case FBIOGET_FSCREENINFO: break;
-        case FBIOGETCMAP: break;
-        case FBIOPUTCMAP: break;
-        case FBIOPAN_DISPLAY: break;
-        default:
-            return SYS_ERROR;
+    pcb_t* current = get_current();  
+    if(current->fds[fd] && current->fds[fd]->file_ops->ioctl){
+        return current->fds[fd]->file_ops->ioctl(current->fds[fd], cmd, arg);
     }
-    return SYS_ERROR;
 }
 
 u64 sys_getc(u64, u64, u64, u64, u64, u64){

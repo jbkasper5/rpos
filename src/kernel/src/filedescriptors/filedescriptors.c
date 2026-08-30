@@ -1,6 +1,12 @@
 #include "filedescriptors/filedescriptors.h"
 #include "memory/kmalloc.h"
 
+/*––––––––––––––––––––––––––––– PIPE FUNCTIONS –––––––––––––––––––––––––––––*/
+/// @brief 
+/// @param file 
+/// @param buf 
+/// @param count 
+/// @return 
 int pipe_write(struct file_s* file, const char* buf, u64 count){
     pipe_data_t* pipe_data = (pipe_data_t*) file->private_data;
     if(!pipe_data) return 0;
@@ -11,6 +17,11 @@ int pipe_write(struct file_s* file, const char* buf, u64 count){
     return 0;
 }
 
+/// @brief 
+/// @param file 
+/// @param buf 
+/// @param count 
+/// @return 
 int pipe_read(struct file_s* file, char* buf, u64 count){
     // use file->pos to read from the pipe
     pipe_data_t* pipe_data = (pipe_data_t*) file->private_data;
@@ -48,6 +59,9 @@ int pipe_read(struct file_s* file, char* buf, u64 count){
     return to_read;
 }
 
+/// @brief 
+/// @param file 
+/// @return 
 int pipe_open(struct file_s* file){
     // allocate the pipe's buffer (for now 1 page)
     file->private_data = kmalloc(sizeof(pipe_data_t));
@@ -73,7 +87,9 @@ int pipe_open(struct file_s* file){
     return TRUE;
 }
 
-
+/// @brief 
+/// @param file 
+/// @return 
 int pipe_close(struct file_s* file){
     pipe_data_t* priv_data = (pipe_data_t*) file->private_data;
 
@@ -84,14 +100,46 @@ int pipe_close(struct file_s* file){
 
     return TRUE;
 }
+/*––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 
+
+/*––––––––––––––––––––––––––––– UART FUNCTIONS –––––––––––––––––––––––––––––*/
+/// @brief 
+/// @param file 
+/// @param buf 
+/// @param count 
+/// @return 
 int uart_write(struct file_s* file, const char* buf, u64 count){
     kprintf(buf);
     return 0;
 }
 
+/// @brief 
+/// @param file 
+/// @param buf 
+/// @param count 
+/// @return 
 int uart_read(struct file_s* file, char* buf, u64 count){
     
 }
+/*––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
+
+/*––––––––––––––––––––––––––––– I2C FUNCTIONS –––––––––––––––––––––––––––––*/
+int i2c_open(file_t* fd){
+    INFO("Opening i2c file...\n");
+}
+
+int i2c_read(file_t* fd, const char* buf, u64 count){
+    INFO("Reading i2c file...\n");
+}
+
+int i2c_write(file_t* fd, char* buf, u64 count){
+    INFO("Writing i2c file...\n");
+}
+
+int i2c_ioctl(file_t* fd, u64 cmd, u64 arg){
+    INFO("IOCTL request for i2c file...\n");
+}
+/*–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 
 // 0xffff80003ffcadf0
