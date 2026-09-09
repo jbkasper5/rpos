@@ -8,4 +8,6 @@
 #define FBIOPUTCMAP		        0x4605
 #define FBIOPAN_DISPLAY		    0x4606
 
+#define I2C_SLAVE               0x0703
+
 #endif

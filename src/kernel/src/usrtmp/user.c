@@ -30,7 +30,14 @@ static TEST_FN void i2c_test(){
     }
 
     syscall(SYS_IOCTL, fd, 0x0703, 0x08);
-    
+
+    // char buf[] = "Hello!\n";
+
+    // syscall(SYS_WRITE, fd, buf, 7);
+
+
+    int ang = 135;
+    syscall(SYS_WRITE, fd, &ang, sizeof(int));
 }
 
 static TEST_FN void commandline(){

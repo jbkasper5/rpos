@@ -1,5 +1,8 @@
 #include "filedescriptors/filedescriptors.h"
 #include "memory/kmalloc.h"
+#include "io/gpio.h"
+#include "peripherals/bsc.h"
+#include "uabi/rpos/ioctls.h"
 
 /*––––––––––––––––––––––––––––– PIPE FUNCTIONS –––––––––––––––––––––––––––––*/
 /// @brief 
@@ -126,19 +129,102 @@ int uart_read(struct file_s* file, char* buf, u64 count){
 
 /*––––––––––––––––––––––––––––– I2C FUNCTIONS –––––––––––––––––––––––––––––*/
 int i2c_open(file_t* fd){
+    #define SDA_GPIO    2
+    #define SCL_GPIO    3
+
     INFO("Opening i2c file...\n");
+
+    // enable the I2C pins and set them to Alt0
+    gpio_pin_enable(SDA_GPIO);
+    gpio_pin_enable(SCL_GPIO);
+    gpio_pin_set_func(SDA_GPIO, GFAlt0);
+    gpio_pin_set_func(SCL_GPIO, GFAlt0);
+
+    REGS_BSC1->c.bits.i2cen = 1;
+    REGS_BSC1->div.bits.cdiv = 1500;
+
+    INFO("GPIO confiured.\n");
 }
 
 int i2c_read(file_t* fd, const char* buf, u64 count){
+    if(!buf){
+        WARNING("Attempted I2C read on NULL buffer address\n");
+        return 0;
+    }
     INFO("Reading i2c file...\n");
+
+    REGS_BSC1->a.bits.addr = (u8)(uintptr_t) fd->private_data;
+}
+
+static u32 transfer_block(char* buf, u64 count){
+    u64 written = 0;
+
+    // start the transfer
+    REGS_BSC1->c.bits.st = 1;
+
+    while(written < count){
+
+        // stall if the queue is full
+        while(!REGS_BSC1->s.bits.txd);
+
+        DEBUG("tx %x\n", buf[written]);
+
+        // write the next byte once there's room in the FIFO queue
+        REGS_BSC1->fifo.bits.data = buf[written++];
+    }
+
+    // wait for the transfer to complete
+    while (!REGS_BSC1->s.bits.done);
+
+    INFO("Transfer complete status: 0x%x\n", REGS_BSC1->s.bits.err);
+
+    return REGS_BSC1->s.bits.err;
 }
 
 int i2c_write(file_t* fd, char* buf, u64 count){
-    INFO("Writing i2c file...\n");
+    if(!buf){
+        WARNING("Attempted I2C write on NULL buffer address\n");
+        return 0;
+    }
+
+    u32 dlen_max = (1 << 16) - 1;
+
+    if(count > dlen_max){
+        WARNING("Attempted I2C message longer than supported message width.\n");
+        return 0;
+    }
+
+    // specify slave device address
+    REGS_BSC1->a.bits.addr = (u8)(uintptr_t) fd->private_data;
+
+    // clear the transfer buffer
+    REGS_BSC1->c.bits.clear = 1;
+
+    // set direction as write
+    REGS_BSC1->c.bits.read = 0;
+
+    // set clock frequency 
+    REGS_BSC1->div.bits.cdiv = 2500;
+
+    // Transfer can support a maximum of 1 << 15 bytes, and the FIFO is a 16-byte queue
+    // transfer needs to continously top off the FIFO while there are still bytes to write
+    u64 to_transfer = MIN(count, dlen_max);
+    while(to_transfer){
+        REGS_BSC1->dlen.bits.dlen = to_transfer;
+        u32 status = transfer_block(buf, to_transfer);
+        // check for err
+        to_transfer = MIN(count - to_transfer, dlen_max);
+    }
 }
 
 int i2c_ioctl(file_t* fd, u64 cmd, u64 arg){
     INFO("IOCTL request for i2c file...\n");
+    switch(cmd){
+        case I2C_SLAVE:
+            fd->private_data = (void*) arg;   // stash the 7-bit addr
+            return 0;
+    }
+    return -1;
 }
 /*–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 
