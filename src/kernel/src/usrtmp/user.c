@@ -7,13 +7,40 @@
 #include "macros.h"
 
 extern int syscall(u64, ...);
+static TEST_FN void commandline();
 static TEST_FN void process_command(char* cmd);
+static TEST_FN void i2c_test();
 void printf(char* format_str, ...);
 static const char path[1024] = "/bin/";
 
 // Linux KVM
 TEST_FN void user(){
     // register the keyboard
+    // commandline();
+    i2c_test();
+
+    while(1);
+}
+
+static TEST_FN void i2c_test(){
+    int fd = syscall(SYS_OPEN, "/dev/i2c");
+    if(fd < 0){
+        printf("Error: file not found: %d\n", fd);
+        return;
+    }
+
+    syscall(SYS_IOCTL, fd, 0x0703, 0x08);
+
+    // char buf[] = "Hello!\n";
+
+    // syscall(SYS_WRITE, fd, buf, 7);
+
+
+    int ang = 135;
+    syscall(SYS_WRITE, fd, &ang, sizeof(int));
+}
+
+static TEST_FN void commandline(){
     int fd = syscall(SYS_OPEN, "/dev/ttyS1");
     char buf[1024];
     char* cmdptr = &buf;
@@ -33,7 +60,6 @@ TEST_FN void user(){
         }
     }
 }
-
 
 static TEST_FN void process_command(char* cmd){
     int pid = syscall(SYS_FORK);

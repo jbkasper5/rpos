@@ -70,6 +70,7 @@ void device_tree_init(){
     device_trie = trie_init();
     trie_add(device_trie, "/dev/fb0", 1);
     trie_add(device_trie, "/dev/ttyS1", (u64) &keyboard_file);
+    trie_add(device_trie, "/dev/i2c", (u64) &i2c_file);
 
     if(FALSE){
         fdt_header* header = (fdt_header*) tree;
