@@ -190,8 +190,12 @@ handle_el0_svc:
     // extract the exception class from ESR
     lsr x1, x0, #26
 
+    // 0x24 is data abort
     cmp x1, #0x24
+    b.eq handle_el0_fault_staging
 
+    // 0x20 is an instruction abort
+    cmp x1, #0x20
     b.eq handle_el0_fault_staging
 
     // prepare arguments for the system call
@@ -219,6 +223,9 @@ handle_el0_svc:
 handle_el0_fault_staging:
     // move the faulting address into the parameter register
     mrs x0, far_el1
+
+    // move the exception status into x1
+    mrs x1, esr_el1
 
     // branch and link to the fault handler
     bl handle_el0_fault

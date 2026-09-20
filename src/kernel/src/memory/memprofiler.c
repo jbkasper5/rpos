@@ -67,7 +67,7 @@ void profile(memprofiler_cfg* cfg){
     page_frame_t* base_end = (page_frame_t*) page_frame_array_end();
     page_frame_t* start = base + cfg->start_pfn;
     u64 n_pages = (cfg->count) ? cfg->count : base_end - start;
-    kprintf("Profiling %d pages...\n", n_pages);
+    // kprintf("Profiling %d pages...\n", n_pages);
 
     // u64 start_addr = (start - base) << 12;
     // page_frame_t* curr = start;

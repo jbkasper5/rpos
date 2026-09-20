@@ -5,6 +5,7 @@
 #include "types/datastructures_types.h"
 #include "types/disk_types.h"
 #include "types/filesystem_types.h"
+#include "types/virtual_memory_types.h"
 
 #define MAX_PROCESSES 64
 #define MAX_OPEN_FILES 32
@@ -60,6 +61,8 @@ typedef struct pcb_s {
     list_head_t siblings;
 
     directory* cwd;
+
+    list_head_t vmas;
 
     file_t* fds[MAX_OPEN_FILES];
     // file structure information

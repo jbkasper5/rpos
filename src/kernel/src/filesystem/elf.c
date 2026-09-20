@@ -5,6 +5,8 @@ extern void do_user_things();
 
 
 void readelf(file_t* file){
+    // TODO: user pages need to be mapped as single pages, not as large blocks
+
     ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
     read(file, block, sizeof(ext4_block));
 
@@ -41,6 +43,9 @@ void readelf(file_t* file){
 
     u64* new_proc_l0 = buddy_alloc_pt();
 
+    // switch to new user virtual memory, also flushes TLB
+    switch_user_tlb(pa_to_va(new_proc_l0));
+
     elf64_program_header* program_header = UNSCALED_POINTER_ADD(header, header->e_phoff);
 
     for(int i = 0; i < header->e_phnum; i++){
@@ -58,23 +63,36 @@ void readelf(file_t* file){
         if(program_header->p_flags & PF_W) flags |= MAP_WRITE;
         if(program_header->p_flags & PF_X) flags |= MAP_EXEC;
 
+        // get the page order for the amount of bytes taken up by this section
         u16 order = log2_pow2(program_header->p_memsz / 4096);
 
-        u64 phys_block = buddy_alloc(program_header->p_memsz);
+        u64 phys_block;
 
-        // map physical block into kernel memory so we can set up the process
-        map(phys_block, va_to_pa(phys_block), order, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);
+        // allocate all singleton pages required by this section. Mark them RW so memory can be copied
+       for(int i = 0; i < (1 << order); i++){
+            // allocate physical block to contain the data we wish to store
+            phys_block = buddy_alloc(PAGE_SIZE);
 
+            // map physical block into user memory page by page
+            map((program_header->p_vaddr + (i * PAGE_SIZE)), va_to_pa(phys_block), 0, MAP_USER | MAP_READ | MAP_WRITE, new_proc_l0);
+       }
+
+        // seek and read the segment of memory 
         seek(file, program_header->p_offset, SEEK_SET);
         read(file, rootfs.block_buf, program_header->p_filesz);
 
+        // find the offset of the memory within the page we need to copy to
         u64 in_page_offset = program_header->p_vaddr % PAGE_SIZE;
 
-        memcpy(UNSCALED_POINTER_ADD(phys_block, in_page_offset), rootfs.block_buf, program_header->p_filesz);
+        // copy the data from the kernel side buffer into the kernel allocated block
+        memcpy(UNSCALED_POINTER_ADD(program_header->p_vaddr, in_page_offset), rootfs.block_buf, program_header->p_filesz);
 
-        // map the program sections into the new L0 table for the current process
-        map(program_header->p_vaddr, va_to_pa(phys_block), order, flags, new_proc_l0); // 0x400000 -> 3ffd7000
+        // update the mapping for the region with proper permissions
+        u64 start_addr = ALIGN_DOWN(program_header->p_vaddr, PAGE_SIZE);
+        u64 end_addr = ALIGN_UP((program_header->p_vaddr + program_header->p_memsz), PAGE_SIZE);
+        update_mapping(start_addr, end_addr, flags, new_proc_l0);
 
+        // TODO: update mappings with proper flags
         program_header++;
     }
 
@@ -105,9 +123,6 @@ void readelf(file_t* file){
     map(0x0000800000000ULL - stack_size, va_to_pa(stack_base), 1, MAP_USER | MAP_READ | MAP_WRITE, new_proc_l0);
     // 0x800000000
     // 0x7fffffff0
-
-    // swap the base table for the process
-    switch_user_tlb(va_to_pa(current->ttbr));
 
     // reap the virtual memory for the abandoned process state
     reap_virtual_memory(old_ttbr, 0);

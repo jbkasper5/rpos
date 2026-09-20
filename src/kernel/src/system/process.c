@@ -43,10 +43,14 @@ pcb_t* procalloc(u64 entrypoint){
 
     process->parent = get_current();
 
+    // initialize process bookkeeping lists
     INIT_LIST_HEAD(&process->children);
     INIT_LIST_HEAD(&process->siblings);
     INIT_LIST_HEAD(&process->proclist);
     INIT_LIST_HEAD(&process->runqueue);
+
+    // initialize the VMA list
+    INIT_LIST_HEAD(&process->vmas);
 
     // not waiting on anyone by default
     process->waiting_on = WAITING_NONE;
@@ -59,8 +63,11 @@ pcb_t* procalloc(u64 entrypoint){
     u32 stack_size = PAGE_SIZE * 2;
     u64 stack_base = buddy_alloc(stack_size); // stack base page address = 3FFD5000
 
-    // map the virtual stack to the process (0x7ffffe000 -> 3FFD5000)
-    map(USER_STACK_TOP - stack_size, va_to_pa(stack_base), 1, MAP_USER | MAP_READ | MAP_WRITE, process->ttbr);
+    vma* stack_vma = kmalloc(sizeof(vma));
+    stack_vma->start = USER_STACK_TOP - stack_size;
+    stack_vma->end = USER_STACK_TOP;
+    stack_vma->permissions = (VMA_READ | VMA_WRITE);
+    list_add(&stack_vma->list, &process->vmas);
 
     void* kstack = initialize_proc_kstack();
     process->kernel_stack = (u64) kstack;
@@ -115,6 +122,20 @@ pcb_t* clone_active_proc(){
     INIT_LIST_HEAD(&process->siblings);
     INIT_LIST_HEAD(&process->proclist);
     INIT_LIST_HEAD(&process->runqueue);
+
+    // clear the VMAs of the cloned process
+    INIT_LIST_HEAD(&process->vmas);
+
+    // iterate over parent VMAs and copy then into the new process
+    for (list_head_t* p = current->vmas.prev; p != &current->vmas; p = p->prev){
+
+        // copy parent process VMA into new child VMA list
+        vma* v = list_entry(p, vma, list);
+        vma* new_vma = (vma*) kmalloc(sizeof(vma));
+        if(!new_vma) panic();
+        memcpy(new_vma, v, sizeof(vma));
+        list_add(&new_vma->list, &process->vmas);
+    }
 
     process->parent = current;
 

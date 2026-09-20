@@ -18,14 +18,22 @@ extern u64 pa_to_va(u64 va);
 /**
  * @brief Rolls back a partial memory mapping made by the mapper functions on error.
  */
-// static void invalidate(){
+// static void rollback(u64 virt_start, u64 blocks, u64 pt_base){
 
 // }
 
-static inline void clean_pte(void *addr) {
+static inline void clean_cached_pte(void *addr) {
     asm volatile("dsb ish" ::: "memory");
     asm volatile("dc cvac, %0" :: "r"(addr) : "memory");   // clean to PoC
 }
+
+static inline void clear_pte_tlb(u64 va){
+    asm volatile("dsb ish" ::: "memory");                          // prior PTE write/clean done before invalidate
+    asm volatile("tlbi vaae1is, %0" :: "r"(va >> 12) : "memory");  // evict the stale entry for this VA
+    asm volatile("dsb ish" ::: "memory");                          // invalidate (and its broadcast) complete
+    asm volatile("isb" ::: "memory");                              // next access re-walks -> new perms
+}
+
 
 
 uintptr_t alloc_page_table(){
@@ -50,25 +58,25 @@ uintptr_t alloc_page_table(){
  * @param flags     A bitfield of flags
  * @return          A table descriptor bitfield with appropriate attributes set, only needs address
  */
-static table_descriptor_t parse_table_flags(u64 flags){
-    table_descriptor_t td = {0};
+static pte parse_table_flags(u64 flags){
+    pte td = {0};
 
     // if(!((flags & MAP_KERNEL) ^ (flags & MAP_USER))){
     //     ERROR("Incorrect flags supplied to map function: received 0x%x, expected exactly one of 0x%x or 0x%x\n", flags, MAP_KERNEL, MAP_USER);
     //     return td;
     // }
 
-    td.bits.valid = 1;
-    td.bits.type = 1;
-    td.bits.uxn = 0;
-    td.bits.pxn = 0;
-    td.bits.address = 0;
+    td.td.valid = 1;
+    td.td.type = 1;
+    td.td.uxn = 0;
+    td.td.pxn = 0;
+    td.td.address = 0;
 
     if(flags & MAP_EXEC){
         if(flags & MAP_KERNEL){
-            td.bits.pxn = 0;
+            td.td.pxn = 0;
         }else if(flags & MAP_USER){
-            td.bits.uxn = 0;
+            td.td.uxn = 0;
         }
     }
 
@@ -80,8 +88,8 @@ static table_descriptor_t parse_table_flags(u64 flags){
  * @param flags     A bitfield of flags
  * @return          A memory descriptor (block/page) bitfield with appropriate attributes set, only needs address
  */
-static mem_descriptor_t parse_block_flags(u64 flags, bool is_page){
-    mem_descriptor_t md = {0};
+static pte parse_block_flags(u64 flags, bool is_page){
+    pte md = {0};
 
     // if(!((flags & MAP_KERNEL) ^ (flags & MAP_USER))){
     //     ERROR("Incorrect flags supplied to map function: received 0x%x, expected exactly one of 0x%x or 0x%x\n", flags, MAP_KERNEL, MAP_USER);
@@ -89,47 +97,47 @@ static mem_descriptor_t parse_block_flags(u64 flags, bool is_page){
     // }
 
     // page is valid
-    md.bits.valid = 1;
-    md.bits.af = 1;
-    md.bits.ns = 0;
-    md.bits.sh = 3;
-    md.bits.attr_index = 0;
-    md.bits.type = is_page;
+    md.md.valid = 1;
+    md.md.af = 1;
+    md.md.ns = 0;
+    md.md.sh = 3;
+    md.md.attr_index = 0;
+    md.md.type = is_page;
 
     // by default, kernel read only
-    md.bits.ap = EL0_NA_EL1_RO;
+    md.md.ap = EL0_NA_EL1_RO;
 
     // by default, not executable
-    md.bits.pxn = 1;
-    md.bits.uxn = 1;
+    md.md.pxn = 1;
+    md.md.uxn = 1;
 
     if (flags & MAP_DEVICE){
-        md.bits.attr_index = 1;
-        md.bits.sh = 0;
+        md.md.attr_index = 1;
+        md.md.sh = 0;
     }else if(flags & MAP_CACHE){
-        md.bits.attr_index = 2;
+        md.md.attr_index = 2;
     }
 
     if(flags & MAP_EXEC){
         if(flags & MAP_KERNEL){
-            md.bits.pxn = 0;
+            md.md.pxn = 0;
         }else if(flags & MAP_USER){
-            md.bits.uxn = 0;
+            md.md.uxn = 0;
         }
     }
 
     if(flags & MAP_USER){
-        md.bits.ng = 1;
+        md.md.ng = 1;
         if(flags & MAP_READ && flags & MAP_WRITE){
-            md.bits.ap = EL0_RW_EL1_RW;
+            md.md.ap = EL0_RW_EL1_RW;
         }else if(flags & MAP_READ){
-            md.bits.ap = EL0_RO_EL1_RO;
+            md.md.ap = EL0_RO_EL1_RO;
         }
     }else if(flags & MAP_KERNEL){
         if(flags & MAP_READ && flags & MAP_WRITE){
-            md.bits.ap = EL0_NA_EL1_RW;
+            md.md.ap = EL0_NA_EL1_RW;
         }else if(flags & MAP_READ){
-            md.bits.ap = EL0_NA_EL1_RO;
+            md.md.ap = EL0_NA_EL1_RO;
         }
     }
 
@@ -149,13 +157,13 @@ static mem_descriptor_t parse_block_flags(u64 flags, bool is_page){
  */
 bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_base){
     // get pointer to page table, interpreted as table descriptor
-    table_descriptor_t* l0_table = (table_descriptor_t*) pt_base;
-    table_descriptor_t* l1_table;
-    table_descriptor_t* l2_table;
-    mem_descriptor_t* l3_table;
+    pte* l0_table = (pte*) pt_base;
+    pte* l1_table;
+    pte* l2_table;
+    pte* l3_table;
 
-    table_descriptor_t ptte = parse_table_flags(flags);
-    mem_descriptor_t ptme = parse_block_flags(flags, TRUE);
+    pte ptte = parse_table_flags(flags);
+    pte ptme = parse_block_flags(flags, TRUE);
 
     uintptr_t va = (uintptr_t) virt_block;
     uintptr_t pa = (uintptr_t) phys_block;
@@ -170,30 +178,41 @@ bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_bas
         idx2 = (va >> 21) & 0x1FF;
         idx3 = (va >> 12) & 0x1FF;
 
-        if(!l0_table[idx0].bits.valid){
-            ptte.bits.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
+        if(!l0_table[idx0].td.valid){
+            ptte.td.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
-            clean_pte(&l0_table[idx0]);
+            clean_cached_pte(&l0_table[idx0]);
         }
-        l1_table = (table_descriptor_t*) (((u64) l0_table[idx0].bits.address << PAGE_SHIFT) + virt_base());
-        if (!l1_table[idx1].bits.valid) {
-            ptte.bits.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
+        
+        l1_table = (pte*) (((u64) l0_table[idx0].td.address << PAGE_SHIFT) + virt_base());
+        if (!l1_table[idx1].td.valid) {
+            ptte.td.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
-            clean_pte(&l1_table[idx1]);
+            clean_cached_pte(&l1_table[idx1]);
         }
 
-        l2_table = (table_descriptor_t*) (((u64) l1_table[idx1].bits.address << PAGE_SHIFT) + virt_base());
-        if (!l2_table[idx2].bits.valid) {
-            ptte.bits.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
+        l2_table = (pte*) (((u64) l1_table[idx1].td.address << PAGE_SHIFT) + virt_base());
+        if (!l2_table[idx2].td.valid) {
+            ptte.td.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l2_table[idx2] = ptte;
-            clean_pte(&l2_table[idx2]);
+            clean_cached_pte(&l2_table[idx2]);
         }
 
-        l3_table = (mem_descriptor_t*) (((u64) l2_table[idx2].bits.address << PAGE_SHIFT) + virt_base());
-        if (!l3_table[idx3].bits.valid) {
-            ptme.bits.address = (pa >> PAGE_SHIFT);
+        l3_table = (pte*) (((u64) l2_table[idx2].td.address << PAGE_SHIFT) + virt_base());
+        if (!l3_table[idx3].md.valid) {
+            ptme.md.address = (pa >> PAGE_SHIFT);
             l3_table[idx3] = ptme;
-            clean_pte(&l3_table[idx3]);
+            clean_cached_pte(&l3_table[idx3]);
+        }else{
+            // WARNING("ENTRY ALREADY EXISTS AT THIS L3 INDEX: %d\n", idx3);
+            // ptme.md.address = l3_table[idx3].md.address;
+            // if(ptme.value != l3_table[idx3].md.value){
+
+            //     // update permissions
+            //     l3_table[idx3] = ptme;
+            //     clean_cached_pte(&l3_table[idx3]);
+        
+            // }
         }
 
         va += PAGE_SIZE;
@@ -216,12 +235,12 @@ bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_bas
  */
 bool map_blocks(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_base){
     // get pointer to page table, interpreted as table descriptor
-    table_descriptor_t* l0_table = (table_descriptor_t*) pt_base;
-    table_descriptor_t* l1_table;
-    mem_descriptor_t* l2_table;
+    pte* l0_table = (pte*) pt_base;
+    pte* l1_table;
+    pte* l2_table;
 
-    table_descriptor_t ptte = parse_table_flags(flags);
-    mem_descriptor_t ptme = parse_block_flags(flags, FALSE);
+    pte ptte = parse_table_flags(flags);
+    pte ptme = parse_block_flags(flags, FALSE);
 
     uintptr_t va = (uintptr_t) virt_block;
     uintptr_t pa = (uintptr_t) phys_block;
@@ -235,28 +254,29 @@ bool map_blocks(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_ba
         idx1 = (va >> 30) & 0x1FF;
         idx2 = (va >> 21) & 0x1FF;
 
-        if(!l0_table[idx0].bits.valid){
-            ptte.bits.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
+        if(!l0_table[idx0].td.valid){
+            ptte.td.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
-            clean_pte(&l0_table[idx0]);
+            clean_cached_pte(&l0_table[idx0]);
         }
-        l1_table = (table_descriptor_t*) (((u64) l0_table[idx0].bits.address << PAGE_SHIFT) + virt_base());
-        if (!l1_table[idx1].bits.valid) {
-            ptte.bits.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
+        l1_table = (pte*) (((u64) l0_table[idx0].td.address << PAGE_SHIFT) + virt_base());
+        if (!l1_table[idx1].td.valid) {
+            ptte.td.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
-            clean_pte(&l1_table[idx1]);
+            clean_cached_pte(&l1_table[idx1]);
         }
 
-        l2_table = (mem_descriptor_t*) (((u64) l1_table[idx1].bits.address << PAGE_SHIFT) + virt_base());
-        if (!l2_table[idx2].bits.valid) {
-            ptme.bits.address = (pa >> PAGE_SHIFT);
+        l2_table = (pte*) (((u64) l1_table[idx1].td.address << PAGE_SHIFT) + virt_base());
+        if (!l2_table[idx2].td.valid) {
+            ptme.md.address = (pa >> PAGE_SHIFT);
             l2_table[idx2] = ptme;
-            clean_pte(&l2_table[idx2]);
+            clean_cached_pte(&l2_table[idx2]);
         }
 
         va += BLOCK_SIZE;
         pa += BLOCK_SIZE;
     }
+    asm volatile("dsb ish" ::: "memory");
     return TRUE;
 } 
 
@@ -291,4 +311,61 @@ bool map(u64 virt_block, u64 phys_block, u8 block_order, u64 flags, u64 pt_base)
     }
 
     return mapping_func(virt_block, phys_block, iters, flags, pt_base);
+}
+
+
+/// @brief Update the permissions for a provided virtual memory range. Assumes all mappings are L3
+/// @param virt_start   64 bit virtual address defining the start of the range. Should be page aligned.
+/// @param virt_end     64 bit virtual address defining the end of the range. Should be page aligned.
+/// @param flags        Bitfield of permissions. Uses same conventions as `map()`
+/// @param pt_base      Base L0 page table to use
+/// @return             True on success, False on failure
+bool update_mapping(u64 virt_start, u64 virt_end, u64 flags, u64 pt_base){
+    if((virt_start & 0xFFF) || (virt_end & 0xFFF)){
+        WARNING("virt_start or virt_end not page-aligned: (0x%x-0x%x)\n", virt_start, virt_end);
+        return FALSE;
+    }
+
+    pte* l0_table = (pte*) pt_base;
+    pte* l1_table;
+    pte* l2_table;
+    pte* l3_table;
+
+    pte ptme = parse_block_flags(flags, TRUE);
+
+    uintptr_t va = (uintptr_t) virt_start;
+
+    int idx0, idx1, idx2, idx3;
+
+    u64 pages = (virt_end - virt_start) / PAGE_SIZE;
+
+    for(int i = 0; i < pages; i++){
+
+        // pull indices from the page tables
+        idx0 = (va >> 39) & 0x1FF;
+        idx1 = (va >> 30) & 0x1FF;
+        idx2 = (va >> 21) & 0x1FF;
+        idx3 = (va >> 12) & 0x1FF;
+
+
+        // walk the page tables 
+        if(!l0_table[idx0].td.valid) return FALSE;
+        l1_table = pa_to_va(l0_table[idx0].td.address << PAGE_SHIFT);
+
+        if(!l1_table[idx1].td.valid) return FALSE;
+        l2_table = pa_to_va(l1_table[idx1].td.address << PAGE_SHIFT);
+
+        if(!l2_table[idx2].td.valid) return FALSE;
+        l3_table = pa_to_va(l2_table[idx2].td.address << PAGE_SHIFT);
+
+        pte entry = l3_table[idx3];
+        if(!entry.md.valid) {
+            ERROR("Trying to update permissions for unmapped memory at va 0x%x\n", va);
+            return FALSE;
+        }
+        
+        ptme.md.address = entry.md.address;
+        l3_table[idx3].value = ptme.value;
+        clear_pte_tlb(va);
+    }
 }
