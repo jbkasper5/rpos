@@ -406,4 +406,6 @@ void reap_virtual_memory(pte* parent_table, u32 level){
             decrement_ref((void*) pa_to_va(parent_table[i].md.address << 12));
         }
     }
+
+    decrement_ref(parent_table);
 }

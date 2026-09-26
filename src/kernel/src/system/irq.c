@@ -40,8 +40,9 @@ const char entry_error_messages[16][32] = {
 
 void show_invalid_entry_message(u32 type, u64 esr, u64 instruction, u64 address){
 	pcb_t* current = get_current();
-	ERROR("%s\n", entry_error_messages[type]);
+	ERROR("\n\n%s\n", entry_error_messages[type]);
 	ERROR("Procnum: %d\n", current->pid);
+	ERROR("\tTTBR: 0x%x\n", READ_SYSREG(ttbr0_el1));
 	ERROR("\tException: 0x%x\n", esr);
 	ERROR("\tFaulting instruction: 0x%x\n", instruction);
 	ERROR("\tAddress causing fault: 0x%x\n", address);

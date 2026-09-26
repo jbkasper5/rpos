@@ -61,7 +61,6 @@ pcb_t* procalloc(u64 entrypoint){
 
     // 8 KiB stack -> 2 pages -> order 1
     u32 stack_size = PAGE_SIZE * 2;
-    u64 stack_base = buddy_alloc(stack_size); // stack base page address = 3FFD5000
 
     vma* stack_vma = kmalloc(sizeof(vma));
     stack_vma->start = USER_STACK_TOP - stack_size;

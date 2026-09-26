@@ -106,23 +106,11 @@ void readelf(file_t* file){
 
     current->ttbr = new_proc_l0;
 
-    // tear down old_ttbr
-    // teardown_vm(old_ttbr);
-
-    // read trapframe to set the new process proper PC
+    // read trapframe to set the new process proper PC/SP/SPSR
     u64* trapframe = (u64*)(ALIGN_UP(current->kernel_stack, PAGE_SIZE) - 0x10 - S_FRAME_SIZE);
     trapframe[31] = 0x0000800000000ULL - 16;           // SP_EL0
     trapframe[32] = header->e_entry;                   // ELR_EL1
     trapframe[33] = 0x0;                               // SPSR
-
-
-    u32 stack_size = PAGE_SIZE * 2;
-    u64 stack_base = buddy_alloc(stack_size);
-
-    // map new user stack
-    map(0x0000800000000ULL - stack_size, va_to_pa(stack_base), 1, MAP_USER | MAP_READ | MAP_WRITE, new_proc_l0);
-    // 0x800000000
-    // 0x7fffffff0
 
     // reap the virtual memory for the abandoned process state
     reap_virtual_memory(old_ttbr, 0);
