@@ -9,4 +9,6 @@ typedef struct trap_frame_s {
     u64 spsr_el1;    // [33]                                -> hi half
 } trap_frame_t;
 
+#define BASE_TRAPFRAME(kstack)              ((trap_frame_t*)(((u64) ALIGN_UP(kstack, PAGE_SIZE)) - 0x10 - sizeof(trap_frame_t)))
+
 #endif

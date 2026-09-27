@@ -367,5 +367,7 @@ bool update_mapping(u64 virt_start, u64 virt_end, u64 flags, u64 pt_base){
         ptme.md.address = entry.md.address;
         l3_table[idx3].value = ptme.value;
         clear_pte_tlb(va);
+
+        va += PAGE_SIZE;
     }
 }

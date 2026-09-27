@@ -1,5 +1,6 @@
 #include "filesystem/elf.h"
 #include "system/entry.h"
+#include "types/kernel_types.h"
 
 extern void do_user_things();
 
@@ -44,7 +45,7 @@ void readelf(file_t* file){
     u64* new_proc_l0 = buddy_alloc_pt();
 
     // switch to new user virtual memory, also flushes TLB
-    switch_user_tlb(pa_to_va(new_proc_l0));
+    switch_user_tlb(va_to_pa(new_proc_l0));
 
     elf64_program_header* program_header = UNSCALED_POINTER_ADD(header, header->e_phoff);
 
@@ -107,10 +108,10 @@ void readelf(file_t* file){
     current->ttbr = new_proc_l0;
 
     // read trapframe to set the new process proper PC/SP/SPSR
-    u64* trapframe = (u64*)(ALIGN_UP(current->kernel_stack, PAGE_SIZE) - 0x10 - S_FRAME_SIZE);
-    trapframe[31] = 0x0000800000000ULL - 16;           // SP_EL0
-    trapframe[32] = header->e_entry;                   // ELR_EL1
-    trapframe[33] = 0x0;                               // SPSR
+    trap_frame_t* trapframe = BASE_TRAPFRAME(current->kernel_stack);
+    trapframe->sp_el0 = 0x0000800000000ULL - 16;           // SP_EL0
+    trapframe->elr_el1 = header->e_entry;                   // ELR_EL1
+    trapframe->spsr_el1 = 0x0;                               // SPSR
 
     // reap the virtual memory for the abandoned process state
     reap_virtual_memory(old_ttbr, 0);

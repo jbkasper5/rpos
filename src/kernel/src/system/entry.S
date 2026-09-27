@@ -227,6 +227,8 @@ handle_el0_fault_staging:
     // move the exception status into x1
     mrs x1, esr_el1
 
+    mrs x2, sp_el0        // ground truth at fault time
+
     // branch and link to the fault handler
     bl handle_el0_fault
 

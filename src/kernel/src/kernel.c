@@ -73,7 +73,14 @@ void hardware_init(){
 
 int kernel_main(){
     hardware_init();
-    add_test_section_to_scheduler(); 
+
+
+    // kernel trampoline for testing things
+    // add_test_section_to_scheduler();
+
+    // proper drop into user land
+    add_shell_to_scheduler();
+
     start_scheduler();
     return 0;
 }

@@ -152,13 +152,11 @@ void start_scheduler(){
 
     set_current(current);
 
-    trap_frame_t* tf = current->kernel_stack - sizeof(trap_frame_t);
-
-    u64 sp = tf->sp_el0;
-    u64 pc = tf->elr_el1;
-    u64 spsr = tf->spsr_el1;
-    u64 ttbr = current->ttbr;
-    drop_to_user(sp, pc, spsr, ttbr, current->kernel_stack);
+    // pop the pcb from the runqueue so when the scheduler fires again, it doesn't show up
+    list_remove(&current->runqueue);
+    
+    // trapframe: 0xffff80003fff1ee0
+    drop_to_user(BASE_TRAPFRAME(current->kernel_stack), va_to_pa(current->ttbr));
 }
 
 void deschedule(){
@@ -226,10 +224,23 @@ void add_test_section_to_scheduler(){
     map(test_virt, test_phys, order, MAP_USER | MAP_READ | MAP_EXEC, proc->ttbr);
 
     // write the return pointer into the user stack
-    trap_frame_t* tf = proc->kernel_stack - sizeof(trap_frame_t);
+    trap_frame_t* tf = BASE_TRAPFRAME(proc->kernel_stack);
     tf->elr_el1 = user_ptr;
 
     add_to_schedule(proc);
 }
 
-// 
+void add_shell_to_scheduler(){
+    // allocate first process with NULL pointer, will be handled by the elf read
+    pcb_t* pcb = procalloc(NULL);
+    set_current(pcb);
+
+    // open the main user binary, for now a simple shell, later a desktop or something
+    file_t* f = open("/bin/jsh", NULL);
+
+    // read shell into memory
+    readelf(f);
+
+    // add it to the schedule
+    add_to_schedule(pcb);
+}

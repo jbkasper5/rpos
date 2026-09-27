@@ -72,7 +72,7 @@ pcb_t* procalloc(u64 entrypoint){
     process->kernel_stack = (u64) kstack;
 
     // set the kernel stack to the trap frame defined by the kernel_entry of the parent process
-    trap_frame_t* tf = (trap_frame_t*) (process->kernel_stack - sizeof(trap_frame_t));
+    trap_frame_t* tf = BASE_TRAPFRAME(process->kernel_stack);
     tf->sp_el0 = USER_STACK_TOP - 16;
     tf->elr_el1 = entrypoint;
     tf->spsr_el1 = 0x0;
