@@ -17,6 +17,6 @@ void acquire_fb();
 void write_char();
 void read_char();
 
-extern void syscall(uint64_t sys_num, ...);
+extern int syscall(uint64_t sys_num, ...);
 
 #endif

@@ -5,7 +5,8 @@ CFLAGS += \
   -nostdlib \
   -nostartfiles \
   -fno-pie -no-pie \
-  -I /Users/jakekasper/C/RaspberryPi/rpos/src/kernel/include
+  -I /Users/jakekasper/C/RaspberryPi/rpos/src/kernel/include \
+  -I /Users/jakekasper/C/RaspberryPi/rpos/src/user/include
 
 # ANSI colors
 GREEN  := \033[1;32m
@@ -14,11 +15,51 @@ YELLOW := \033[1;33m
 RED    := \033[1;31m
 RESET  := \033[0m
 
-DIRS := $(filter-out bin/,$(wildcard */))
+# Each subdirectory is one command to build, except these: bin/ is the output
+# dir, include/ holds shared headers, and lib/ is the shared runtime archive.
+DIRS := $(filter-out bin/ include/ lib/,$(wildcard */))
 BINS := $(patsubst %/,bin/%,$(DIRS))
 
 LDSCRIPT := linker.ld
 LDFLAGS  := -T $(LDSCRIPT)
+
+# ==========================
+# userlib: the shared user-space runtime (printf, etc). Compiled ONCE from
+# lib/*.c and lib/*.S into a static archive that every command links against,
+# the way a real toolchain links libc. Because it is an archive rather than a
+# pile of objects, only the members a program actually references get pulled in
+# -- `ls` and `pwd` don't carry printf's 2 KiB buffer unless they call it.
+#
+# Lives under bin/obj/ rather than bin/ so it is not picked up by the `build`
+# target's bin/* glob and deployed to the rootfs as if it were a command.
+# ==========================
+AR       := aarch64-none-elf-ar
+LIB_DIR  := lib
+USERLIB  := bin/obj/libuser.a
+LIB_C    := $(wildcard $(LIB_DIR)/*.c)
+LIB_ASM  := $(wildcard $(LIB_DIR)/*.S)
+LIB_OBJ  := $(patsubst $(LIB_DIR)/%.c,bin/obj/$(LIB_DIR)/%.o,$(LIB_C)) \
+            $(patsubst $(LIB_DIR)/%.S,bin/obj/$(LIB_DIR)/%_s.o,$(LIB_ASM))
+
+# ==========================
+# Dependency tracking
+#
+# The pattern rule below has the project DIRECTORY as its prerequisite, and a
+# directory's mtime only changes when an entry is added/removed/renamed -- NOT
+# when an existing file's contents change. Editing jsh/main.c would therefore
+# never trigger a rebuild. Expand each project's real sources at parse time and
+# declare them as prerequisites so edits are picked up.
+# ==========================
+SHARED_HDRS := $(wildcard include/*.h)
+
+$(foreach d,$(DIRS),$(eval bin/$(patsubst %/,%,$(d)): \
+    $(shell find $(d) -type f \( -name '*.c' -o -name '*.S' -o -name '*.h' \))))
+
+# Anything shared rebuilds every command: the linker script and the userlib headers.
+$(BINS): $(LDSCRIPT) $(SHARED_HDRS)
+
+# The archive's own objects depend on the shared headers too.
+$(LIB_OBJ): $(SHARED_HDRS)
 
 # musl cross-toolchain (real libc + crt startup). See the `musl` target below.
 MUSL_CC := aarch64-linux-musl-gcc
@@ -47,9 +88,10 @@ musl:
 	@$(MAKE) clean
 	@$(MAKE) all \
 		CC="$(MUSL_CC)" \
-		CFLAGS="-Wall -Wextra -O2 -fno-pie -no-pie -static -I /Users/jakekasper/C/RaspberryPi/rpos/src/kernel/include" \
+		CFLAGS="-Wall -Wextra -O2 -fno-pie -no-pie -static -I /Users/jakekasper/C/RaspberryPi/rpos/src/kernel/include -I /Users/jakekasper/C/RaspberryPi/rpos/src/user/include" \
 		LDFLAGS="" \
-		ASM_FIND_EXCLUDE="! -name start.S ! -name syscall.S"
+		ASM_FIND_EXCLUDE="! -name start.S ! -name syscall.S" \
+		USERLIB=
 	@printf "$(GREEN)✓ musl build complete$(RESET)\n"
 
 # ==========================
@@ -87,9 +129,27 @@ fsck:
 	printf "$(GREEN)✓ fsck complete$(RESET)\n"
 
 # ==========================
+# Build the shared runtime archive
+# ==========================
+bin/obj/$(LIB_DIR)/%.o: $(LIB_DIR)/%.c
+	@mkdir -p $(dir $@)
+	@printf "$(GREEN)==> CC %s$(RESET)\n" "$<"
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+bin/obj/$(LIB_DIR)/%_s.o: $(LIB_DIR)/%.S
+	@mkdir -p $(dir $@)
+	@printf "$(GREEN)==> AS %s$(RESET)\n" "$<"
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+$(USERLIB): $(LIB_OBJ)
+	@mkdir -p $(dir $@)
+	@printf "$(BLUE)==> AR $(GREEN)%s$(RESET)\n" "$@"
+	@$(AR) rcs $@ $(LIB_OBJ)
+
+# ==========================
 # Build each project
 # ==========================
-bin/%: %/
+bin/%: %/ $(USERLIB)
 	@printf "$(BLUE)==> Building $(GREEN)%s$(RESET)\n" "$*"
 	@mkdir -p bin
 
@@ -116,7 +176,7 @@ bin/%: %/
 		$(CC) $(CFLAGS) -c $$f -o $$o; \
 		OBJ_LIST="$$OBJ_LIST $$o"; \
 	done; \
-	$(CC) $(CFLAGS) $(LDFLAGS) $$OBJ_LIST -o $@ && \
+	$(CC) $(CFLAGS) $(LDFLAGS) $$OBJ_LIST $(USERLIB) -o $@ && \
 	printf "$(GREEN)✓ Built %s$(RESET)\n" "$@"
 
 clean:
