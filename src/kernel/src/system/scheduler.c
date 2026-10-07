@@ -10,6 +10,8 @@
 #include "types/kernel_types.h"
 #include "memory/memprofiler.h"
 
+extern void ret_from_fork();
+
 list_head_t proclist;
 static list_head_t runqueue;
 static u64 n_processes = 0;
@@ -77,7 +79,7 @@ void scheduler_init(){
     INIT_LIST_HEAD(&idle_proc->proclist);
     INIT_LIST_HEAD(&idle_proc->runqueue);
 
-    trap_frame_t* tf = idle_proc->kernel_stack - sizeof(trap_frame_t);
+    trap_frame_t* tf = BASE_TRAPFRAME(idle_proc->kernel_stack);
 
     // process 0 is the idle proc
     tf->elr_el1 = &idle;
@@ -87,6 +89,11 @@ void scheduler_init(){
 
     // set up the idle proc to run in EL1 with interrupts enabled
     tf->spsr_el1 = 0x345;
+
+    cs_stack_frame_t* context_switch_frame = (u64) tf - sizeof(cs_stack_frame_t);
+    context_switch_frame->x30 = &ret_from_fork;
+
+    idle_proc->kernel_stack = context_switch_frame;
 
     // set the idle process as the current "user" process
     set_current(idle_proc);
@@ -127,6 +134,13 @@ void scheduler(){
 
         // runqueue isn't empty, so we get the next process off the queue
         newproc = list_entry(runqueue.next, pcb_t, runqueue);
+    }
+
+    // HACK: quick guard so that this case is caught and doesn't cause crashes
+    if(newproc == active_process){
+        ERROR("Scheduler tried to schedule current active process.\n");
+        prime_physical_timer();
+        return;
     }
 
     // get the current process's kstack pointer

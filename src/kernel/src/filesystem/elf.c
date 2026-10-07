@@ -49,6 +49,10 @@ void readelf(file_t* file){
 
     elf64_program_header* program_header = UNSCALED_POINTER_ADD(header, header->e_phoff);
 
+    // TODO: Need to convert program headers into vmas
+
+    u64 start_brk = 0;
+
     for(int i = 0; i < header->e_phnum; i++){
         INFO("Program header %d:\n", i + 1);
         INFO("  Type: %d\n", program_header->p_type);
@@ -56,7 +60,9 @@ void readelf(file_t* file){
         INFO("  Offset: %d\n", program_header->p_offset);
         INFO("  Virtual address: 0x%x\n", program_header->p_vaddr);
 
-        if(!program_header->p_memsz) continue;
+        if(program_header->p_type != PT_LOAD) continue;
+
+        start_brk = MAX(ALIGN_UP(program_header->p_vaddr + program_header->p_memsz, PAGE_SIZE), start_brk);
 
         // if the section requires allocation, then allocate it
         u64 flags = MAP_USER;
@@ -93,11 +99,12 @@ void readelf(file_t* file){
         u64 end_addr = ALIGN_UP((program_header->p_vaddr + program_header->p_memsz), PAGE_SIZE);
         update_mapping(start_addr, end_addr, flags, new_proc_l0);
 
-        // TODO: update mappings with proper flags
         program_header++;
     }
 
     pcb_t* current = get_current();
+
+    // TODO: reap stale VMAs
 
     // needs updating to the location of the ELF maybe
     // current->cwd
@@ -115,4 +122,9 @@ void readelf(file_t* file){
 
     // reap the virtual memory for the abandoned process state
     reap_virtual_memory(old_ttbr, 0);
+
+    // copy the brk value over to the PCB. Make sure on proc init start_brk and brk are the same
+    // brk grows separately from start_brk based on heap allocation
+    current->start_brk = start_brk;
+    current->brk = start_brk;
 }

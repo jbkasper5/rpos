@@ -64,6 +64,11 @@ typedef struct pcb_s {
 
     list_head_t vmas;
 
+    u64 brk;
+    u64 start_brk;
+
+    vma* heap_vma;
+
     file_t* fds[MAX_OPEN_FILES];
     // file structure information
     // thread information

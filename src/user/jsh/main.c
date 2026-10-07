@@ -54,6 +54,21 @@ static void commandline(){
 }
 
 int main(){
+    unsigned long brk = syscall(SYS_BRK, 0);
+    printf("Old brk: 0x%x\n", brk);
+    brk = syscall(SYS_BRK, (brk + 0x1000));
+    printf("New brk: 0x%x\n", brk);
+
+    char* buf = (char*) brk - 0x1000;
+    buf[0] = 'H';
+    buf[1] = 'e';
+    buf[2] = 'l';
+    buf[3] = 'l';
+    buf[4] = 'o';
+    buf[5] = '!';
+    buf[6] = '\0';
+
+    printf("Testing heap: '%s'\n", buf);
     commandline();
     syscall(SYS_EXIT_GROUP);
     return 0;

@@ -84,6 +84,55 @@ u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset){
     return 0;
 }
 
+u64 sys_brk(u64 addr, u64, u64, u64, u64, u64){
+    pcb_t* current = get_current();
+
+    u64 brk = current->brk;
+
+    // get the heap VMA, if it exists
+    vma* heap_vma = current->heap_vma;
+
+    if(!heap_vma){
+        INFO("Heap VMA not initialized.\n");
+
+        heap_vma = (vma*) kmalloc(sizeof(vma));
+
+        heap_vma->start = current->start_brk;
+        heap_vma->end = brk;
+        heap_vma->permissions = VMA_USER | VMA_READ | VMA_WRITE;
+
+        list_add(&heap_vma->list, &current->vmas);
+
+        current->heap_vma = heap_vma;
+    }else{
+        INFO("Found heap VMA with [0x%x, 0x%x]\n", heap_vma->start, heap_vma->end);
+
+        // force the address to lie on a page boundary
+        addr = ALIGN_UP(addr, PAGE_SIZE);
+
+        // disallow shrinking of the heap
+        if(addr < heap_vma->end){
+            return heap_vma->end;
+        }
+
+        for (list_head_t* p = current->vmas.next; p != &current->vmas; p = p->next){
+            vma* v = list_entry(p, vma, list);
+
+            if(v == heap_vma) continue;
+
+            // if the requested address falls within the boundary of a different VMA, deny the request
+            if(v->start < addr && v->end > addr){
+                return heap_vma->end;
+            }
+        }
+
+        // if we found no issues, then extend the heap
+        heap_vma->end = addr;
+    }
+
+    return heap_vma->end;
+}
+
 u64 sys_munmap(u64 addr, u64 len, u64, u64, u64, u64){
     // unmap a chunk of memory starting from addr
     return 0;
