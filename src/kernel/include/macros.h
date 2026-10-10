@@ -3,29 +3,27 @@
 
 #include "types/scalar.h"
 
-double seconds_since_boot();
+// decomissioned
+// double seconds_since_boot();
+
+u64 usec_since_boot();
 u64 ticks_since_boot();
 
-// #ifdef DEBUG
-// #define DEBUG(...) kprintf("[\e[35mDEBUG\e[0m] "); kprintf(__VA_ARGS__);
-// #else
-// #define DEBUG(...)
-// #endif
-
-// #define INFO(...) kprintf("[\e[32mINFO\e[0m] "); kprintf(__VA_ARGS__);
-// #define WARNING(...) kprintf("[\e[33mWARNING\e[0m] "); kprintf(__VA_ARGS__);
-// #define ERROR(...) kprintf("[\e[31mERROR\e[0m] "); kprintf(__VA_ARGS__);
+#define LOG(color, label, ...) do {                                   \
+    u64 _ts = usec_since_boot();                                      \
+    kprintf("[\e[" color "m" label " %d.%06ds\e[0m] ",                \
+            _ts / 1000000, _ts % 1000000);                            \
+    kprintf(__VA_ARGS__);                                             \
+} while(0)
 
 #ifdef DEBUG
-#define DEBUG(...) kprintf("[\e[35mDEBUG %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
+#define DEBUG(...)   LOG("35", "DEBUG",   __VA_ARGS__)
 #else
 #define DEBUG(...)
 #endif
-
-#define INFO(...) kprintf("[\e[32mINFO %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
-#define WARNING(...) kprintf("[\e[33mWARNING %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
-#define ERROR(...) kprintf("[\e[31mERROR %fs\e[0m] ", seconds_since_boot()); kprintf(__VA_ARGS__);
-
+#define INFO(...)    LOG("32", "INFO",    __VA_ARGS__)
+#define WARNING(...) LOG("33", "WARNING", __VA_ARGS__)
+#define ERROR(...)   LOG("31", "ERROR",   __VA_ARGS__)
 
 #ifdef NULL
 #undef NULL

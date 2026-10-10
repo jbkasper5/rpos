@@ -6,15 +6,16 @@
 #include "macros.h"
 #include "io/lcd.h"
 #include "memory/mem.h"
-#include "uabi/rpos/ioctls.h"
 #include "uabi/rpos/fb.h"
 #include "memory/mmap.h"
 #include "synchronization/mutex.h"
 #include "filesystem/disk.h"
-#include "uabi/rpos/errno.h"
 #include "filesystem/elf.h"
 #include "memory/memprofiler.h"
 
+#include "uabi/rpos/ioctls.h"
+#include "uabi/rpos/mman.h"
+#include "uabi/rpos/errno.h"
 
 void* cacheable_page = NULL;
 
@@ -75,13 +76,41 @@ u64 sys_clock_gettime(u64 clock, u64 kernel_timespec, u64, u64, u64, u64){
 }
 
 u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset){
-    // TODO: look up the requested memory via the FD
-    // TODO: actually use the addr instead of ignoring it like a bum
+    u64 start_addr = ALIGN_DOWN(addr, PAGE_SIZE);
+    u64 end_addr = ALIGN_UP(addr + len, PAGE_SIZE);
+    pcb_t* current = get_current();
 
-    
-    
-    map_pages(frame.fb, va_to_pa(frame.fb), 376, MAP_KERNEL, (u64) L0_TABLE);
-    return 0;
+    vma* found_vma = NULL;
+    for (list_head_t* p = current->vmas.next; p != &current->vmas; p = p->next){
+        vma* v = list_entry(p, vma, list);
+
+        // start address lies within an existing VMA
+        if(v->start < addr && v->end > addr){
+            INFO("Found VMA containing requested mem.\n");
+            found_vma = v;
+        }
+    }
+
+    if(!found_vma){
+        found_vma = (vma*) kmalloc(sizeof(vma));
+
+        found_vma->start = start_addr;
+        found_vma->end = end_addr;
+
+        // BUG: need to check for prot incompatibilities (i.e. write/exec)
+        if(prot & PROT_NONE) prot = 0;
+        if((prot & PROT_WRITE) && (prot & PROT_EXEC)){
+            WARNING("user requested WX memory. Defaulting to RW.\n");
+            prot = PROT_READ | PROT_WRITE;
+        }
+
+        found_vma->permissions = prot;
+        list_add(&found_vma->list, &current->vmas);
+    }else{
+        INFO("Attempting to modify existing VMA to fit request...\n");
+    }
+
+    return found_vma->start;
 }
 
 u64 sys_brk(u64 addr, u64, u64, u64, u64, u64){

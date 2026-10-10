@@ -188,23 +188,23 @@ static void emit_string(char* s){
 }
 
 
-static void parse_and_emit_double(double val){
-    if(val < 0){
-        ansi_decoder('-');
-        val = -val;
-    }
-    // integer part
-    parse_and_emit_int((int)val);
-    ansi_decoder('.');
-    // fractional part to 6 decimal places
-    double frac = val - (int)val;
-    for(int i = 0; i < 6; i++){
-        frac *= 10;
-        ansi_decoder('0' + (int)frac);
-        frac -= (int)frac;
-    }
+// static void parse_and_emit_double(double val){
+//     if(val < 0){
+//         ansi_decoder('-');
+//         val = -val;
+//     }
+//     // integer part
+//     parse_and_emit_int((int)val);
+//     ansi_decoder('.');
+//     // fractional part to 6 decimal places
+//     double frac = val - (int)val;
+//     for(int i = 0; i < 6; i++){
+//         frac *= 10;
+//         ansi_decoder('0' + (int)frac);
+//         frac -= (int)frac;
+//     }
 
-}
+// }
 
 static int expand(char* s, va_list* args){
     u32 consumed_chars = 1;
@@ -217,8 +217,8 @@ static int expand(char* s, va_list* args){
             ansi_decoder(va_arg(*args, int)); break;
         case 'l':
             parse_and_emit_int(va_arg(*args, int)); break;
-        case 'f':
-            parse_and_emit_double(va_arg(*args, double)); break;
+        // case 'f':
+        //     parse_and_emit_double(va_arg(*args, double)); break;
         case 'x':
             parse_and_emit_hex(va_arg(*args, unsigned long)); break;
         case '%':

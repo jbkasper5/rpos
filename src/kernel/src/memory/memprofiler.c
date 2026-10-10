@@ -69,7 +69,9 @@ static void get_percent_free(){
         curr += (1 << curr->order);
     }
 
-    kprintf("Pages free: [%d/%d] | %f%%\n", blocks_free, total_blocks, (((float) blocks_free / total_blocks)) * 100);
+    u64 pct = (blocks_free * 100000000ULL) / total_blocks;
+
+    kprintf("Pages free: [%d/%d] | %d.%06d%%\n", blocks_free, total_blocks, pct / 1000000, pct % 1000000);
 }
 
 

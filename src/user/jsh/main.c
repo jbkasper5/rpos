@@ -54,7 +54,7 @@ static void commandline(){
 }
 
 int main(){
-    unsigned long brk = syscall(SYS_BRK, 0);
+    u64 brk = syscall(SYS_BRK, 0);
     printf("Old brk: 0x%x\n", brk);
     brk = syscall(SYS_BRK, (brk + 0x1000));
     printf("New brk: 0x%x\n", brk);
@@ -69,6 +69,23 @@ int main(){
     buf[6] = '\0';
 
     printf("Testing heap: '%s'\n", buf);
+
+    u64 addr = 0x5000000;
+    char* ret_addr = (char*) syscall(SYS_MMAP, addr, 0x1000, PROT_READ | PROT_WRITE, 0, 0, 0);
+    printf("Map acquired address: 0x%x\n", ret_addr);
+
+    ret_addr[0] = 'G';
+    ret_addr[1] = 'o';
+    ret_addr[2] = 'o';
+    ret_addr[3] = 'd';
+    ret_addr[4] = 'b';
+    ret_addr[5] = 'y';
+    ret_addr[6] = 'e';
+    ret_addr[7] = '!';
+    ret_addr[8] = '\0';
+
+    printf("Testing mmap: '%s'\n", ret_addr);
+
     commandline();
     syscall(SYS_EXIT_GROUP);
     return 0;

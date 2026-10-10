@@ -1,4 +1,5 @@
-CC := aarch64-none-elf-gcc
+CC      := aarch64-none-elf-gcc
+OBJDUMP := aarch64-none-elf-objdump
 CFLAGS := -Wall -Wextra -O2
 CFLAGS += \
   -ffreestanding \
@@ -15,9 +16,13 @@ YELLOW := \033[1;33m
 RED    := \033[1;31m
 RESET  := \033[0m
 
-# Each subdirectory is one command to build, except these: bin/ is the output
-# dir, include/ holds shared headers, and lib/ is the shared runtime archive.
-DIRS := $(filter-out bin/ include/ lib/,$(wildcard */))
+# Each subdirectory is one command to build, except these:
+#   bin/     build output
+#   include/ shared headers
+#   lib/     shared runtime archive (userlib)
+#   dmp/     disassembly / hexdump output from `make asm` and `make dmp`
+NON_PROJECT_DIRS := bin/ include/ lib/ dmp/
+DIRS := $(filter-out $(NON_PROJECT_DIRS),$(wildcard */))
 BINS := $(patsubst %/,bin/%,$(DIRS))
 
 LDSCRIPT := linker.ld
@@ -204,19 +209,25 @@ dmp:
 	@echo "Created dmp/$(FILE).dmp"
 
 
-# make objdump FILE=filename
+# ==========================
+# asm: disassemble the built binaries into dmp/.
+#   make asm            -- every command in bin/
+#   make asm FILE=jsh   -- just one
+# Depends on `all` so the dump always matches current sources (same convention
+# as the kernel Makefile's `asm: local`).
+# ==========================
 .PHONY: asm
-asm:
-	@if [ -z "$(FILE)" ]; then \
-		echo "Usage: make objdump FILE=<executable_name>"; \
-		exit 1; \
-	fi
-
-	@if [ ! -f "bin/$(FILE)" ]; then \
-		echo "Error: bin/$(FILE) does not exist"; \
-		exit 1; \
-	fi
-
+asm: all
 	@mkdir -p dmp
-	@aarch64-none-elf-objdump -d "bin/$(FILE)" > "dmp/$(FILE).objdump"
-	@echo "Created dmp/$(FILE).objdump"
+	@set -e; \
+	if [ -n "$(FILE)" ]; then \
+		[ -f "bin/$(FILE)" ] || { printf "$(RED)✗ bin/$(FILE) does not exist$(RESET)\n"; exit 1; }; \
+		TARGETS="bin/$(FILE)"; \
+	else \
+		TARGETS="$(BINS)"; \
+	fi; \
+	for b in $$TARGETS; do \
+		n=$$(basename "$$b"); \
+		$(OBJDUMP) -d "$$b" > "dmp/$$n.objdump"; \
+		printf "$(GREEN)==> dmp/%s.objdump$(RESET)\n" "$$n"; \
+	done
