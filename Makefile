@@ -17,7 +17,7 @@ LINKER := aarch64-none-elf-ld
 OBJCOPY := aarch64-none-elf-objcopy
 
 CFLAGS := -Wall -nostdlib -nodefaultlibs -nostartfiles -fno-builtin -ffreestanding \
-           -O0 -mstrict-align -march=armv8-a+lse -Wshadow
+           -O0 -mstrict-align -march=armv8-a+lse -Wshadow -mgeneral-regs-only
 INCLUDES := -I $(SRC_DIR)/include/
 LINKERFILE := $(SRC_DIR)/linker.ld
 

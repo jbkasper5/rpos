@@ -31,6 +31,7 @@
 #define SYS_GETPID                  172
 #define SYS_GETPPID                 173
 
+#define SYS_BRK                     214
 #define SYS_MUNMAP                  215
 #define SYS_CLONE3                  220
 #define SYS_EXECVE                  221

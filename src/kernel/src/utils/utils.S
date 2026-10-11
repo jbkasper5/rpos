@@ -137,15 +137,28 @@ ticks_since_boot:
     mrs x0, cntvct_el0
     ret
 
-.globl seconds_since_boot
-seconds_since_boot:
-    mrs x0, cntvct_el0
-    ldr x1, =2812500
+# .globl seconds_since_boot
+# seconds_since_boot:
+#     mrs x0, cntvct_el0
+#     ldr x1, =2812500
 
-    scvtf d0, x0            // Signed Convert To Float: Move x0 -> d0 and convert to decimal
-    scvtf d1, x1            // Signed Convert To Float: Move x1 -> d1 and convert to decimal
+#     scvtf d0, x0            // Signed Convert To Float: Move x0 -> d0 and convert to decimal
+#     scvtf d1, x1            // Signed Convert To Float: Move x1 -> d1 and convert to decimal
     
-    fdiv  d0, d0, d1        // Floating-point divide: d0 = d0 / d1
+#     fdiv  d0, d0, d1        // Floating-point divide: d0 = d0 / d1
+#     ret
+
+// generated with the help of claude code, based on above function without using fp registers
+.globl usec_since_boot            // returns total microseconds in x0
+usec_since_boot:
+    mrs  x0, cntvct_el0
+    ldr x1, =2812500
+    ldr  x2, =1000000 
+    udiv x3, x0, x1               // whole seconds
+    msub x4, x3, x1, x0           // remainder ticks = x0 - x3*x1
+    mul  x4, x4, x2               // remainder * 1e6  (can't overflow: < freq*1e6)
+    udiv x4, x4, x1               // fractional microseconds
+    madd x0, x3, x2, x4           // secs*1e6 + frac
     ret
 
 .globl panic

@@ -48,7 +48,11 @@ u64 get_phys_test_region(void)   { return TEST_PHYS; }
 u64 get_test_size(void)          { return TEST_BYTES; }
 u64 virt_base(void)              { ensure_ram(); return (u64)(uintptr_t)g_ram; }
 
-double seconds_since_boot(void)  { return 0.0; }
+/* utils.S provides this on-target. The kernel's LOG macro (macros.h) calls it
+ * for every DEBUG/INFO/WARNING/ERROR line, so the memory TUs reference it even
+ * though timestamps are meaningless here. Returns microseconds since boot;
+ * a constant 0 keeps host test output deterministic. */
+u64 usec_since_boot(void)        { return 0; }
 
 /* ---- link-satisfying stubs (not exercised by the buddy/PFA cut) ---- */
 u64 *L0_TABLE = NULL;

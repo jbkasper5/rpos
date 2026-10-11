@@ -208,7 +208,7 @@ u64 buddy_alloc_pt(){
  * @brief Decrements the reference count for a block
  * @return          Address of the page. Assumes this is the head     
  */
-static u64 decrement_ref(void* addr){
+u64 decrement_ref(void* addr){
     u64 pfn = va_to_pa((u64) addr) >> 12;
 
     page_frame_t* base = (page_frame_t*) page_frame_array_start();
@@ -406,4 +406,6 @@ void reap_virtual_memory(pte* parent_table, u32 level){
             decrement_ref((void*) pa_to_va(parent_table[i].md.address << 12));
         }
     }
+
+    decrement_ref(parent_table);
 }

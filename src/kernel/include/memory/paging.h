@@ -21,4 +21,6 @@ void set_page_owner(void* page_addr, page_state new_owner);
 void* clone_virtual_memory(pte* parent_table);
 void reap_virtual_memory(pte* parent_table, u32 level);
 
+u64 decrement_ref(void* addr);
+
 #endif

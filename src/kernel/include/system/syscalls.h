@@ -20,6 +20,7 @@ u64 sys_getpid(u64, u64, u64, u64, u64, u64);
 u64 sys_getppid(u64, u64, u64, u64, u64, u64);
 u64 sys_clock_gettime(u64 clock, u64 kernel_timespec, u64, u64, u64, u64);
 u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset);
+u64 sys_brk(u64 addr, u64, u64, u64, u64, u64);
 u64 sys_munmap(u64 addr, u64 len, u64, u64, u64, u64);
 u64 sys_clone3(u64 cl_args, u64 size, u64, u64, u64, u64);
 u64 sys_execve(u64 path, u64 argv, u64 envp, u64, u64, u64);
@@ -42,6 +43,7 @@ syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_WRITE] = sys_write,
     [SYS_READ]  = sys_read,
     [SYS_MMAP] = sys_mmap,
+    [SYS_BRK] = sys_brk,
     [SYS_CLONE3] = sys_clone3,
     [SYS_EXECVE] = sys_execve,
     [SYS_MUNMAP] = sys_munmap,

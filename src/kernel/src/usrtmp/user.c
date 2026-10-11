@@ -16,8 +16,8 @@ static const char path[1024] = "/bin/";
 // Linux KVM
 TEST_FN void user(){
     // register the keyboard
-    // commandline();
-    i2c_test();
+    commandline();
+    // i2c_test();
 
     while(1);
 }

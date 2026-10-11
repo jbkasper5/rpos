@@ -6,20 +6,25 @@
 #include "macros.h"
 #include "io/lcd.h"
 #include "memory/mem.h"
-#include "uabi/rpos/ioctls.h"
 #include "uabi/rpos/fb.h"
 #include "memory/mmap.h"
 #include "synchronization/mutex.h"
 #include "filesystem/disk.h"
-#include "uabi/rpos/errno.h"
 #include "filesystem/elf.h"
 #include "memory/memprofiler.h"
 
+#include "uabi/rpos/ioctls.h"
+#include "uabi/rpos/mman.h"
+#include "uabi/rpos/errno.h"
 
 void* cacheable_page = NULL;
 
 u64 handle_syscall(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 syscall_number){
     // DEBUG("Syscall Number: %d\n", syscall_number);
+    if(syscall_number > SYS_MAX){
+        WARNING("unimplemented syscall %d\n", syscall_number);
+        return -ENOSYS;
+    }
 
     if(syscall_table[syscall_number]){
         return syscall_table[syscall_number](x0, x1, x2, x3, x4, x5);
@@ -75,13 +80,90 @@ u64 sys_clock_gettime(u64 clock, u64 kernel_timespec, u64, u64, u64, u64){
 }
 
 u64 sys_mmap(u64 addr, u64 len, u64 prot, u64 flags, u64 fd, u64 offset){
-    // TODO: look up the requested memory via the FD
-    // TODO: actually use the addr instead of ignoring it like a bum
+    u64 start_addr = ALIGN_DOWN(addr, PAGE_SIZE);
+    u64 end_addr = ALIGN_UP(addr + len, PAGE_SIZE);
+    pcb_t* current = get_current();
 
-    
-    
-    map_pages(frame.fb, va_to_pa(frame.fb), 376, MAP_KERNEL, (u64) L0_TABLE);
-    return 0;
+    vma* found_vma = NULL;
+    for (list_head_t* p = current->vmas.next; p != &current->vmas; p = p->next){
+        vma* v = list_entry(p, vma, list);
+
+        // start address lies within an existing VMA
+        if(v->start < addr && v->end > addr){
+            INFO("Found VMA containing requested mem.\n");
+            found_vma = v;
+        }
+    }
+
+    if(!found_vma){
+        found_vma = (vma*) kmalloc(sizeof(vma));
+
+        found_vma->start = start_addr;
+        found_vma->end = end_addr;
+
+        // BUG: need to check for prot incompatibilities (i.e. write/exec)
+        if(prot & PROT_NONE) prot = 0;
+        if((prot & PROT_WRITE) && (prot & PROT_EXEC)){
+            WARNING("user requested WX memory. Defaulting to RW.\n");
+            prot = PROT_READ | PROT_WRITE;
+        }
+
+        found_vma->permissions = prot;
+        list_add(&found_vma->list, &current->vmas);
+    }else{
+        INFO("Attempting to modify existing VMA to fit request...\n");
+    }
+
+    return found_vma->start;
+}
+
+u64 sys_brk(u64 addr, u64, u64, u64, u64, u64){
+    pcb_t* current = get_current();
+
+    u64 brk = current->brk;
+
+    // get the heap VMA, if it exists
+    vma* heap_vma = current->heap_vma;
+
+    if(!heap_vma){
+        INFO("Heap VMA not initialized.\n");
+
+        heap_vma = (vma*) kmalloc(sizeof(vma));
+
+        heap_vma->start = current->start_brk;
+        heap_vma->end = brk;
+        heap_vma->permissions = VMA_USER | VMA_READ | VMA_WRITE;
+
+        list_add(&heap_vma->list, &current->vmas);
+
+        current->heap_vma = heap_vma;
+    }else{
+        INFO("Found heap VMA with [0x%x, 0x%x]\n", heap_vma->start, heap_vma->end);
+
+        // force the address to lie on a page boundary
+        addr = ALIGN_UP(addr, PAGE_SIZE);
+
+        // disallow shrinking of the heap
+        if(addr < heap_vma->end){
+            return heap_vma->end;
+        }
+
+        for (list_head_t* p = current->vmas.next; p != &current->vmas; p = p->next){
+            vma* v = list_entry(p, vma, list);
+
+            if(v == heap_vma) continue;
+
+            // if the requested address falls within the boundary of a different VMA, deny the request
+            if(v->start < addr && v->end > addr){
+                return heap_vma->end;
+            }
+        }
+
+        // if we found no issues, then extend the heap
+        heap_vma->end = addr;
+    }
+
+    return heap_vma->end;
 }
 
 u64 sys_munmap(u64 addr, u64 len, u64, u64, u64, u64){

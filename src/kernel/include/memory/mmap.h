@@ -22,6 +22,7 @@
 bool map(u64 virt_block, u64 phys_block, u8 block_order, u64 flags, u64 pt_base);
 bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_base);
 bool map_blocks(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_base);
+bool update_mapping(u64 virt_start, u64 virt_end, u64 flags, u64 pt_base);
 uintptr_t alloc_page_table();
 
 #endif

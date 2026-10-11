@@ -10,6 +10,8 @@
 #include "types/kernel_types.h"
 #include "memory/memprofiler.h"
 
+extern void ret_from_fork();
+
 list_head_t proclist;
 static list_head_t runqueue;
 static u64 n_processes = 0;
@@ -77,7 +79,7 @@ void scheduler_init(){
     INIT_LIST_HEAD(&idle_proc->proclist);
     INIT_LIST_HEAD(&idle_proc->runqueue);
 
-    trap_frame_t* tf = idle_proc->kernel_stack - sizeof(trap_frame_t);
+    trap_frame_t* tf = BASE_TRAPFRAME(idle_proc->kernel_stack);
 
     // process 0 is the idle proc
     tf->elr_el1 = &idle;
@@ -87,6 +89,11 @@ void scheduler_init(){
 
     // set up the idle proc to run in EL1 with interrupts enabled
     tf->spsr_el1 = 0x345;
+
+    cs_stack_frame_t* context_switch_frame = (u64) tf - sizeof(cs_stack_frame_t);
+    context_switch_frame->x30 = &ret_from_fork;
+
+    idle_proc->kernel_stack = context_switch_frame;
 
     // set the idle process as the current "user" process
     set_current(idle_proc);
@@ -129,6 +136,13 @@ void scheduler(){
         newproc = list_entry(runqueue.next, pcb_t, runqueue);
     }
 
+    // HACK: quick guard so that this case is caught and doesn't cause crashes
+    if(newproc == active_process){
+        ERROR("Scheduler tried to schedule current active process.\n");
+        prime_physical_timer();
+        return;
+    }
+
     // get the current process's kstack pointer
     u64 old_sp_buffer = &active_process->kernel_stack;
 
@@ -152,13 +166,11 @@ void start_scheduler(){
 
     set_current(current);
 
-    trap_frame_t* tf = current->kernel_stack - sizeof(trap_frame_t);
-
-    u64 sp = tf->sp_el0;
-    u64 pc = tf->elr_el1;
-    u64 spsr = tf->spsr_el1;
-    u64 ttbr = current->ttbr;
-    drop_to_user(sp, pc, spsr, ttbr, current->kernel_stack);
+    // pop the pcb from the runqueue so when the scheduler fires again, it doesn't show up
+    list_remove(&current->runqueue);
+    
+    // trapframe: 0xffff80003fff1ee0
+    drop_to_user(BASE_TRAPFRAME(current->kernel_stack), va_to_pa(current->ttbr));
 }
 
 void deschedule(){
@@ -226,10 +238,23 @@ void add_test_section_to_scheduler(){
     map(test_virt, test_phys, order, MAP_USER | MAP_READ | MAP_EXEC, proc->ttbr);
 
     // write the return pointer into the user stack
-    trap_frame_t* tf = proc->kernel_stack - sizeof(trap_frame_t);
+    trap_frame_t* tf = BASE_TRAPFRAME(proc->kernel_stack);
     tf->elr_el1 = user_ptr;
 
     add_to_schedule(proc);
 }
 
-// 
+void add_shell_to_scheduler(){
+    // allocate first process with NULL pointer, will be handled by the elf read
+    pcb_t* pcb = procalloc(NULL);
+    set_current(pcb);
+
+    // open the main user binary, for now a simple shell, later a desktop or something
+    file_t* f = open("/bin/jsh", NULL);
+
+    // read shell into memory
+    readelf(f);
+
+    // add it to the schedule
+    add_to_schedule(pcb);
+}

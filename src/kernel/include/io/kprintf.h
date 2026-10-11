@@ -6,6 +6,7 @@
 #include "macros.h"
 
 void kprintf(char* format_str, ...);
+void kprint_ts(char* format_str, ...);
 void disable_panel();
 
 #define INT_SIZE    (sizeof(int) * 8)

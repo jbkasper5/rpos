@@ -26,7 +26,7 @@ static void walk_virtual_memory(pte* parent_table, u8 level){
             if(curr->flags.bits.state == PAGE_RESERVED){
                 kprintf("\t\tAddr 0x%x: [RESERVED]\n", addr);
             }else{
-                kprintf("\t\tAddr 0x%x: [.ref = %d, .order = 0x%x, .state = 0x%x, .flags = 0x%x]\n", addr, curr->refcount, curr->order, curr->flags.bits.state, curr->flags.bits.flags);
+                kprintf("\t\tAddr 0x%x: [.ref = %d, .order = 0x%x, .state = 0x%x, .flags = 0x%x, cow = %d]\n", addr, curr->refcount, curr->order, curr->flags.bits.state, curr->flags.bits.flags, parent_table[i].md.cow);
             }
         }
     }
@@ -57,7 +57,22 @@ static void profile_pid(u64 pid){
     }
 }
 
+static void get_percent_free(){
+    page_frame_t* curr = page_frame_array_start();
+    page_frame_t* end = page_frame_array_end();
 
+    u64 blocks_free = 0;
+    u64 total_blocks = 0;
+    while(curr != end){
+        blocks_free += (curr->flags.bits.state == PAGE_FREE) ? (1 << curr->order) : 0;
+        total_blocks += (1 << curr->order);
+        curr += (1 << curr->order);
+    }
+
+    u64 pct = (blocks_free * 100000000ULL) / total_blocks;
+
+    kprintf("Pages free: [%d/%d] | %d.%06d%%\n", blocks_free, total_blocks, pct / 1000000, pct % 1000000);
+}
 
 
 void profile(memprofiler_cfg* cfg){
@@ -67,7 +82,7 @@ void profile(memprofiler_cfg* cfg){
     page_frame_t* base_end = (page_frame_t*) page_frame_array_end();
     page_frame_t* start = base + cfg->start_pfn;
     u64 n_pages = (cfg->count) ? cfg->count : base_end - start;
-    kprintf("Profiling %d pages...\n", n_pages);
+    // kprintf("Profiling %d pages...\n", n_pages);
 
     // u64 start_addr = (start - base) << 12;
     // page_frame_t* curr = start;
@@ -76,6 +91,7 @@ void profile(memprofiler_cfg* cfg){
     //     start_addr += (1 << 12);
     //     curr++;
     // }
+    get_percent_free();
 }
 
 void ram_profile(){
