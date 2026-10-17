@@ -53,6 +53,8 @@ void readelf(file_t* file){
 
     u64 start_brk = 0;
 
+    // BUG: Need to add arguments to the stack
+
     for(int i = 0; i < header->e_phnum; i++){
         INFO("Program header %d:\n", i + 1);
         INFO("  Type: %d\n", program_header->p_type);
@@ -60,7 +62,10 @@ void readelf(file_t* file){
         INFO("  Offset: %d\n", program_header->p_offset);
         INFO("  Virtual address: 0x%x\n", program_header->p_vaddr);
 
-        if(program_header->p_type != PT_LOAD) continue;
+        if(program_header->p_type != PT_LOAD){
+            program_header++;
+            continue;
+        }
 
         start_brk = MAX(ALIGN_UP(program_header->p_vaddr + program_header->p_memsz, PAGE_SIZE), start_brk);
 
@@ -70,13 +75,14 @@ void readelf(file_t* file){
         if(program_header->p_flags & PF_W) flags |= MAP_WRITE;
         if(program_header->p_flags & PF_X) flags |= MAP_EXEC;
 
-        // get the page order for the amount of bytes taken up by this section
-        u16 order = log2_pow2(program_header->p_memsz / 4096);
-
         u64 phys_block;
 
+        u64 top_align = ALIGN_UP(program_header->p_vaddr + program_header->p_memsz, PAGE_SIZE);
+        u64 bot_align = ALIGN_DOWN(program_header->p_vaddr, PAGE_SIZE);
+        u64 pages_to_read = (top_align - bot_align) / PAGE_SIZE;
+
         // allocate all singleton pages required by this section. Mark them RW so memory can be copied
-       for(int i = 0; i < (1 << order); i++){
+       for(int i = 0; i < pages_to_read; i++){
             // allocate physical block to contain the data we wish to store
             phys_block = buddy_alloc(PAGE_SIZE);
 
@@ -84,15 +90,14 @@ void readelf(file_t* file){
             map((program_header->p_vaddr + (i * PAGE_SIZE)), va_to_pa(phys_block), 0, MAP_USER | MAP_READ | MAP_WRITE, new_proc_l0);
        }
 
-        // seek and read the segment of memory 
+        // TODO: bss clearing eventually
+
+        // seek and read the segment of memory into the freshly allocated memory
         seek(file, program_header->p_offset, SEEK_SET);
-        read(file, rootfs.block_buf, program_header->p_filesz);
+        read(file, program_header->p_vaddr, program_header->p_filesz);
 
         // find the offset of the memory within the page we need to copy to
         u64 in_page_offset = program_header->p_vaddr % PAGE_SIZE;
-
-        // copy the data from the kernel side buffer into the kernel allocated block
-        memcpy(UNSCALED_POINTER_ADD(program_header->p_vaddr, in_page_offset), rootfs.block_buf, program_header->p_filesz);
 
         // update the mapping for the region with proper permissions
         u64 start_addr = ALIGN_DOWN(program_header->p_vaddr, PAGE_SIZE);
@@ -116,7 +121,7 @@ void readelf(file_t* file){
 
     // read trapframe to set the new process proper PC/SP/SPSR
     trap_frame_t* trapframe = BASE_TRAPFRAME(current->kernel_stack);
-    trapframe->sp_el0 = 0x0000800000000ULL - 16;           // SP_EL0
+    trapframe->sp_el0 = 0x0000800000000ULL - 16 - 256;           // SP_EL0
     trapframe->elr_el1 = header->e_entry;                   // ELR_EL1
     trapframe->spsr_el1 = 0x0;                               // SPSR
 

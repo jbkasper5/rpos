@@ -12,11 +12,6 @@ typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
 
-typedef volatile u32 reg32_t;
-typedef volatile u64 reg64_t;
-typedef u8 bool;
-typedef u16 pid_t;
-
 
 
 /*
@@ -26,10 +21,24 @@ typedef u16 pid_t;
 extern u64 syscall(u64 sys_num, ...);
 
 /*
- * Buffered, ANSI-aware printf writing to fd 1 via SYS_WRITE.
- * Supported conversions: %d %l %s %c %x %f %%
- * Output is flushed on newline and when the 2 KiB internal buffer fills.
+ * printf. Which one depends on the build flavor (set by src/user/Makefile):
+ *
+ *   musl         real libc stdio. RPOS_MUSL is defined, so <stdio.h> supplies
+ *                int printf(const char* restrict, ...).
+ *   freestanding our own buffered, ANSI-aware printf from lib/printf.c,
+ *                writing to fd 1 via SYS_WRITE.
+ *                Supported conversions: %d %l %s %c %x %f %%
+ *                Flushed on newline and when the 2 KiB buffer fills.
+ *
+ * The guard is required, not cosmetic: the bare-metal toolchain ships newlib
+ * headers even under -ffreestanding, so an unconditional <stdio.h> declares
+ * `int printf(const char* restrict, ...)` and lib/printf.c's own definition
+ * fails to compile with "conflicting types for 'printf'".
  */
+#ifdef RPOS_MUSL
+#include <stdio.h>
+#else
 void printf(char* format_str, ...);
+#endif
 
 #endif

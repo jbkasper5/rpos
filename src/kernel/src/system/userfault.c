@@ -3,6 +3,8 @@
 #include "memory/mem.h"
 #include "memory/paging.h"
 #include "memory/mmap.h"
+#include "types/virtual_memory_types.h"
+#include "types/scalar.h"
 
 void handle_el0_fault();
 
@@ -98,8 +100,23 @@ void handle_el0_fault(u64 faulting_address, u64 exception_status){
       (faulting_address >> 21) & 0x1FF,
       (faulting_address >> 12) & 0x1FF);
 
+    pcb_t* current = get_current();
+
+    // list valid vmas 
+    DEBUG("VMAs found for process: \n");
+    for (list_head_t* p = current->vmas.prev; p != &current->vmas; p = p->prev){
+
+        // copy parent process VMA into new child VMA list
+        vma* v = list_entry(p, vma, list);
+        if((faulting_address >= v->start) && (faulting_address < v->end)){
+            INFO("\t[0x%x, 0x%x] -> true\n", v->start, v->end);
+        }else{
+            INFO("\t[0x%x, 0x%x] -> false\n", v->start, v->end);
+        }
+    }
+
     pte* l3_pte = check_cow(faulting_address);
-    void* current_ttbr = get_current()->ttbr;
+    void* current_ttbr = current->ttbr;
 
     // if we lie in the VMA and 
     if(l3_pte){
