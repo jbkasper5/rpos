@@ -1,4 +1,5 @@
 #include "memory/mmap.h"
+#include "types/scalar.h"
 
 // early boot uses 15 pages
 u64 allocated_pages = 15;
@@ -23,17 +24,23 @@ extern u64 pa_to_va(u64 va);
 // }
 
 static inline void clean_cached_pte(void *addr) {
-    asm volatile("dsb ish" ::: "memory");
+    asm volatile("dsb sy" ::: "memory");
     asm volatile("dc cvac, %0" :: "r"(addr) : "memory");   // clean to PoC
 }
 
 static inline void clear_pte_tlb(u64 va){
-    asm volatile("dsb ish" ::: "memory");                          // prior PTE write/clean done before invalidate
-    asm volatile("tlbi vaae1is, %0" :: "r"(va >> 12) : "memory");  // evict the stale entry for this VA
-    asm volatile("dsb ish" ::: "memory");                          // invalidate (and its broadcast) complete
+    asm volatile("dsb sy" ::: "memory");                          // prior PTE write/clean done before invalidate
+    asm volatile("tlbi vaae1, %0" :: "r"(va >> 12) : "memory");  // evict the stale entry for this VA
+    asm volatile("dsb sy" ::: "memory");                          // invalidate (and its broadcast) complete
     asm volatile("isb" ::: "memory");                              // next access re-walks -> new perms
 }
 
+static inline void clean_page_to_poc(void *p) {
+    asm volatile("dsb sy" ::: "memory");
+    for (u64 off = 0; off < PAGE_SIZE; off += 64)
+        asm volatile("dc cvac, %0" :: "r"((u8*)p + off) : "memory");
+    asm volatile("dsb sy" ::: "memory");
+}
 
 
 uintptr_t alloc_page_table(){
@@ -44,10 +51,7 @@ uintptr_t alloc_page_table(){
 
     // page tables are cacheable; clean the freshly-zeroed table to DRAM so the
     // non-cacheable walker sees zeros in the entries we don't explicitly write.
-    asm volatile("dsb ish" ::: "memory");
-    for (u64 off = 0; off < PAGE_SIZE; off += 64)   // 64 = cache line
-        asm volatile("dc cvac, %0" :: "r"((u8*)page_addr + off) : "memory");
-    asm volatile("dsb ish" ::: "memory");
+    clean_page_to_poc((void*) page_addr);
 
     return va_to_pa(page_addr);
 }
@@ -101,7 +105,9 @@ static pte parse_block_flags(u64 flags, bool is_page){
     md.md.af = 1;
     md.md.ns = 0;
     md.md.sh = 3;
-    md.md.attr_index = 0;
+
+    // IDX 2 is MAIR bits 0xFF, which enables caching
+    md.md.attr_index = 2;
     md.md.type = is_page;
 
     // by default, kernel read only
@@ -114,8 +120,8 @@ static pte parse_block_flags(u64 flags, bool is_page){
     if (flags & MAP_DEVICE){
         md.md.attr_index = 1;
         md.md.sh = 0;
-    }else if(flags & MAP_CACHE){
-        md.md.attr_index = 2;
+    }else if(flags & MAP_NOCACHE){
+        md.md.attr_index = 0;
     }
 
     if(flags & MAP_EXEC){
@@ -181,6 +187,7 @@ bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_bas
         if(!l0_table[idx0].td.valid){
             ptte.td.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l0_table[idx0] = ptte;
+            HIDDENDEBUG("l0 [0x%x] at idx %d not found, allocating...\n", l0_table, idx0);
             clean_cached_pte(&l0_table[idx0]);
         }
         
@@ -188,6 +195,7 @@ bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_bas
         if (!l1_table[idx1].td.valid) {
             ptte.td.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l1_table[idx1] = ptte;
+            HIDDENDEBUG("l1 [0x%x] at idx %d not found, allocating...\n", l1_table, idx1);
             clean_cached_pte(&l1_table[idx1]);
         }
 
@@ -195,14 +203,29 @@ bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_bas
         if (!l2_table[idx2].td.valid) {
             ptte.td.address = (va_to_pa(buddy_alloc_pt())) >> PAGE_SHIFT;
             l2_table[idx2] = ptte;
+            HIDDENDEBUG("l2 [0x%x] at idx %d not found, allocating...\n", l2_table, idx2);
             clean_cached_pte(&l2_table[idx2]);
+        }
+
+        // asking for memory that is part of a block, skip for now
+        // BUG: need to handle this properly at some point
+        if(l2_table[idx2].td.type == 0){     // 0 = block
+            va += PAGE_SIZE;
+            pa += PAGE_SIZE;
+            continue;
         }
 
         l3_table = (pte*) (((u64) l2_table[idx2].td.address << PAGE_SHIFT) + virt_base());
         if (!l3_table[idx3].md.valid) {
             ptme.md.address = (pa >> PAGE_SHIFT);
             l3_table[idx3] = ptme;
+            HIDDENDEBUG("l3 [0x%x] at idx %d not found, allocating...\n", l3_table, idx3);
             clean_cached_pte(&l3_table[idx3]);
+
+            // A stale TLB entry for this VA (left by whatever address space was
+            // previously installed in TTBR0) would otherwise survive and send
+            // accesses to the OLD physical page.
+            clear_pte_tlb(va);
         }else{
             // WARNING("ENTRY ALREADY EXISTS AT THIS L3 INDEX: %d\n", idx3);
             // ptme.md.address = l3_table[idx3].md.address;
@@ -218,7 +241,8 @@ bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_bas
         va += PAGE_SIZE;
         pa += PAGE_SIZE;
     }
-    asm volatile("dsb ish" ::: "memory");
+    asm volatile("dsb sy" ::: "memory");
+    asm volatile("isb" ::: "memory");
     return TRUE;
 }
 
@@ -276,7 +300,7 @@ bool map_blocks(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_ba
         va += BLOCK_SIZE;
         pa += BLOCK_SIZE;
     }
-    asm volatile("dsb ish" ::: "memory");
+    asm volatile("dsb sy" ::: "memory");
     return TRUE;
 } 
 
@@ -366,6 +390,7 @@ bool update_mapping(u64 virt_start, u64 virt_end, u64 flags, u64 pt_base){
         
         ptme.md.address = entry.md.address;
         l3_table[idx3].value = ptme.value;
+        clean_cached_pte(&l3_table[idx3]);
         clear_pte_tlb(va);
 
         va += PAGE_SIZE;

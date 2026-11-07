@@ -220,9 +220,12 @@ ext4_inode* lookup(ext4_inode* dirnode, char* name){
 
     for(int i = 0; i < 15; i++){
         u64 block = dirnode->i_block[i];
-        
+
         // if block is 0, try the next one
         if(!block) continue;
+
+        HIDDENDEBUG("lookup('%s'): i_block[%d]=0x%x (dirnode=0x%x, &i_block[%d]=0x%x)\n",
+                  name, i, block, dirnode, i, &dirnode->i_block[i]);
 
         read_block(rootfs.block_buf, block);
         u64 inode_num = inode_from_directory((ext4_dir_entry*)rootfs.block_buf, name);

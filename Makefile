@@ -17,7 +17,8 @@ LINKER := aarch64-none-elf-ld
 OBJCOPY := aarch64-none-elf-objcopy
 
 CFLAGS := -Wall -nostdlib -nodefaultlibs -nostartfiles -fno-builtin -ffreestanding \
-           -O0 -mstrict-align -march=armv8-a+lse -Wshadow -mgeneral-regs-only
+           -O0 -mstrict-align -march=armv8-a -Wshadow -mgeneral-regs-only \
+		#    -Werror=implicit-function-declaration
 INCLUDES := -I $(SRC_DIR)/include/
 LINKERFILE := $(SRC_DIR)/linker.ld
 
@@ -28,6 +29,16 @@ YELLOW := \033[1;33m
 RESET  := \033[0m
 
 DEBUG ?= 0
+DEEPDEBUG ?= 0
+
+# DEEPDEBUG gates the noisy, hot-path instrumentation (per-page, per-block,
+# per-descriptor) that is too chatty to leave on for a normal DEBUG build.
+# It implies DEBUG, so this block must be evaluated first.
+ifeq ($(DEEPDEBUG), 1)
+    DEBUG := 1
+    CFLAGS += -DDEEPDEBUG
+endif
+
 ifeq ($(DEBUG), 1)
     CFLAGS += -DDEBUG -g
 endif
@@ -39,7 +50,7 @@ ifeq ($(UNAME_S),Linux)
   MOUNT_PREFACE = u
 endif
 
-.PHONY: all local debug clean asm read
+.PHONY: all local debug debugest clean asm read
 
 all: $(KERNEL_IMG) $(ARMSTUB_BIN)
 	@printf "$(BLUE)==> Mounting SD card$(RESET)\n"
@@ -55,6 +66,10 @@ local: $(KERNEL_IMG) $(ARMSTUB_BIN)
 debug: clean
 	@printf "$(YELLOW)==> Rebuilding with DEBUG=1$(RESET)\n"
 	$(MAKE) DEBUG=1
+
+debugest: clean
+	@printf "$(YELLOW)==> Rebuilding with DEBUG=1 DEEPDEBUG=1$(RESET)\n"
+	$(MAKE) DEBUG=1 DEEPDEBUG=1
 
 $(KERNEL_IMG): $(TARGET)
 	@mkdir -p $(PROD_DIR)

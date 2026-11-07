@@ -28,6 +28,6 @@ walk:
 # param $x0 - address of L0 table to assume
 assume_l0_table:
     msr TTBR1_EL1, x0
-    dsb ish
+    dsb sy
     isb
     ret

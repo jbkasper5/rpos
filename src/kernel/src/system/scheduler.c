@@ -37,8 +37,9 @@ static void idle(){
 }
 
 static void* initialize_proc_kstack(){
+    // BUG: guard page doesn't actually guard anymore
     u64 range = buddy_alloc(KSTACK_SIZE + PAGE_SIZE);
-    map(range + PAGE_SIZE, va_to_pa(range + PAGE_SIZE), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);   
+    // map(range + PAGE_SIZE, va_to_pa(range + PAGE_SIZE), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, L0_TABLE);   
 
     return range + (KSTACK_SIZE + PAGE_SIZE) - 0x10;
 }

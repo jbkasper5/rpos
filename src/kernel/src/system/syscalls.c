@@ -20,7 +20,7 @@
 void* cacheable_page = NULL;
 
 u64 handle_syscall(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 syscall_number){
-    // DEBUG("Syscall Number: %d\n", syscall_number);
+    DEBUG("Syscall Number: %d\n", syscall_number);
     if(syscall_number > SYS_MAX){
         WARNING("unimplemented syscall %d\n", syscall_number);
         return -ENOSYS;

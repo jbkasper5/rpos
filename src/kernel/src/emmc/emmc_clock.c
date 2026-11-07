@@ -1,5 +1,6 @@
 #include "emmc/emmc.h"
 #include "emmc/emmc_clock.h"
+#include "types/scalar.h"
 
 bool wait_reg_mask(reg32_t* reg, u32 mask, bool set, u32 timeout){
     for(int cycles = 0; cycles <= timeout; cycles++){
@@ -64,24 +65,17 @@ u32 get_clock_divider(u32 base_clock, u32 target_rate) {
 bool switch_clock_rate(u32 base_clock, u32 target_rate) {
     u32 divider = get_clock_divider(base_clock, target_rate);
 
-    while((EMMC->status & (EMMC_STATUS_CMD_INHIBIT | EMMC_STATUS_DAT_INHIBIT))) {
+    while (EMMC->status & (EMMC_STATUS_CMD_INHIBIT | EMMC_STATUS_DAT_INHIBIT)) {
         timer_sleep(1);
     }
 
-    u32 c1 = EMMC->control[1] & ~EMMC_CTRL1_CLK_ENABLE;
+    // keep CLK_INT_EN; drop SD clock enable, old divider and GENSEL; apply new divider
+    u32 c1 = (EMMC->control[1] & ~(EMMC_CTRL1_CLK_ENABLE | 0xFFE0)) | divider;
 
-    EMMC->control[1] = c1;
+    EMMC->control[1] = c1;                              // divider live, SD clock still off
+    if (!wait_reg_mask(&EMMC->control[1], EMMC_CTRL1_CLK_STABLE, TRUE, 2000)) return FALSE;
 
-    timer_sleep(3);
-
-    EMMC->control[1] = (c1 | divider) & ~0xFFE0;
-
-    timer_sleep(3);
-
-    EMMC->control[1] = c1 | EMMC_CTRL1_CLK_ENABLE;
-
-    timer_sleep(3);
-
+    EMMC->control[1] = c1 | EMMC_CTRL1_CLK_ENABLE;      // now enable
     return TRUE;
 }
 

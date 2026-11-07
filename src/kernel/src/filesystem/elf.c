@@ -1,9 +1,10 @@
 #include "filesystem/elf.h"
 #include "system/entry.h"
 #include "types/kernel_types.h"
+#include "utils/utils.h"
 
 extern void do_user_things();
-
+extern void switch_user_tlb(u64);
 
 void readelf(file_t* file){
     // TODO: user pages need to be mapped as single pages, not as large blocks
@@ -82,12 +83,12 @@ void readelf(file_t* file){
         u64 pages_to_read = (top_align - bot_align) / PAGE_SIZE;
 
         // allocate all singleton pages required by this section. Mark them RW so memory can be copied
-       for(int i = 0; i < pages_to_read; i++){
+       for(int j = 0; j < pages_to_read; j++){
             // allocate physical block to contain the data we wish to store
             phys_block = buddy_alloc(PAGE_SIZE);
 
             // map physical block into user memory page by page
-            map((program_header->p_vaddr + (i * PAGE_SIZE)), va_to_pa(phys_block), 0, MAP_USER | MAP_READ | MAP_WRITE, new_proc_l0);
+            map((program_header->p_vaddr + (j * PAGE_SIZE)), va_to_pa(phys_block), 0, MAP_USER | MAP_READ | MAP_WRITE, new_proc_l0);
        }
 
         // TODO: bss clearing eventually
@@ -102,6 +103,8 @@ void readelf(file_t* file){
         // update the mapping for the region with proper permissions
         u64 start_addr = ALIGN_DOWN(program_header->p_vaddr, PAGE_SIZE);
         u64 end_addr = ALIGN_UP((program_header->p_vaddr + program_header->p_memsz), PAGE_SIZE);
+
+        flush_icache_range(program_header->p_vaddr, program_header->p_vaddr + program_header->p_filesz);    
         update_mapping(start_addr, end_addr, flags, new_proc_l0);
 
         program_header++;

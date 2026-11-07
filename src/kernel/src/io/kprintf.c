@@ -3,6 +3,8 @@
 #include "macros.h"
 #include "io/cli.h"
 
+bool kernel_log_ready = 0;
+
 typedef enum{
     ANSI_ESCAPE,
     ANSI_NORMAL,

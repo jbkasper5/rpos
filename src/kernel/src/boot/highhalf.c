@@ -183,6 +183,7 @@ static BOOT_FN void map_pre_code(u64* pt){
     
     u64 pages_to_map = (code_base - vb) / PAGE_SIZE;
 
+    // HIDDENDEBUG("func map_pre_code mapping 0x%x - 0x%x", vb, vb + (pages_to_map * PAGE_SIZE));
     map_lo(vb, vb - vb, pages_to_map, pt, RW);
 }
 
@@ -194,6 +195,7 @@ static BOOT_FN void map_code(u64* pt){
     
     u64 pages_to_map = (code_end - code_base) / PAGE_SIZE;
 
+    // HIDDENDEBUG("func map_code mapping 0x%x - 0x%x", code_base, code_base + (pages_to_map * PAGE_SIZE));
     map_lo(code_base, code_base - vb, pages_to_map, pt, RX);
 }
 
@@ -204,6 +206,7 @@ static BOOT_FN void map_rodata(u64* pt){
 
     u64 pages_to_map = (rodata_end - rodata_start) / PAGE_SIZE;
 
+    // HIDDENDEBUG("func map_rodata mapping 0x%x - 0x%x", rodata_start, rodata_start + (pages_to_map * PAGE_SIZE));
     map_lo(rodata_start, rodata_start - vb, pages_to_map, pt, RO);
 }
 
@@ -214,6 +217,7 @@ static BOOT_FN void map_bss(u64* pt){
 
     u64 pages_to_map = (bss_end - bss_start) / PAGE_SIZE;
 
+    // HIDDENDEBUG("func map_bss mapping 0x%x - 0x%x", bss_start, bss_start + (pages_to_map * PAGE_SIZE));
     map_lo(bss_start, bss_start - vb, pages_to_map, pt, RW);
 }
 
@@ -223,6 +227,7 @@ static BOOT_FN void map_static_page_region(u64* pt){
 
     u64 pages_to_map = static_page_region_pages();
 
+    // HIDDENDEBUG("func map_static_page_region mapping 0x%x - 0x%x", spr, spr + (pages_to_map * PAGE_SIZE));
     map_lo(spr, spr - vb, pages_to_map, pt, RW);
 }
 
@@ -234,6 +239,7 @@ static BOOT_FN void map_kernel_stack(u64* pt){
 
     u64 pages_to_map = (kstack_top - kstack_bottom) / PAGE_SIZE;
 
+    // HIDDENDEBUG("func map_kernel_stack mapping 0x%x - 0x%x", kstack_bottom, kstack_bottom + (pages_to_map * PAGE_SIZE));
     map_lo(kstack_bottom, kstack_bottom - vb, pages_to_map, pt, RW);
 }
 
@@ -242,6 +248,7 @@ static BOOT_FN void map_mmu_stub(u64* pt){
     mmu_stub_loc = ALIGN_DOWN(mmu_stub_loc, PAGE_SIZE);
 
     // map single page into lower memory for the stub
+    // HIDDENDEBUG("func map_mmu_stub mapping 0x%x - 0x%x", mmu_stub_loc, mmu_stub_loc + (1 * PAGE_SIZE));
     map_lo(mmu_stub_loc, mmu_stub_loc, 1, pt, RX);
 }
 
@@ -252,10 +259,14 @@ static BOOT_FN void map_page_frame_array(u64* pt){
 
     u64 pages_to_map = (end_addr - start_addr) >> 12;
 
+
+    // HIDDENDEBUG("func map_page_frame_array mapping 0x%x - 0x%x", start_addr, start_addr + (pages_to_map * PAGE_SIZE));
     map_lo(start_addr, start_addr - vb, pages_to_map, pt, RW);
 }
 
-
+/*
+    MAPS 0xffff80000090f000 - 0xffff800040000000
+*/
 static BOOT_FN void map_ram(u64* pt){
     // work around the existing spots to fill all of RAM. Only populates first GIB
 
@@ -264,10 +275,12 @@ static BOOT_FN void map_ram(u64* pt){
     u64 test_end = ALIGN_UP(test_section_start + test_size, PAGE_SIZE);
     u64 vb = VIRT_BASE;
 
-    // 1 GiB minus the end of the test section
-    u64 pages_to_map = ((1 << 30) - test_end) / PAGE_SIZE;
+    // 0x3B400000 is the upper limit for what the CPU can map, videocore GPU takes the rest
+    // 
+    u64 pages_to_map = (0x3B400000 - test_end) / PAGE_SIZE;
 
     // mark the remainder of the first GB as read-write for the kernel
+    // HIDDENDEBUG("func map_ram mapping 0x%x - 0x%x", vb + test_end, vb + test_end + (pages_to_map * PAGE_SIZE));
     map_lo(vb + test_end, test_end, pages_to_map, pt, RW);
 }
 // ––––––––––––––––––––––––––––––––––––––––––––––––– //
@@ -299,30 +312,42 @@ void BOOT_FN map_high(){
     u64* pt_lo = (u64*) alloc_page_table_lo();
 
     // 1. Mark early pre-kernel code address range as R/W
+    // 0xffff800000000000 - 0xffff800000080000
     map_pre_code(pt_hi);
 
     // 2. Mark kernel code as R/X
+    // 0xffff800000082000 - 0xffff80000009c000
     map_code(pt_hi);
 
     // 3. Mark kernel rodata as RO
+    // 0xffff80000009c000 - 0xffff8000000a3000
     map_rodata(pt_hi);
 
     // 4. Mark kernel BSS as RW
+    // 0xffff8000000a3000 - 0xffff8000000b1000
     map_bss(pt_hi);
 
-    // 5. Mark static page region for MMU initialization
-    map_static_page_region(pt_hi);
-
-    // 6. Map kstack
+    // 5. Map kstack
+    // 0xffff8000000b1000 - 0xffff8000000b3000
     map_kernel_stack(pt_hi);
 
-    // 7. Complete the rest of the RAM mapping
+    // 6. Complete the rest of the RAM mapping
+    // 0x81000 - 0x82000
     map_mmu_stub(pt_lo);
 
-    // 8. Map the page frame array, so generic map can use buddy allocator
+    // 7. Map the page frame array, so generic map can use buddy allocator
+    // 0xffff8000000b3000 - 0xffff8000008b3000
     map_page_frame_array(pt_hi);
 
+    // make the following regions cacheable
+    k_code_mem_mapping.md.attr_index = 2;
+
+    // 8. Mark static page region for MMU initialization
+    // 0xffff8000008b3000 - 0xffff800000917000
+    map_static_page_region(pt_hi);
+
     // 9. Complete the rest of the RW RAM mapping
+    // 0xffff800000919000 - 0xffff80003b400000
     map_ram(pt_hi);
 
     // 10. Enable MMU and complete kernel boot

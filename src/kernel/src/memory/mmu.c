@@ -77,6 +77,9 @@ u64* finish_virtual_mapping(){
     u64 flags = MAP_KERNEL | MAP_DEVICE | MAP_WRITE | MAP_READ;
     map(PBASE, va_to_pa(PBASE), 12, flags, (u64) L0_TABLE);
 
+    kernel_log_ready = 1;
+    INFO("Logging enabled\n");
+
     // map GIC peripherals
     u64 gic_virtual = ALIGN_DOWN(GIC_BASE, BLOCK_SIZE);
     map(gic_virtual, va_to_pa(gic_virtual), 9, flags, (u64) L0_TABLE);

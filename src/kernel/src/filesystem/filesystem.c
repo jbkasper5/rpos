@@ -4,6 +4,7 @@
 #include "utils/datastructures.h"
 #include "utils/utils.h"
 #include "uabi/rpos/errno.h"
+#include "types/scalar.h"
 
 #define DELIMITER   '/'
 #define MAX_NAME    255
@@ -47,16 +48,18 @@ void* open(const char* pathname, u32 flags){
         token = strtok(NULL, '/', &savestr);
     }
 
-    kfree(str);
+    // kfree(str);
 
     if(nodeptr){
         INFO("'%s' resolved successfully.\n", pathname);
         file_t* file = (file_t*) kmalloc(sizeof(file_t));
         file->file_ops = NULL;
         file->inode = nodeptr;
+        file->private_data = NULL;
+        file->refcount = NULL;
+
         file->pos = 0;
         file->flags = 0;
-        kfree(nodeptr);
         return file;
     }
 
@@ -114,7 +117,8 @@ static u64 read_direct(file_t* file, void* buf, u64 count){
 
     // BUG: don't yet account for offsets
     u64 bytes_read = 0;
-    for(int i = block_no; i < 15; i++){
+    for(int i = block_no; i < 12; i++){
+        HIDDENDEBUG("i=%d inode=0x%x i_block=0x%x\n", i, file->inode, file->inode->i_block[i]);
         void* buf_advanced = UNSCALED_POINTER_ADD(buf, bytes_read);
         bytes_read += read_file_block(file, buf_advanced, count - bytes_read, file->inode->i_block[i]);
 

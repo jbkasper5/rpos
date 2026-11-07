@@ -7,6 +7,8 @@
 
 #include "definitions/linker_symbols.h"
 
+#include "types/scalar.h"
+
 // 20 is for a 4GiB system, right now we operate on 1GiB
 // #define MAX_ORDER 20
 #define MAX_ORDER 18
@@ -14,6 +16,14 @@
 // one list per order
 static list_head_t buddy_lists[MAX_ORDER + 1];
 static page_frame_t* frame_metadata;
+
+static inline void clean_page_to_poc(void *p) {
+    asm volatile("dsb sy" ::: "memory");
+    for (u64 off = 0; off < PAGE_SIZE; off += 64)
+        asm volatile("dc cvac, %0" :: "r"((u8*)p + off) : "memory");
+    asm volatile("dsb sy" ::: "memory");
+}
+
 
 // split a higher order block in 2
 uintptr_t _split_down(u8 req_order, u8 curr_order){
@@ -24,7 +34,10 @@ uintptr_t _split_down(u8 req_order, u8 curr_order){
         return (uintptr_t) &og_frame->list;
     }
     u32 pfn = og_frame - frame_metadata;
+
     u32 buddy_pfn = pfn + (1u << (curr_order - 1));
+
+    HIDDENDEBUG("Trying to split pfn [0x%x] with buddy_pfn [0x%x]\n", pfn, buddy_pfn);
 
     list_remove(buddy_lists[curr_order].next);
     list_add(&frame_metadata[buddy_pfn].list, &buddy_lists[curr_order - 1]);
@@ -67,11 +80,10 @@ uintptr_t _alloc_and_return(list_head_t* head, u32 req_order){
     block->flags.bits.state = PAGE_BUDDY;
 
     // make it a head page
-    block->flags.bits.flags |= PAGE_BUDDY_HEAD;
+    block->flags.bits.flags = PAGE_BUDDY_HEAD;
 
     // convert the relative coordinate of the block within the frame metadata to a physical page address
     u64 pfn = block - frame_metadata;
-
 
     // mark the following pages as tail pages and define what the head PFN is
     for(int i = 1; i < (1U << req_order); i++){
@@ -91,11 +103,14 @@ static void coalesce_up(page_frame_t* frame){
     u64 curr_pfn = (frame - frame_metadata);
     u64 buddy = curr_pfn ^ (1u << block_order);
 
-    DEBUG("Trying to coalesce pfn 0x%x of order %d\n", curr_pfn, frame->order);
+    DEBUG("Trying to coalesce pfn 0x%x of order %d with buddy_pfn 0x%x\n", curr_pfn, frame->order, buddy);
 
     // slide back to the previous frame in memory
     page_frame_t* prev_frame = frame_metadata + MIN(buddy, curr_pfn);
     page_frame_t* next_frame = frame_metadata + MAX(buddy, curr_pfn);
+
+    if(!(prev_frame->flags.bits.flags & PAGE_BUDDY_HEAD)) return;
+    if(!(next_frame->flags.bits.flags & PAGE_BUDDY_HEAD)) return;
 
     // in order to coalesce, both buddies must be of the same order
     if(prev_frame->order != next_frame->order) return;
@@ -149,6 +164,11 @@ void buddy_free(void* page){
     // step 1: mark the frame as free
     frame->flags.bits.state = PAGE_FREE;
 
+    // free the whole block, not just the head, so no tail is left marked PAGE_BUDDY
+    for(u64 i = 1; i < (1ULL << frame->order); i++){
+        frame_metadata[pfn + i].flags.bits.state = PAGE_FREE;
+    }
+
     // step 2: add it to the buddy list of the appropriate order
     size_t block_order = frame->order;
 
@@ -200,6 +220,9 @@ u64 buddy_alloc_pt(){
 
     // zero out the page
     memset((void*) new_page, 0, PAGE_SIZE);
+
+    // wipe from cache
+    clean_page_to_poc((void*) new_page);
     return (u64) new_page;
 }
 
@@ -279,24 +302,45 @@ void* head_from_page(void* page_addr){
 }
 
 static void _initialize_buddy_allocator(u64 start_page_addr, u64 available_pages){
-    u64 curr_pfn = start_page_addr >> 12;
+    u64 curr = start_page_addr >> 12;
+    u64 limit = curr + available_pages;
+
     page_frame_flags_t base_flags = {
         .bits.state = PAGE_FREE,
         .bits.flags = PAGE_BUDDY_HEAD
     };
 
-    for(int64_t i = MAX_ORDER; i >= 0; i--){
-        if(available_pages & (1ULL << i)){
-            frame_metadata[curr_pfn].order = i;
-            for(int j = 1; j < (1ULL << i); j++){
-                frame_metadata[curr_pfn + j].order = curr_pfn;
-                frame_metadata[curr_pfn + j].flags.bits.state = PAGE_BUDDY_TAIL;
-            }
-            frame_metadata[curr_pfn].flags = base_flags;
-            list_add(&frame_metadata[curr_pfn].list, &buddy_lists[i]);
-            curr_pfn += (1ULL << i);
+    while(curr < limit){
+        // start from the highest order we support
+        u64 order = MAX_ORDER;
+        
+        // verify that curr is aligned to order and it fits within the limit
+        while(order > 0 && ((curr & ((1ULL << order) - 1)) || (curr + (1ULL << order) > limit))) order--;
+
+        frame_metadata[curr].order = order;
+        for(int i = 1; i < (1ULL << order); i++){
+            frame_metadata[curr + i].order = curr;
+            frame_metadata[curr + i].flags.bits.state = PAGE_FREE;
+            frame_metadata[curr + i].flags.bits.flags = PAGE_BUDDY_TAIL;
         }
+        frame_metadata[curr].flags = base_flags;
+        list_add(&frame_metadata[curr].list, &buddy_lists[order]);
+        curr += (1ULL << order);
     }
+
+    // for(int64_t i = MAX_ORDER; i >= 0; i--){
+    //     if(available_pages & (1ULL << i)){
+    //         frame_metadata[curr_pfn].order = i;
+    //         for(int j = 1; j < (1ULL << i); j++){
+    //             frame_metadata[curr_pfn + j].order = curr_pfn;
+    //             frame_metadata[curr_pfn + j].flags.bits.state = PAGE_BUDDY_TAIL;
+    //         }
+    //         frame_metadata[curr_pfn].flags = base_flags;
+    //         // HIDDENDEBUG("Adding head pfn 0x%x (order %d) to buddy list.\n", curr_pfn, frame_metadata[curr_pfn].order);
+    //         list_add(&frame_metadata[curr_pfn].list, &buddy_lists[i]);
+    //         curr_pfn += (1ULL << i);
+    //     }
+    // }
 }
 
 u8 get_block_order(u64 addr){
@@ -318,7 +362,8 @@ u64 initialize_page_frame_array(){
     u64 start_page_addr = (reserved_memory + 0xFFF) & (~0xFFF);
 
     // stay in the lower 1 GiB for now
-    u64 available_pages = (1ULL << 18) - reserved_pages;
+    // u64 available_pages = (0x3B400000 >> 12) - reserved_pages;
+    u64 available_pages = (0x38000000 >> 12) - reserved_pages;
 
     // zero out the page frame metadata (which internally sets the state to free and )
     // for 1 GiB of RAM, there are 2^18 pages

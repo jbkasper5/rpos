@@ -1,9 +1,6 @@
 #include "memory/kmalloc.h"
 #include "memory/mmap.h"
 
-uintptr_t kheap_start = 0xFFFF0000;
-u64 kheap_size = 0;
-
 cache kcaches[CACHES];
 
 #define MIN_SLAB_ORDER      5
@@ -21,7 +18,7 @@ static void* _slab_alloc(u32 order){
     if(!phys_page) panic();
 
     // map the page into memory
-    map(phys_page, va_to_pa(phys_page), order, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);
+    // map(phys_page, va_to_pa(phys_page), order, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);
 
     // for now, convert this to virtual later
     return (void*) phys_page;
@@ -70,7 +67,7 @@ void* kmalloc(size_t bytes){
         u64 pages = buddy_alloc(aligned_bytes);
 
         // need to map the page(s) into memory first
-        map(pages, va_to_pa(pages), log2 - PAGE_SHIFT, MAP_KERNEL, (u64) L0_TABLE);
+        // map(pages, va_to_pa(pages), log2 - PAGE_SHIFT, MAP_KERNEL, (u64) L0_TABLE);
 
         return (void*) pages;
     }

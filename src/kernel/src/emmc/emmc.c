@@ -3,6 +3,7 @@
 #include "io/gpio.h"
 #include "emmc/emmc.h"
 #include "emmc/emmc_clock.h"
+#include "mailbox/mailbox.h"
 #include "utils/timer.h"
 
 static emmc_device_t device = {0};
@@ -407,6 +408,13 @@ static bool emmc_card_reset(){
     c0 |= (0x0F << 8);
     EMMC->control[0] = c0;
     timer_sleep(3);
+
+    // emmc_setup_clock() reads the real base rate from the mailbox but keeps it
+    // in a local, so device.base_clock stayed 0 -- and get_clock_divider(0, x)
+    // returns 0, which means NO DIVISION. Every later switch_clock_rate() was
+    // therefore running the bus at the full base rate (200MHz on Pi 4) rather
+    // than the requested target.
+    device.base_clock = mailbox_clock_rate(CT_EMMC);
 
     if(!emmc_setup_clock()) return FALSE;
 

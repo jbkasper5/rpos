@@ -2,6 +2,7 @@
 #define __UTILS_H__
 
 #include "macros.h"
+#include "types/scalar.h"
 
 
 struct pcb_s; // Forward declare the struct
@@ -30,5 +31,7 @@ pcb_t* get_active_pcb();
 void set_active_pcb(pcb_t* pcb);
 
 void flush_tlb();
+
+void flush_icache_range(u64 start, u64 end);
 
 #endif

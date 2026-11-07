@@ -49,3 +49,19 @@ char* strtok(char* str, char delim, char** saveptr){
     
     return NULL;
 }
+
+void flush_icache_range(u64 start, u64 end) {
+    u64 ctr;
+    asm volatile("mrs %0, ctr_el0" : "=r"(ctr));
+    u64 dline = 4UL << ((ctr >> 16) & 0xF);   // CTR_EL0.DminLine
+    u64 iline = 4UL << (ctr & 0xF);           // CTR_EL0.IminLine
+
+    for (u64 a = start & ~(dline - 1); a < end; a += dline)
+        asm volatile("dc cvac, %0" :: "r"(a) : "memory");   // clean D to PoC
+    asm volatile("dsb sy" ::: "memory");
+
+    for (u64 a = start & ~(iline - 1); a < end; a += iline)
+        asm volatile("ic ivau, %0" :: "r"(a) : "memory");   // invalidate I
+    asm volatile("dsb sy" ::: "memory");
+    asm volatile("isb" ::: "memory");
+}

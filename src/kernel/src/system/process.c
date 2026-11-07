@@ -12,7 +12,7 @@ extern void ret_from_fork();
 
 static void* initialize_proc_kstack(){
     u64 range = buddy_alloc(KSTACK_SIZE + PAGE_SIZE);
-    map(range + PAGE_SIZE, va_to_pa(range + PAGE_SIZE), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);   
+    // map(range + PAGE_SIZE, va_to_pa(range + PAGE_SIZE), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);   
 
     return (void*) (range + (KSTACK_SIZE + PAGE_SIZE) - 0x10);
 }

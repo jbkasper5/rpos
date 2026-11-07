@@ -14,13 +14,13 @@ drop_to_user:
 
     # // switch out new table
     msr TTBR0_EL1, x1
-    dsb ish
+    dsb sy
     isb
 
 
     # // nuke to fully wipe the TLB
-    tlbi vmalle1is
-    dsb ish
+    tlbi vmalle1
+    dsb sy
     isb
 
 

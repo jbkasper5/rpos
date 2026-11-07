@@ -118,7 +118,7 @@ flush_tlb:
     // 1. Invalidate the TLB
     // 'vaae1is' means: Virtual Address, All ASIDs, EL1&0, Inner Shareable (all cores)
     // If you want to flush the whole thing:
-    tlbi vmalle1is 
+    tlbi vmalle1 
 
     // 2. Data Synchronization Barrier
     // Ensures the TLB invalidation completes before any further instructions run

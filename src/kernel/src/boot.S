@@ -29,6 +29,13 @@ _start:
    b _infinite
 
 master:
+   mrs x0, S3_1_C11_C0_2    // L2CTLR_EL1
+   mov x1, #0x22            // data RAM latency + setup, as in the stock armstub8
+   orr x0, x0, x1
+   msr S3_1_C11_C0_2, x0
+   isb
+
+
    // initialize UART and set up debugging via JLINK
    ldr x0, =__kstack_top
    mov sp, x0
@@ -100,10 +107,17 @@ el2_entry:
    msr cptr_el2, x0
    isb
 
-   mrs x0, cptr_el2
-
    // specify the kernel to use SP_EL1
    msr spsel, #1
+
+      // .text.boot, before the branch to map_high
+    ldr x0, =__boot_bss_start
+    ldr x1, =__boot_bss_end
+1:  cmp x0, x1
+    b.hs 2f
+    str xzr, [x0], #8
+    b   1b
+2:
 
    // drop into el1
    eret

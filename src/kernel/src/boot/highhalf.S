@@ -10,8 +10,8 @@ enable_mmu:
     # ldr x2, =((16 << 0)  | (16 << 16) | (2 << 30) | (3 << 12) | \
     #           (3 << 28)  | (1 << 8)   | (1 << 10) | (1 << 24) | \
     #           (1 << 26)  | (2 << 32))
-    ldr x2, =0x80100010
-    # ldr x2, =0xB5103510
+    # ldr x2, =0x80100010
+    ldr x2, =0xB5103510
     msr TCR_EL1, x2
     isb
 
@@ -25,7 +25,7 @@ enable_mmu:
 
     // 4. Invalidate I-Cache to be safe
     ic ialluis
-    dsb ish
+    dsb sy
     isb
 
     // 4.5. Invalidate the dcache
@@ -45,7 +45,11 @@ enable_mmu:
     orr x2, x2, #(1 << 0)    // M
     orr x2, x2, #(1 << 2)    // C
     # orr x2, x2, #(1 << 12)   // I
-    msr sctlr_el1, x2
+    
+    tlbi vmalle1
+    dsb sy
+    isb
+    msr sctlr_el1, x2       // this is the actual mmu enable line
     isb
 
     // 6. Absolute Jump to High Memory

@@ -96,7 +96,7 @@ int init_framebuffer(){
     LCD_READY = (frame.fb) ? TRUE : FALSE;
 
     if(frame.fb){
-        map_pages((u64) frame.fb, va_to_pa((u64) frame.fb), 376, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);
+        map_pages((u64) frame.fb, va_to_pa((u64) frame.fb), 376, MAP_KERNEL | MAP_READ | MAP_WRITE | MAP_NOCACHE, (u64) L0_TABLE);
         fill_screen(&frame, 0xFF000000);
     }
 

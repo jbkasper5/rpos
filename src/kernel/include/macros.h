@@ -9,7 +9,10 @@
 u64 usec_since_boot();
 u64 ticks_since_boot();
 
+extern bool kernel_log_ready;
+
 #define LOG(color, label, ...) do {                                   \
+    if (!kernel_log_ready) break;                                     \
     u64 _ts = usec_since_boot();                                      \
     kprintf("[\e[" color "m" label " %d.%06ds\e[0m] ",                \
             _ts / 1000000, _ts % 1000000);                            \
@@ -25,6 +28,13 @@ u64 ticks_since_boot();
 #define WARNING(...) LOG("33", "WARNING", __VA_ARGS__)
 #define ERROR(...)   LOG("31", "ERROR",   __VA_ARGS__)
 
+#ifdef DEEPDEBUG
+#define HIDDENDEBUG(fmt, ...) \
+    LOG("36", "DEEP", "%s:%d %s(): " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+#define HIDDENDEBUG(fmt, ...) do {} while(0)
+#endif
+
 #ifdef NULL
 #undef NULL
 #endif
@@ -33,7 +43,6 @@ u64 ticks_since_boot();
 
 #define FALSE       0
 #define TRUE        1
-
 
 #define DEBUG_PIN           17 // pi pin 11, ground pin 9
 #define USER_PIN            18 // pi pin 12, ground pin 14
