@@ -1,6 +1,7 @@
 #include "jsh.h"
 #include "usermacros.h"
 #include "userlib.h"
+#include <stdlib.h>
 
 #define TRUE        1
 
@@ -54,37 +55,13 @@ static void commandline(){
 }
 
 int main(){
-    u64 brk = syscall(SYS_BRK, 0);
-    printf("Old brk: 0x%x\n", brk);
-    brk = syscall(SYS_BRK, (brk + 0x1000));
-    printf("New brk: 0x%x\n", brk);
+    printf("Made it to MUSL main()\n");
 
-    char* buf = (char*) brk - 0x1000;
-    buf[0] = 'H';
-    buf[1] = 'e';
-    buf[2] = 'l';
-    buf[3] = 'l';
-    buf[4] = 'o';
-    buf[5] = '!';
-    buf[6] = '\0';
+    int* test = (int*) malloc(sizeof(int) * 32);
 
-    printf("Testing heap: '%s'\n", buf);
+    *test = 100;
 
-    u64 addr = 0x5000000;
-    char* ret_addr = (char*) syscall(SYS_MMAP, addr, 0x1000, PROT_READ | PROT_WRITE, 0, 0, 0);
-    printf("Map acquired address: 0x%x\n", ret_addr);
-
-    ret_addr[0] = 'G';
-    ret_addr[1] = 'o';
-    ret_addr[2] = 'o';
-    ret_addr[3] = 'd';
-    ret_addr[4] = 'b';
-    ret_addr[5] = 'y';
-    ret_addr[6] = 'e';
-    ret_addr[7] = '!';
-    ret_addr[8] = '\0';
-
-    printf("Testing mmap: '%s'\n", ret_addr);
+    printf("Used malloc yippee (test = 0x%x, *test = %d)\n", test, *test);
 
     commandline();
     syscall(SYS_EXIT_GROUP);

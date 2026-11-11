@@ -108,3 +108,10 @@ typedef struct {
     void *par;                         /* Private hardware-specific data (struct par) */
     // struct apertures_struct *apertures; /* PCI/Hardware aperture info */
 } fb_info;
+
+typedef struct {
+    uint16_t ws_row;
+    uint16_t ws_col;
+    uint16_t ws_xpixel;
+    uint16_t ws_ypixel;
+} winsize;

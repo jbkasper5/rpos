@@ -19,7 +19,7 @@ static BOOT_BSS pte k_code_table_mapping = {0};
 static BOOT_BSS pte k_code_mem_mapping = {0};
 static BOOT_BSS int lo_allocated_pages = 0;
 
-static BOOT_BSS enum permissions{
+BOOT_BSS enum permissions{
     RO,
     RW,
     RX
@@ -211,14 +211,14 @@ static BOOT_FN void map_rodata(u64* pt){
 }
 
 static BOOT_FN void map_bss(u64* pt){
-    u64 bss_start = ALIGN_DOWN(SYM_ABS(__bss_start), PAGE_SIZE);
-    u64 bss_end = ALIGN_UP(SYM_ABS(__bss_end), PAGE_SIZE);
+    u64 data_start = ALIGN_DOWN(SYM_ABS(__data_start), PAGE_SIZE);
+    u64 data_end   = ALIGN_UP(SYM_ABS(__data_end), PAGE_SIZE);
     u64 vb = virt_base_lo();
 
-    u64 pages_to_map = (bss_end - bss_start) / PAGE_SIZE;
+    u64 pages_to_map = (data_end - data_start) / PAGE_SIZE;
 
     // HIDDENDEBUG("func map_bss mapping 0x%x - 0x%x", bss_start, bss_start + (pages_to_map * PAGE_SIZE));
-    map_lo(bss_start, bss_start - vb, pages_to_map, pt, RW);
+    map_lo(data_start, data_start - vb, pages_to_map, pt, RW);
 }
 
 static BOOT_FN void map_static_page_region(u64* pt){
@@ -305,8 +305,11 @@ void BOOT_FN map_high(){
     k_code_mem_mapping.md.ap = 0;
     k_code_mem_mapping.md.pxn = 1;
     k_code_mem_mapping.md.uxn = 1;
-    k_code_mem_mapping.md.attr_index = 0;
     k_code_mem_mapping.md.type = 1;
+
+    // 2 is cacheable, 0 is not
+    k_code_mem_mapping.md.attr_index = 2;
+
 
     u64* pt_hi = (u64*) alloc_page_table_lo();
     u64* pt_lo = (u64*) alloc_page_table_lo();
@@ -338,9 +341,6 @@ void BOOT_FN map_high(){
     // 7. Map the page frame array, so generic map can use buddy allocator
     // 0xffff8000000b3000 - 0xffff8000008b3000
     map_page_frame_array(pt_hi);
-
-    // make the following regions cacheable
-    k_code_mem_mapping.md.attr_index = 2;
 
     // 8. Mark static page region for MMU initialization
     // 0xffff8000008b3000 - 0xffff800000917000

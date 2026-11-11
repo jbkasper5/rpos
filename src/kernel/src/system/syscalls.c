@@ -16,12 +16,14 @@
 #include "uabi/rpos/ioctls.h"
 #include "uabi/rpos/mman.h"
 #include "uabi/rpos/errno.h"
-
-void* cacheable_page = NULL;
+#include "uabi/rpos/uio.h"
 
 u64 handle_syscall(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 syscall_number){
-    DEBUG("Syscall Number: %d\n", syscall_number);
-    if(syscall_number > SYS_MAX){
+    if(syscall_number != 63) {
+        DEBUG("Syscall Number: %d\n", syscall_number);
+    }
+
+    if(syscall_number >= SYS_MAX){
         WARNING("unimplemented syscall %d\n", syscall_number);
         return -ENOSYS;
     }
@@ -41,6 +43,29 @@ u64 sys_write(u64 fd, u64 buf, u64 count, u64, u64, u64){
         return current->fds[fd]->file_ops->write(current->fds[fd], buf, count);
     }
     return 0;
+}
+
+u64 sys_writev(u64 fd, u64 vec,	u64 vlen, u64, u64, u64){
+    if(vlen > UIO_MAXIOV) return -EINVAL;
+
+    struct iovec* iovector = (struct iovec*) vec;
+    u64 total = 0;
+    for(int i = 0; i < vlen; i++){
+        // write the iovector
+        if(!iovector[i].iov_len) continue;
+
+        u64 n_written = sys_write(fd, iovector[i].iov_base, iovector[i].iov_len, 0, 0, 0);
+
+        // check if we encountered an error on this write
+        // if we did, check if we've written anything yet
+            // if we have, return the premature count
+            // otherwise, return the error code
+        if(n_written < 0) return (total ? total : n_written);
+
+        total += n_written;
+    }
+
+    return total;
 }
 
 u64 sys_read(u64 fd, u64 buf, u64 count, u64, u64, u64){
@@ -259,6 +284,7 @@ u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64, u64, u64){
     if(current->fds[fd] && current->fds[fd]->file_ops->ioctl){
         return current->fds[fd]->file_ops->ioctl(current->fds[fd], cmd, arg);
     }
+    return -ENOTTY;
 }
 
 u64 sys_getc(u64, u64, u64, u64, u64, u64){
@@ -310,30 +336,6 @@ u64 sys_fork(u64, u64, u64, u64, u64, u64){
 
     // return child pid
     return pid;
-}
-
-u64 sys_test_mutex(u64, u64, u64, u64, u64, u64){
-
-    mutex_t* m = cacheable_page;
-    if(!cacheable_page){
-        cacheable_page = buddy_alloc(PAGE_SIZE);
-        map(cacheable_page, va_to_pa(cacheable_page), 0, MAP_READ | MAP_WRITE | MAP_CACHE | MAP_KERNEL, L0_TABLE);
-        m = (mutex_t*)cacheable_page;
-        m->owner = MUTEX_UNLOCKED;
-        INIT_LIST_HEAD(&m->wait_list.head);
-    }
-    
-    mutex_acquire(m);
-
-    pcb_t* current = get_current();
-    int pid = current->pid;
-
-    INFO("Process %d acquired the mutex. Spinning for a lil while...\n", pid);
-
-    timer_nanosleep(1000000000);
-    deschedule();
-
-    mutex_release(m);
 }
 
 u64 sys_waitid(u64 pid, u64, u64, u64, u64, u64){

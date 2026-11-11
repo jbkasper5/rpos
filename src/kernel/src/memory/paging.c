@@ -2,12 +2,10 @@
 #include "memory/virtual_memory.h"
 #include "memory/mem.h"
 #include "memory/mmap.h"
-
 #include "asm_utils.h"
-
 #include "definitions/linker_symbols.h"
-
 #include "types/scalar.h"
+#include "synchronization/spinlock.h"
 
 // 20 is for a 4GiB system, right now we operate on 1GiB
 // #define MAX_ORDER 20
@@ -16,6 +14,7 @@
 // one list per order
 static list_head_t buddy_lists[MAX_ORDER + 1];
 static page_frame_t* frame_metadata;
+static raw_spinlock_t buddy_lock;
 
 static inline void clean_page_to_poc(void *p) {
     asm volatile("dsb sy" ::: "memory");
@@ -194,16 +193,35 @@ u64 buddy_alloc(u64 bytes){
 
     if(requested_order > MAX_ORDER) return NULL;
 
-    if(!list_empty(&buddy_lists[requested_order])) return _alloc_and_return(&buddy_lists[requested_order], requested_order);
+    // start of critical segment, read of metadata
+    spinlock_acquire(&buddy_lock);
+
+    u64 ret = NULL;
+
+    if(!list_empty(&buddy_lists[requested_order])){
+        ret = _alloc_and_return(&buddy_lists[requested_order], requested_order);
+
+        spinlock_release(&buddy_lock);
+
+        return ret;
+    }
 
     for(int i = requested_order + 1; i <= MAX_ORDER; i++){
         // if the buddy list at order i is defined, split it down to match the requested order
         // otherwise, try the next highest order
-        if(!list_empty(&buddy_lists[i])) return _alloc_and_return((list_head_t*) _split_down(requested_order, i), requested_order);
+        if(!list_empty(&buddy_lists[i])){
+            ret = _alloc_and_return((list_head_t*) _split_down(requested_order, i), requested_order);
+
+            spinlock_release(&buddy_lock);
+
+            return ret;
+        }
     }
     
+    spinlock_release(&buddy_lock);
+
     // at this point, no free blocks exist of the requested size
-    return NULL;
+    return ret;
 }
 
 
@@ -216,7 +234,8 @@ u64 buddy_alloc_pt(){
     if(!new_page) return NULL;
 
     // map new page table into kernel memory
-    map(new_page, va_to_pa(new_page), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);
+    // BUG: should be redundant due to highhalf.c map_ram()
+    // map(new_page, va_to_pa(new_page), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);
 
     // zero out the page
     memset((void*) new_page, 0, PAGE_SIZE);

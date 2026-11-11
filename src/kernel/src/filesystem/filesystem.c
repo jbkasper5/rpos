@@ -150,17 +150,20 @@ static u64 read_single_indirect(file_t* file, void* buf, u64 count, u64 offset){
     u64 bytes_read = 0;
     while(bytes_read < count){
         
-        // auto-advances file->pos
+        // move buffer and read from disk
         void* buf_advanced = UNSCALED_POINTER_ADD(buf, bytes_read);
-
         bytes_read += read_file_block(file, buf_advanced, count - bytes_read, new_blockno);
 
-        // move to the next indirect block number
-        new_blockno = blocks[++offset];
 
-        // there are 128 possible entries in a single indirect block, so if we 
+        // increment to the next block index
+        offset++;
+
+        // move to the next indirect block number
+        new_blockno = blocks[offset];
+
+        // there are 1024 possible entries in a single indirect block, so if we 
         // exceed it, then we advance into the double indirect space
-        if(new_blockno >= 128) break;
+        if(offset >= 1024) break;
     }
 
     // free block buffer

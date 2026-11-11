@@ -69,7 +69,7 @@ u64* finish_virtual_mapping(){
     initialize_page_frame_array();
 
     // u64 low_table = READ_SYSREG(ttbr0_el1);
-// TODO: free the low table
+    // TODO: free the low table
     
     L0_TABLE = (u64*) pa_to_va(READ_SYSREG(ttbr1_el1));
 

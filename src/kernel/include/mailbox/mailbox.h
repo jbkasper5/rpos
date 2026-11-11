@@ -6,6 +6,7 @@
 #include "memory/mem.h"
 #include "io/kprintf.h"
 #include "types/mailbox_types.h"
+#include "types/scalar.h"
 
 #define MAILBOX_BASE   (PBASE + 0xB880)
 #define MAILBOX_READ   ((volatile u32 *)(MAILBOX_BASE + 0x00))
@@ -66,6 +67,7 @@
 #define RPI_POWER_DOMAIN_COUNT		23
 
 
+void mailbox_init();
 u32 mailbox_clock_rate(clock_type ct);
 bool mailbox_generic_command(u32 tag_id, u32 id, u32 *value);
 bool mailbox_power_check(u32 type);

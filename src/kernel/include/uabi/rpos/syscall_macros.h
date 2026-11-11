@@ -20,6 +20,8 @@
 #define SYS_PIPE2                   59
 #define SYS_READ                    63
 #define SYS_WRITE                   64
+#define SYS_WRITEV                  66
+
 #define SYS_EXIT                    93
 #define SYS_EXIT_GROUP              94
 #define SYS_WAITID                  95
@@ -36,7 +38,8 @@
 #define SYS_CLONE3                  220
 #define SYS_EXECVE                  221
 #define SYS_MMAP                    222
-#define SYS_WAIT4                   222
+
+#define SYS_WAIT4                   260
 
 #define SYS_PULSE_LED               292
 #define SYS_GET_FRAMEBUFFER         293
@@ -44,5 +47,4 @@
 #define SYS_FORK                    295
 
 #define SYS_I2C                     296
-#define SYS_TEST_MUTEX              297
 #endif

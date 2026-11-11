@@ -3,6 +3,8 @@
 #include "io/gpio.h"
 #include "peripherals/bsc.h"
 #include "uabi/rpos/ioctls.h"
+#include "uabi/rpos/errno.h"
+#include "uabi/rpos/fb.h"
 
 /*––––––––––––––––––––––––––––– PIPE FUNCTIONS –––––––––––––––––––––––––––––*/
 /// @brief 
@@ -113,8 +115,8 @@ int pipe_close(struct file_s* file){
 /// @param count 
 /// @return 
 int uart_write(struct file_s* file, const char* buf, u64 count){
-    kprintf(buf);
-    return 0;
+    for(u64 i = 0; i < count; i++) uart_putc(buf[i]);
+    return count;
 }
 
 /// @brief 
@@ -124,6 +126,30 @@ int uart_write(struct file_s* file, const char* buf, u64 count){
 /// @return 
 int uart_read(struct file_s* file, char* buf, u64 count){
     
+}
+
+/// @brief 
+/// @param fd 
+/// @param cmd
+/// @param arg 
+/// @return 
+
+static winsize uart_winsize = {0};
+
+int uart_ioctl(file_t* fd, u64 cmd, u64 arg){
+    DEBUG("FD: %d, CMD: 0x%x, ARG: 0x%x\n", fd, cmd, arg);
+
+    switch(cmd){
+        case TIOCGWINSZ:
+            *(winsize*) arg = uart_winsize;
+            return 0;
+        case TIOCSWINSZ:
+            uart_winsize = *(winsize*) arg;
+            break;
+        default:
+            return -ENOTTY;
+    }
+    return -ENOTTY;
 }
 /*––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––*/
 

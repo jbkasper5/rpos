@@ -1,7 +1,10 @@
 #include "memory/kmalloc.h"
 #include "memory/mmap.h"
+#include "synchronization/spinlock.h"
 
 cache kcaches[CACHES];
+
+static raw_spinlock_t kmalloc_lock;
 
 #define MIN_SLAB_ORDER      5
 #define MAX_SLAB_ORDER      11
@@ -27,6 +30,8 @@ static void* _slab_alloc(u32 order){
 void kheap_init(){
     // zero out all the slab pointers to start
     memset(kcaches, 0, CACHES * sizeof(cache));
+
+    spinlock_init(&kmalloc_lock);
 
     for(int i = 0; i < CACHES; i++){
         INIT_LIST_HEAD(&kcaches[i].full_slabs);
@@ -64,6 +69,8 @@ void* kmalloc(size_t bytes){
 
     // if aligned_bytes >= 4096, then log2 >= 12
     if(log2 > MAX_SLAB_ORDER){
+
+        // buddy has it's own spinlock
         u64 pages = buddy_alloc(aligned_bytes);
 
         // need to map the page(s) into memory first
@@ -72,6 +79,8 @@ void* kmalloc(size_t bytes){
         return (void*) pages;
     }
 
+    // accessing the kcache list is a critical section, so must guarantee thread safety for it
+    spinlock_acquire(&kmalloc_lock);
 
     // no slabs yet
     if(list_empty(&kcaches[cache_idx].partial_slabs)){
@@ -99,6 +108,9 @@ void* kmalloc(size_t bytes){
         list_remove(&s->list);
         list_add(&s->list, &kcaches[cache_idx].full_slabs);
     }
+
+    // end of critical section
+    spinlock_release(&kmalloc_lock);
 
     return (void*) addr;
 }

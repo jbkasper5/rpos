@@ -26,8 +26,11 @@ void hardware_init(){
     // load the font for the CLI
     load_font();
 
+    // change memory attributes for things the mailbox needs, can't be cacheable
+    mailbox_init();
+
     // INFO("Enabling LCD panel...\n");
-    init_framebuffer();
+    // init_framebuffer();
 
     INFO("Enabling interrupt controller...\n");
     enable_interrupt_controller();

@@ -21,12 +21,13 @@ int keyboard_close(struct file_s* file);
 
 int uart_write(struct file_s* file, const char* buf, u64 count);
 int uart_read(struct file_s* file, char* buf, u64 count);
+int uart_ioctl(file_t* fd, u64 cmd, u64 arg);
 
 static const fileops_t stdout_ops = {
     .write = uart_write,
     .read  = uart_read,
     .close = NULL,
-    .ioctl = NULL,
+    .ioctl = uart_ioctl,
 };
 
 static const fileops_t pipe_ops = {

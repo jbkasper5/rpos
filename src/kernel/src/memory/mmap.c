@@ -1,5 +1,6 @@
 #include "memory/mmap.h"
 #include "types/scalar.h"
+#include "synchronization/spinlock.h"
 
 // early boot uses 15 pages
 u64 allocated_pages = 15;
@@ -15,6 +16,8 @@ extern u64 virt_base();
 
 extern u64 pa_to_va(u64 pa);
 extern u64 pa_to_va(u64 va);
+
+static raw_spinlock_t vm_spinlock;
 
 /**
  * @brief Rolls back a partial memory mapping made by the mapper functions on error.
@@ -175,6 +178,8 @@ bool map_pages(u64 virt_block, u64 phys_block, u32 blocks, u64 flags, u64 pt_bas
     uintptr_t pa = (uintptr_t) phys_block;
 
     int idx0, idx1, idx2, idx3;
+
+    // TODO: add spinlocks for virtual memory
 
     for(int i = 0; i < blocks; i++){
 
@@ -389,6 +394,9 @@ bool update_mapping(u64 virt_start, u64 virt_end, u64 flags, u64 pt_base){
         }
         
         ptme.md.address = entry.md.address;
+        l3_table[idx3].value = 0;
+        clean_cached_pte(&l3_table[idx3]);
+        clear_pte_tlb(va);
         l3_table[idx3].value = ptme.value;
         clean_cached_pte(&l3_table[idx3]);
         clear_pte_tlb(va);

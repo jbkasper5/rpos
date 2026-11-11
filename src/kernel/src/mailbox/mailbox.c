@@ -1,4 +1,7 @@
 #include "mailbox/mailbox.h"
+#include "memory/mmap.h"
+#include "memory/cache.h"
+
 
 typedef struct {
     u32 size;
@@ -6,7 +9,18 @@ typedef struct {
     u8 tags[0];
 } property_buffer;
 
-static u32 property_data[8192] __attribute__((aligned(16)));
+// align it to a page boundary so it can be re-mapped as non-cacheable for VideoCore
+static u32 property_data[8192] __attribute__((aligned(4096)));
+
+void mailbox_init(){
+    u64 start = (u64) &property_data;
+    u64 end = start + sizeof(property_data);
+    u64 flags = MAP_READ | MAP_WRITE | MAP_KERNEL | MAP_NOCACHE;
+    update_mapping(start, end, flags, (u64) L0_TABLE);
+
+    dcache_clean_invalidate_range(start, end);
+}
+
 
 void mailbox_write(u8 channel, u64 data) {
     while(MBX->status & MAILBOX_FULL);

@@ -1,41 +1,21 @@
 #include "memory/mm.h"
 
-.section .data
-.align 3
-.global device_tree_data
-device_tree_data:
-    .quad 0               // 8 bytes, initialized to 0
-
 .section ".text.boot"
 .globl _start
 _start:
-   // GPU provides the device tree info to x0 during boot, so save it off and continue
-   // get device tree data (high map address)
-   # ldr x1, =device_tree_data
-
-   # // subtract virtual base to get phys address
-   # ldr x2, =VIRT_BASE
-   # sub x1, x1, x2
-
    # // store x0 into physical address of device tree ptr
    # str x0, [x1]
 
    // try to store the DTB address in x19
-   mov x19, x0
+   # mov x19, x0
 
+   // separate the cores: allow core 0 to execute, trap all other cores
    mrs x0, mpidr_el1
    and x0, x0, #0xFF
    cbz x0, master
    b _infinite
 
 master:
-   mrs x0, S3_1_C11_C0_2    // L2CTLR_EL1
-   mov x1, #0x22            // data RAM latency + setup, as in the stock armstub8
-   orr x0, x0, x1
-   msr S3_1_C11_C0_2, x0
-   isb
-
-
    // initialize UART and set up debugging via JLINK
    ldr x0, =__kstack_top
    mov sp, x0
@@ -45,7 +25,7 @@ master:
    // initialize UART
    bl uart_init_lo
    
-   // initialize JLINK (if requessted)
+   // initialize JLINK (if requested)
    #ifdef DEBUG
    bl debug_init_lo
    #endif

@@ -14,6 +14,7 @@ u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64, u64, u64);
 u64 sys_getcwd(u64 buffer, u64 size, u64, u64, u64, u64);
 u64 sys_io_setup(u64, u64, u64, u64, u64, u64);
 u64 sys_write(u64 fd, u64 buf, u64 count, u64, u64, u64);
+u64 sys_writev(u64 fd, u64 vec,	u64 vlen, u64, u64, u64);
 u64 sys_read(u64 fd, u64 buf, u64 count, u64, u64, u64);
 u64 sys_nanosleep(u64 ns, u64, u64, u64, u64, u64);
 u64 sys_getpid(u64, u64, u64, u64, u64, u64);
@@ -37,30 +38,30 @@ u64 sys_test_mutex(u64, u64, u64, u64, u64, u64);
 u64 sys_pulse_led(u64 pin_num, u64 turn_on, u64, u64, u64, u64);
 
 syscall_fn_t syscall_table[SYS_MAX] = {
-    [SYS_IOCTL] = sys_ioctl,
-    [SYS_IO_SETUP] = sys_io_setup,
-    [SYS_OPEN] = sys_open,
-    [SYS_WRITE] = sys_write,
-    [SYS_READ]  = sys_read,
-    [SYS_MMAP] = sys_mmap,
-    [SYS_BRK] = sys_brk,
-    [SYS_CLONE3] = sys_clone3,
-    [SYS_EXECVE] = sys_execve,
-    [SYS_MUNMAP] = sys_munmap,
-    [SYS_EXIT] = sys_exit,
-    [SYS_EXIT_GROUP] = sys_exit_group,
-    [SYS_NANOSLEEP] = sys_nanosleep,
-    [SYS_GETPID] = sys_getpid,
-    [SYS_GETPPID] = sys_getppid,
-    [SYS_CLOCK_GETTIME] = sys_clock_gettime,
-    [SYS_PULSE_LED] = sys_pulse_led,
-    [SYS_GET_FRAMEBUFFER] = sys_get_framebuffer,
-    [SYS_GETC] = sys_getc,
-    [SYS_PIPE2] = sys_pipe2,
-    [SYS_FORK] = sys_fork,
-    [SYS_TEST_MUTEX] = sys_test_mutex,
-    [SYS_WAITID] = sys_waitid,
-    [SYS_GETCWD] = sys_getcwd,
+    [SYS_IOCTL]             = sys_ioctl,
+    [SYS_IO_SETUP]          = sys_io_setup,
+    [SYS_OPEN]              = sys_open,
+    [SYS_WRITE]             = sys_write,
+    [SYS_WRITEV]            = sys_writev,
+    [SYS_READ]              = sys_read,
+    [SYS_MMAP]              = sys_mmap,
+    [SYS_BRK]               = sys_brk,
+    [SYS_CLONE3]            = sys_clone3,
+    [SYS_EXECVE]            = sys_execve,
+    [SYS_MUNMAP]            = sys_munmap,
+    [SYS_EXIT]              = sys_exit,
+    [SYS_EXIT_GROUP]        = sys_exit_group,
+    [SYS_NANOSLEEP]         = sys_nanosleep,
+    [SYS_GETPID]            = sys_getpid,
+    [SYS_GETPPID]           = sys_getppid,
+    [SYS_CLOCK_GETTIME]     = sys_clock_gettime,
+    [SYS_PULSE_LED]         = sys_pulse_led,
+    [SYS_GET_FRAMEBUFFER]   = sys_get_framebuffer,
+    [SYS_GETC]              = sys_getc,
+    [SYS_PIPE2]             = sys_pipe2,
+    [SYS_FORK]              = sys_fork,
+    [SYS_WAITID]            = sys_waitid,
+    [SYS_GETCWD]            = sys_getcwd,
 };
 
 #endif

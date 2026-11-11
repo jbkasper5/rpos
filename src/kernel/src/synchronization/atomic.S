@@ -1,9 +1,9 @@
-
 /*
     x0 - address to perform the atomic swap on
     x1 - the value to attempt to store in the address
 */
 
+// BUG: Need to switch to 32 bit
 .globl atomic_swap
 atomic_swap:
 1:  ldaxr   x2, [x0]        // load-acquire-exclusive: read *ptr, tag the address

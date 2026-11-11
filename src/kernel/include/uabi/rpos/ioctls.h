@@ -8,6 +8,9 @@
 #define FBIOPUTCMAP		        0x4605
 #define FBIOPAN_DISPLAY		    0x4606
 
+#define TIOCGWINSZ              0x5413
+#define TIOCSWINSZ              0x5414
+
 #define I2C_SLAVE               0x0703
 
 #endif
