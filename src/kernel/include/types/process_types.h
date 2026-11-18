@@ -60,7 +60,7 @@ typedef struct pcb_s {
     list_head_t children;
     list_head_t siblings;
 
-    directory* cwd;
+    char* cwd;
 
     list_head_t vmas;
 

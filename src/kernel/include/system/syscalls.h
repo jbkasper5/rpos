@@ -15,6 +15,7 @@ u64 sys_getcwd(u64 buffer, u64 size, u64, u64, u64, u64);
 u64 sys_io_setup(u64, u64, u64, u64, u64, u64);
 u64 sys_write(u64 fd, u64 buf, u64 count, u64, u64, u64);
 u64 sys_writev(u64 fd, u64 vec,	u64 vlen, u64, u64, u64);
+u64 sys_getdents64(u64 fd, u64 dirent, u64 count, u64, u64, u64);
 u64 sys_read(u64 fd, u64 buf, u64 count, u64, u64, u64);
 u64 sys_nanosleep(u64 ns, u64, u64, u64, u64, u64);
 u64 sys_getpid(u64, u64, u64, u64, u64, u64);
@@ -29,7 +30,7 @@ u64 sys_waitid(u64 pid, u64, u64, u64, u64, u64);
 u64 sys_exit(u64 status, u64, u64, u64, u64, u64);
 u64 sys_exit_group(u64 status, u64, u64, u64, u64, u64);
 u64 sys_get_framebuffer(u64, u64, u64, u64, u64, u64);
-u64 sys_open(u64 path, u64 flags, u64, u64, u64, u64);
+u64 sys_openat(u64 dirfd, u64 path, u64 flags, u64 mode, u64, u64);
 u64 sys_getc(u64, u64, u64, u64, u64, u64);
 u64 sys_pipe2(u64 fd_rets, u64 flags, u64, u64, u64, u64);
 u64 sys_fork(u64, u64, u64, u64, u64, u64);
@@ -40,9 +41,10 @@ u64 sys_pulse_led(u64 pin_num, u64 turn_on, u64, u64, u64, u64);
 syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_IOCTL]             = sys_ioctl,
     [SYS_IO_SETUP]          = sys_io_setup,
-    [SYS_OPEN]              = sys_open,
+    [SYS_OPENAT]            = sys_openat,
     [SYS_WRITE]             = sys_write,
     [SYS_WRITEV]            = sys_writev,
+    [SYS_GETDENTS64]        = sys_getdents64,
     [SYS_READ]              = sys_read,
     [SYS_MMAP]              = sys_mmap,
     [SYS_BRK]               = sys_brk,

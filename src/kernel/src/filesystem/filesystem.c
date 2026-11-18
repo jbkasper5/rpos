@@ -5,6 +5,7 @@
 #include "utils/utils.h"
 #include "uabi/rpos/errno.h"
 #include "types/scalar.h"
+#include "system/process.h"
 
 #define DELIMITER   '/'
 #define MAX_NAME    255
@@ -15,9 +16,7 @@ u64 check_vfs(char* path){
     return trie_get(device_trie, path);
 }
 
-void* open(const char* pathname, u32 flags){
-    INFO("Opening path '%s'\n", pathname);
-
+static ext4_inode* pathname_to_inode(const char* pathname, ext4_inode* startnode){
     // make a mutable copy of the path
     u32 len = strlen(pathname);
     char* str = (char*) kmalloc(len + 1);
@@ -32,12 +31,7 @@ void* open(const char* pathname, u32 flags){
     char* token = strtok(str, '/', &savestr);
 
     ext4_inode* nodeptr = kmalloc(sizeof(ext4_inode));
-    
-    if(pathname[0] == '/'){
-        memcpy(nodeptr, rootfs.root_inode, sizeof(ext4_inode));
-    }else{
-        return NULL;
-    }
+    memcpy(nodeptr, startnode, sizeof(ext4_inode));
 
     while(token){
         nodeptr = lookup(nodeptr, token);
@@ -48,7 +42,39 @@ void* open(const char* pathname, u32 flags){
         token = strtok(NULL, '/', &savestr);
     }
 
-    // kfree(str);
+    kfree(str);
+
+    return nodeptr;
+}
+
+u64 open(const char* pathname, u32 flags){
+    INFO("Opening path '%s'\n", pathname);
+
+    if(*pathname == '\0'){
+        WARNING("Attempted to open with no path.\n");
+        return -ENOENT;
+    }
+
+    ext4_inode* nodeptr = (ext4_inode*) kmalloc(sizeof(ext4_inode));
+    memcpy(nodeptr, rootfs.root_inode, sizeof(ext4_inode));
+
+    if(pathname[0] != '/'){
+        // absolute
+        INFO("Relative pathname requested: '%s'\n", pathname);
+
+        pcb_t* current = get_current();
+
+        // resolve the cwd of the current proc first, so that the relative name is pre-solved
+        nodeptr = pathname_to_inode(current->cwd, nodeptr);
+
+        if(!nodeptr){
+            ERROR("Could not resolve cwd from root.\n");
+            kfree(nodeptr);
+            return -ENOENT;
+        }
+    }
+
+    nodeptr = pathname_to_inode(pathname, nodeptr);
 
     if(nodeptr){
         INFO("'%s' resolved successfully.\n", pathname);
@@ -65,7 +91,7 @@ void* open(const char* pathname, u32 flags){
 
     WARNING("Could not resolve path '%s'\n", pathname);
     kfree(nodeptr);
-    return NULL;
+    return -ENOENT;
 }
 
 
@@ -225,6 +251,3 @@ int seek(file_t* file, u64 offset, int whence){
     }
     return 0;
 }
-
-//         0xffff80003ffec080
-// second: 0xffff80003ffec080

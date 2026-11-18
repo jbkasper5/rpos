@@ -33,15 +33,26 @@ int fd_alloc(pcb_t* proc, file_t* file) {
     // return -EMFILE;  // too many open files
 }
 
+void procreap(pcb_t* proc){
+    // TODO: 
+        // free virtual memory
+        // free cwd
+        // free vmas
+        // free proc
+}
+
 pcb_t* procalloc(u64 entrypoint){
     // allocate new process control block
     pcb_t* process = (pcb_t*) kmalloc(sizeof(pcb_t));
-
     memset(process, 0, sizeof(pcb_t));
+
+    process->cwd = (char*) kmalloc(MAX_PATH);
+    
 
     process->pid = generate_pid();
 
     process->parent = get_current();
+    memcpy(process->cwd, process->parent->cwd, MAX_PATH);
 
     // initialize process bookkeeping lists
     INIT_LIST_HEAD(&process->children);
@@ -58,15 +69,6 @@ pcb_t* procalloc(u64 entrypoint){
     // allocate and map the L0 page table for the process
     // the kernel should be able to dereference this table, but not the process
     process->ttbr = buddy_alloc_pt();
-
-    // 8 KiB stack -> 2 pages -> order 1
-    u32 stack_size = PAGE_SIZE * 2;
-
-    vma* stack_vma = kmalloc(sizeof(vma));
-    stack_vma->start = USER_STACK_TOP - stack_size;
-    stack_vma->end = USER_STACK_TOP;
-    stack_vma->permissions = (VMA_READ | VMA_WRITE);
-    list_add(&stack_vma->list, &process->vmas);
 
     void* kstack = initialize_proc_kstack();
     process->kernel_stack = (u64) kstack;
@@ -175,6 +177,43 @@ pcb_t* clone_active_proc(){
     return process;
 }
 
+
+u64 ustack_alloc(pcb_t* proc, u64 vars){
+    // 8 KiB stack -> 2 pages -> order 1
+    u32 stack_size = PAGE_SIZE * 2;
+
+    // create a new VMA for the process stack
+    vma* stack_vma = kmalloc(sizeof(vma));
+    stack_vma->start = USER_STACK_TOP - stack_size;
+    stack_vma->end = USER_STACK_TOP;
+
+    // make it RW
+    stack_vma->permissions = (VMA_READ | VMA_WRITE);
+
+    list_add(&stack_vma->list, &proc->vmas);
+
+    // allocate a physical page for the argument list
+    u64 page = buddy_alloc(PAGE_SIZE);
+
+    // BUG: maybe should use memzero idk
+    memset((void*) page, 0, PAGE_SIZE);
+    map(USER_STACK_TOP - PAGE_SIZE, va_to_pa(page), 0, MAP_USER | stack_vma->permissions, proc->ttbr);
+
+    u64 nslots = 7;
+    u64 sp = ALIGN_DOWN(USER_STACK_TOP - nslots * 8, 16);     // = TOP - 64
+
+    // write through the kernel alias, so this doesn't depend on which TTBR0 is live
+    u64* s = (u64*) (page + (sp - (USER_STACK_TOP - PAGE_SIZE)));
+    s[0] = 0;          // argc
+    s[1] = 0;          // argv terminator
+    s[2] = 0;          // envp terminator
+    s[3] = 6;          // AT_PAGESZ
+    s[4] = PAGE_SIZE;
+    s[5] = 0;          // AT_NULL
+    s[6] = 0;
+
+    return sp;
+}
 
 void check_and_reap(u64* old_kernel_stack){
     // recover the old pcb from the kernel stack pointer

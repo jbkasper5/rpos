@@ -71,6 +71,8 @@ void scheduler_init(){
 
     // create the idle process
     idle_proc = (pcb_t*) kmalloc(sizeof(pcb_t));
+    idle_proc->cwd = (char*) kmalloc(MAX_PATH);
+    memcpy(idle_proc->cwd, ROOT_PATH, MAX_PATH);
 
     idle_proc->kernel_stack = initialize_proc_kstack();
     idle_proc->ttbr = NULL;

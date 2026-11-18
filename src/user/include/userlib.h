@@ -18,7 +18,6 @@ typedef uint8_t u8;
  * Raw syscall trampoline. Defined per-project in syscall.S:
  *   x0 = syscall number, x1..x6 = arguments.
  */
-extern u64 syscall(u64 sys_num, ...);
 
 /*
  * printf. Which one depends on the build flavor (set by src/user/Makefile):
@@ -36,9 +35,16 @@ extern u64 syscall(u64 sys_num, ...);
  * fails to compile with "conflicting types for 'printf'".
  */
 #ifdef RPOS_MUSL
+
 #include <stdio.h>
+#include <unistd.h>
+
 #else
+
 void printf(char* format_str, ...);
+extern u64 csyscall(u64 sys_num, ...);
+#include "uabi/rpos/syscall_macros.h"
+
 #endif
 
 #endif

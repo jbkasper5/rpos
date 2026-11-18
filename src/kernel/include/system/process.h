@@ -20,10 +20,14 @@ static inline void set_current(pcb_t* pcb) {
     asm volatile("msr TPIDR_EL1, %0" : : "r"(pcb));
 }
 
+#define MAX_PATH                    4096
+#define ROOT_PATH                   "/"
 
 
 pcb_t* procalloc(u64 entrypoint);
 pcb_t* clone_active_proc();
+u64 ustack_alloc(pcb_t* proc, u64 vars);
+
 int fd_alloc(pcb_t* proc, file_t* file);
 void check_and_reap(u64* old_kernel_stack);
 u32 atomic_increment(u64 address, u32 increment);

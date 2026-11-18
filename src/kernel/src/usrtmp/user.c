@@ -23,7 +23,7 @@ TEST_FN void user(){
 }
 
 static TEST_FN void i2c_test(){
-    int fd = syscall(SYS_OPEN, "/dev/i2c");
+    int fd = syscall(SYS_OPENAT, "/dev/i2c");
     if(fd < 0){
         printf("Error: file not found: %d\n", fd);
         return;
@@ -41,7 +41,7 @@ static TEST_FN void i2c_test(){
 }
 
 static TEST_FN void commandline(){
-    int fd = syscall(SYS_OPEN, "/dev/ttyS1");
+    int fd = syscall(SYS_OPENAT, "/dev/ttyS1");
     char buf[1024];
     char* cmdptr = &buf;
     while(TRUE){

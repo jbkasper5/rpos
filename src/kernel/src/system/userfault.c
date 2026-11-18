@@ -5,6 +5,7 @@
 #include "memory/mmap.h"
 #include "types/virtual_memory_types.h"
 #include "types/scalar.h"
+#include "memory/mm.h"
 
 void handle_el0_fault();
 
@@ -35,6 +36,9 @@ static bool check_vma(u64 faulting_address, u64 exception_status){
 
                 // map the memory to the process, marking it as a user section
                 map(ALIGN_DOWN(faulting_address, PAGE_SIZE), phys, 0, MAP_USER | v->permissions, current->ttbr);
+
+                // zero out the user memory before returning
+                memzero(pa_to_va(phys), PAGE_SIZE);
 
                 // resolved the faulting address with lazy mapping, so we can return to user space
                 return TRUE;

@@ -68,6 +68,11 @@ u64 sys_writev(u64 fd, u64 vec,	u64 vlen, u64, u64, u64){
     return total;
 }
 
+u64 sys_getdents64(u64 fd, u64 dirent, u64 count, u64, u64, u64){
+    
+    return -ENOENT;
+}
+
 u64 sys_read(u64 fd, u64 buf, u64 count, u64, u64, u64){
     // deschedule the process until a key press is received over the IRQ
     // deschedule();
@@ -226,8 +231,13 @@ u64 sys_io_setup(u64, u64, u64, u64, u64, u64){
 }
 
 u64 sys_getcwd(u64 buffer, u64 size, u64, u64, u64, u64){
-    void* thing = (void*)rootfs.root_inode;
-    return 0;
+    pcb_t* current = get_current();
+
+    u64 to_write =  MIN(MAX_PATH, size);
+
+    memcpy(buffer, current->cwd, to_write);
+
+    return to_write;
 }
 
 u64 sys_exit(u64 status, u64, u64, u64, u64, u64){
@@ -247,7 +257,7 @@ u64 sys_get_framebuffer(u64, u64, u64, u64, u64, u64){
     return 0;
 }
 
-u64 sys_open(u64 path, u64 flags, u64, u64, u64, u64){
+u64 sys_openat(u64 dirfd, u64 path, u64 flags, u64 mode, u64, u64){
     file_t* fd = (file_t*) check_vfs((char*) path);
     if(fd){
         // requested filedescriptor is a device/from the VFS

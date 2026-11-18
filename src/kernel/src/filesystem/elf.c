@@ -124,7 +124,8 @@ void readelf(file_t* file){
 
     // read trapframe to set the new process proper PC/SP/SPSR
     trap_frame_t* trapframe = BASE_TRAPFRAME(current->kernel_stack);
-    trapframe->sp_el0 = 0x0000800000000ULL - 16 - 256;           // SP_EL0
+
+    trapframe->sp_el0 = ustack_alloc(current, 0);           // SP_EL0
     trapframe->elr_el1 = header->e_entry;                   // ELR_EL1
     trapframe->spsr_el1 = 0x0;                               // SPSR
 

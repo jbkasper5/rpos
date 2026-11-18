@@ -16,8 +16,9 @@
 #define SYS_DUP                     23
 #define SYS_DUP3                    24
 #define SYS_IOCTL                   29
-#define SYS_OPEN                    56
+#define SYS_OPENAT                  56
 #define SYS_PIPE2                   59
+#define SYS_GETDENTS64              61
 #define SYS_READ                    63
 #define SYS_WRITE                   64
 #define SYS_WRITEV                  66
