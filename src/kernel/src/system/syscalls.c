@@ -3,7 +3,6 @@
 #include "io/kprintf.h"
 #include "io/gpio.h"
 #include "utils/timer.h"
-#include "macros.h"
 #include "io/lcd.h"
 #include "memory/mem.h"
 #include "uabi/rpos/fb.h"
@@ -12,6 +11,7 @@
 #include "filesystem/disk.h"
 #include "filesystem/elf.h"
 #include "memory/memprofiler.h"
+#include "types/filesystem_types.h"
 
 #include "uabi/rpos/ioctls.h"
 #include "uabi/rpos/mman.h"
@@ -69,8 +69,80 @@ u64 sys_writev(u64 fd, u64 vec,	u64 vlen, u64, u64, u64){
 }
 
 u64 sys_getdents64(u64 fd, u64 dirent, u64 count, u64, u64, u64){
-    
-    return -ENOENT;
+    INFO("sys_getdents() on fd %d\n", fd);
+    pcb_t* current = get_current();
+
+    if(fd > MAX_OPEN_FILES) return -EBADF;
+
+    file_t* f = current->fds[fd];
+    if(!f) return -EBADF;
+
+    INFO("file pointer: 0x%x\n", f);
+
+    // set up the pointer to the dirent
+    linux_dirent64* ldiren = (linux_dirent64*) dirent;
+
+    // iterate over the directory entries
+    ext4_inode* dirnode = f->inode;
+
+    u64 block_size = 4096;
+    u64 dir_size = dirnode->i_size_lo | ((u64) dirnode->i_size_high << 32);
+
+    u64 dirblock = dirnode->i_block[f->pos / block_size];
+    u64 dirsector = 0x104000 + dirblock * 8;
+
+    // read the block into the private_data "cache"
+    if(!f->private_data){
+        f->private_data = (ext4_block*) kmalloc(sizeof(ext4_block));
+
+        emmc_seek_sector(dirsector);
+        emmc_read(f->private_data, sizeof(ext4_block));
+    }
+
+    u64 bytes_written = 0;
+    ext4_dir_entry* entry;
+
+    u64 curr_block = dirblock;
+
+    while(bytes_written < count && f->pos < dir_size){
+
+        dirblock = dirnode->i_block[f->pos / block_size];
+        dirsector = 0x104000 + dirblock * 8;
+
+        if(dirblock != curr_block){
+            emmc_seek_sector(dirsector);
+            emmc_read(f->private_data, sizeof(ext4_block));
+            curr_block = dirblock;
+        }
+
+        entry = (char*)f->private_data + (f->pos % block_size);
+
+        // skip unused entries
+        if (entry->inode == 0) {
+            f->pos += entry->rec_len;
+            continue;
+        }
+
+        // TODO: need to verify that the buffer has enough space for the entry to write
+        // if(not enough space) return bytes_written;
+
+        // TODO: copy the data into the ldiren struct
+        ldiren->d_ino = dirblock;
+        ldiren->d_off = f->pos;
+        ldiren->d_reclen = ALIGN_UP(offsetof(linux_dirent64, d_name) + entry->name_len + 1, 8);
+        // ldiren->d_type = 
+        bytes_written += ldiren->d_reclen;
+
+        // copy and null-terminate the name
+        memcpy(ldiren->d_name, entry->name, entry->name_len);
+        ldiren->d_name[entry->name_len] = '\0';
+
+        // move to next entry
+        ldiren = UNSCALED_POINTER_ADD(ldiren, ldiren->d_reclen);
+        f->pos += entry->rec_len;
+    }
+
+    return bytes_written;
 }
 
 u64 sys_read(u64 fd, u64 buf, u64 count, u64, u64, u64){
@@ -304,7 +376,7 @@ u64 sys_getc(u64, u64, u64, u64, u64, u64){
 }
 
 u64 sys_clone3(u64 cl_args, u64 size, u64, u64, u64, u64){
-    return 0;
+    return sys_fork(cl_args, size, NULL, NULL, NULL, NULL);
 }
 
 u64 sys_pipe2(u64 fd_rets, u64 flags, u64, u64, u64, u64){
@@ -376,4 +448,51 @@ u64 sys_waitid(u64 pid, u64, u64, u64, u64, u64){
             deschedule();  
         }
     }
+}
+
+u64 sys_scratch(u64, u64, u64, u64, u64, u64){
+    pcb_t* current = get_current();
+
+    size_t offset;
+
+    // get the disk sector corresponding to the root inode
+    u64 root_sector = inode_to_sector(2, &offset);
+
+    // read root sector into memory
+    emmc_seek_sector(root_sector);
+    emmc_read(rootfs.block_buf, sizeof(ext4_block));
+
+    // advance to the offset within the sector provided by inode_to_sector
+    ext4_inode* inode = (ext4_inode*) UNSCALED_POINTER_ADD(rootfs.block_buf, offset);
+
+    // get the inode block 
+    u32 dirblock = inode->i_block[0];
+
+    // convert it to a sector and offset it from the start sector
+    u32 dirsector = 0x104000 + dirblock * 8;
+
+    // read the directory's sector
+    emmc_seek_sector(dirsector);
+    emmc_read(rootfs.block_buf, sizeof(ext4_block));
+
+    // get the inode number for the `bin` folder, then convert it to a sector
+    u64 bin_inode_num = inode_from_directory((ext4_dir_entry*) rootfs.block_buf, "bin");
+    u64 bin_sector = inode_to_sector(bin_inode_num, &offset);
+
+    // seek to the new sector and read it into memory
+    emmc_seek_sector(bin_sector);
+    emmc_read(rootfs.block_buf, sizeof(ext4_block));
+
+    // get the inode for the directory
+    inode = (ext4_inode*) UNSCALED_POINTER_ADD(rootfs.block_buf, offset);
+
+
+    dirblock = inode->i_block[0];
+    dirsector = 0x104000 + dirblock * 8;
+
+    emmc_seek_sector(dirsector);
+    emmc_read(rootfs.block_buf, sizeof(ext4_block));
+
+    // print it out
+    print_dir((ext4_dir_entry*) rootfs.block_buf);
 }

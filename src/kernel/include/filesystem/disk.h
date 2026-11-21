@@ -14,6 +14,12 @@ void print_partitions(mbr* mbr);
 void print_fat32_directory(sector* s);
 void read_block(void* buf, u32 block_num);
 
+// all originally static
+size_t inode_to_sector(size_t inode_num, size_t* offset);
+u64 inode_from_directory(ext4_dir_entry* dir, const char* name);
+void print_dir(ext4_dir_entry* dir);
+//
+
 ext4_inode* lookup(ext4_inode* dirnode, char* name);
 
 #endif

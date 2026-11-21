@@ -58,7 +58,7 @@ static size_t gc_descriptor_size;
 
 static ext4_group_desc_t* group_descriptor_table;
 
-static void print_dir(ext4_dir_entry* dir){
+void print_dir(ext4_dir_entry* dir){
     u32 offset = 0;
     while (offset < 4096) {
         ext4_dir_entry *entry = (char*)dir + offset;
@@ -88,7 +88,7 @@ static void print_dir(ext4_dir_entry* dir){
     }
 }
 
-static size_t inode_to_sector(size_t inode_num, size_t* offset){
+size_t inode_to_sector(size_t inode_num, size_t* offset){
     u32 group = (inode_num - 1) / inodes_per_group;
     u32 index = (inode_num - 1) % inodes_per_group;
 
@@ -176,7 +176,7 @@ void read_inode(void* buf, u32 inode_num){
     memcpy(buf, inode, inode_size);
 }
 
-static u64 inode_from_directory(ext4_dir_entry* dir, const char* name){
+u64 inode_from_directory(ext4_dir_entry* dir, const char* name){
     u32 offset = 0;
     while (offset < 4096) {
         ext4_dir_entry *entry = (char*)dir + offset;

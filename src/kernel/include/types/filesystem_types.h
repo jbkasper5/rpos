@@ -40,4 +40,12 @@ typedef struct file_s{
     void* private_data;
 } file_t;
 
+typedef struct linux_dirent64_s{
+    u64 d_ino;              // directory's inode number
+    u64 d_off;              // directory position after this entry
+    u16 d_reclen;         // record length
+    u8 d_type;              // filetype
+    char d_name[];          // name of the directory
+}linux_dirent64;
+
 #endif

@@ -3,7 +3,8 @@
 extern char path[1024];
 
 static void probe(){
-    DIR* dir = opendir(".");
+    // DIR* dir = opendir(".");
+    DIR* dir = opendir("/bin");
     printf("dir: 0x%lx\n", (u64) dir);
 
     struct dirent* entry;

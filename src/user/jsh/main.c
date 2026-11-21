@@ -30,10 +30,10 @@ static void commandline(){
 int main(){
     printf("Made it to MUSL main()\n");
 
+    syscall(SYS_SCRATCH);
+
     int* test = (int*) malloc(sizeof(int) * 32);
-
     *test = 100;
-
     printf("Used malloc yippee (test = 0x%ls, *test = %d)\n", test, *test);
 
     commandline();

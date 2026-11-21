@@ -48,4 +48,6 @@
 #define SYS_FORK                    295
 
 #define SYS_I2C                     296
+
+#define SYS_SCRATCH                 299
 #endif

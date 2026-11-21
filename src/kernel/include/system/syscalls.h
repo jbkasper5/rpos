@@ -35,8 +35,9 @@ u64 sys_getc(u64, u64, u64, u64, u64, u64);
 u64 sys_pipe2(u64 fd_rets, u64 flags, u64, u64, u64, u64);
 u64 sys_fork(u64, u64, u64, u64, u64, u64);
 
-u64 sys_test_mutex(u64, u64, u64, u64, u64, u64);
-u64 sys_pulse_led(u64 pin_num, u64 turn_on, u64, u64, u64, u64);
+u64 sys_scratch(u64, u64, u64, u64, u64, u64);
+
+
 
 syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_IOCTL]             = sys_ioctl,
@@ -57,13 +58,14 @@ syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_GETPID]            = sys_getpid,
     [SYS_GETPPID]           = sys_getppid,
     [SYS_CLOCK_GETTIME]     = sys_clock_gettime,
-    [SYS_PULSE_LED]         = sys_pulse_led,
     [SYS_GET_FRAMEBUFFER]   = sys_get_framebuffer,
     [SYS_GETC]              = sys_getc,
     [SYS_PIPE2]             = sys_pipe2,
     [SYS_FORK]              = sys_fork,
     [SYS_WAITID]            = sys_waitid,
     [SYS_GETCWD]            = sys_getcwd,
+
+    [SYS_SCRATCH]           = sys_scratch,
 };
 
 #endif
