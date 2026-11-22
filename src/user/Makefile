@@ -1,31 +1,29 @@
 LDSCRIPT := linker.ld
 
+# `make` with no target builds every command (not just the first rule below).
+.DEFAULT_GOAL := all
+
 # ==========================
 # Build flavor
 #
-# Two incompatible toolchains build the same sources into the same bin/:
+# Two incompatible toolchains can build the same sources into the same bin/:
 #
+#   musl          (default) aarch64-linux-musl, real libc + crt startup,
+#                 static non-PIE
 #   freestanding  aarch64-none-elf, our own crt (start.S / syscall.S) and
 #                 userlib printf, linked with linker.ld
-#   musl          aarch64-linux-musl, real libc + crt startup, static non-PIE
 #
-# Which one produced the current bin/ is recorded in bin/.flavor, and every
-# later invocation reads it back. Without that stamp, a bare `make asm` or
-# `make build` re-parses with the freestanding defaults, finds the (unused)
-# userlib archive missing, rebuilds it, and -- because the archive is a
-# prerequisite of every binary -- relinks the whole of bin/ with the bare-metal
-# toolchain. The musl binaries would be silently replaced before being dumped
-# or deployed. Stamping makes the flavor sticky so the matching compiler,
-# archiver and objdump are used throughout.
+# musl is always the default: `make`, `make build` and `make asm` build/deploy/
+# dump musl binaries. Opt into the bare-metal toolchain for one command with
+# FLAVOR=freestanding (e.g. `make build FLAVOR=freestanding`).
 #
-# `make clean` drops the stamp (back to freestanding). Override for one command
-# with e.g. `make asm FLAVOR=musl`.
+# bin/.flavor records which flavor produced the current bin/. It is rewritten
+# only when the flavor changes, and every binary depends on it, so switching
+# flavors relinks everything instead of deploying stale objects from the other
+# toolchain.
 # ==========================
+FLAVOR       ?= musl
 FLAVOR_STAMP := bin/.flavor
-FLAVOR       := $(strip $(shell cat $(FLAVOR_STAMP) 2>/dev/null))
-ifeq ($(FLAVOR),)
-FLAVOR := freestanding
-endif
 
 INCLUDES := \
   -I /Users/jakekasper/C/RaspberryPi/rpos/src/kernel/include \
@@ -70,14 +68,15 @@ YELLOW := \033[1;33m
 RED    := \033[1;31m
 RESET  := \033[0m
 
-# Each subdirectory is one command to build, except these:
+# Each subdirectory of src/ is one command to build: src/<name>/ -> bin/<name>.
+# Everything else at this level is support:
 #   bin/     build output
 #   include/ shared headers
-#   lib/     shared runtime archive (userlib)
+#   lib/     shared runtime archive (userlib, freestanding only)
 #   dmp/     disassembly / hexdump output from `make asm` and `make dmp`
-NON_PROJECT_DIRS := bin/ include/ lib/ dmp/
-DIRS := $(filter-out $(NON_PROJECT_DIRS),$(wildcard */))
-BINS := $(patsubst %/,bin/%,$(DIRS))
+SRC_DIR := src
+DIRS := $(wildcard $(SRC_DIR)/*/)
+BINS := $(patsubst $(SRC_DIR)/%/,bin/%,$(DIRS))
 
 # ==========================
 # userlib: the shared user-space runtime (printf, etc). Compiled ONCE from
@@ -104,34 +103,38 @@ LIB_OBJ  := $(patsubst $(LIB_DIR)/%.c,bin/obj/$(LIB_DIR)/%.o,$(LIB_C)) \
 #
 # The pattern rule below has the project DIRECTORY as its prerequisite, and a
 # directory's mtime only changes when an entry is added/removed/renamed -- NOT
-# when an existing file's contents change. Editing jsh/main.c would therefore
+# when an existing file's contents change. Editing src/jsh/main.c would therefore
 # never trigger a rebuild. Expand each project's real sources at parse time and
 # declare them as prerequisites so edits are picked up.
 # ==========================
 SHARED_HDRS := $(wildcard include/*.h)
 
-$(foreach d,$(DIRS),$(eval bin/$(patsubst %/,%,$(d)): \
+$(foreach d,$(DIRS),$(eval bin/$(patsubst $(SRC_DIR)/%/,%,$(d)): \
     $(shell find $(d) -type f \( -name '*.c' -o -name '*.S' -o -name '*.h' \))))
 
-# Anything shared rebuilds every command: the linker script and the userlib headers.
-$(BINS): $(LDSCRIPT) $(SHARED_HDRS)
+# Anything shared rebuilds every command: the linker script, the userlib headers,
+# and the flavor stamp (so switching toolchains relinks everything).
+$(BINS): $(LDSCRIPT) $(SHARED_HDRS) $(FLAVOR_STAMP)
 
-# The archive's own objects depend on the shared headers too.
-$(LIB_OBJ): $(SHARED_HDRS)
+# The archive's own objects depend on the shared headers and flavor too.
+$(LIB_OBJ): $(SHARED_HDRS) $(FLAVOR_STAMP)
+
+# Rewrite the stamp only when the flavor actually changes; leaving its mtime
+# alone otherwise keeps incremental builds incremental.
+.PHONY: FORCE
+$(FLAVOR_STAMP): FORCE
+	@mkdir -p $(dir $@)
+	@[ "$$(cat $@ 2>/dev/null)" = "$(FLAVOR)" ] || printf '%s\n' "$(FLAVOR)" > $@
 
 .PHONY: all clean build
 all: $(BINS)
-	@mkdir -p bin
-	@printf '%s\n' "$(FLAVOR)" > $(FLAVOR_STAMP)
 
 # ==========================
-# musl / freestanding: switch which toolchain bin/ is built with. Both do a
-# clean rebuild, since the two flavors' objects are not interchangeable, and
-# both leave bin/.flavor behind so `make asm` and `make build` follow suit:
+# musl / freestanding: explicit spellings of a flavor build.
 #
-#   make musl     then    make asm      -- dumps the musl binaries
-#   make musl     then    make build    -- deploys the musl binaries
-#   make freestanding                   -- back to the bare-metal toolchain
+#   make                  -- musl (same as `make musl`)
+#   make freestanding     -- bare-metal toolchain, once; the next plain `make`
+#                            goes back to musl and relinks
 #
 # musl requires the aarch64-linux-musl-* cross-toolchain on PATH:
 #   brew tap messense/macos-cross-toolchains
@@ -142,14 +145,11 @@ MUSL_CC := aarch64-linux-musl-gcc
 .PHONY: musl freestanding
 musl:
 	@command -v $(MUSL_CC) >/dev/null 2>&1 || { printf "$(RED)✗ $(MUSL_CC) not found on PATH — install a musl aarch64 cross-toolchain$(RESET)\n"; exit 1; }
-	@printf "$(BLUE)==> Rebuilding binaries with musl ($(GREEN)$(MUSL_CC)$(BLUE))$(RESET)\n"
-	@$(MAKE) clean
 	@$(MAKE) all FLAVOR=musl
 	@printf "$(GREEN)✓ musl build complete$(RESET)\n"
 
 freestanding:
-	@printf "$(BLUE)==> Rebuilding binaries with the bare-metal toolchain$(RESET)\n"
-	@$(MAKE) clean
+	@printf "$(BLUE)==> Building binaries with the bare-metal toolchain$(RESET)\n"
 	@$(MAKE) all FLAVOR=freestanding
 	@printf "$(GREEN)✓ freestanding build complete$(RESET)\n"
 
@@ -208,28 +208,29 @@ $(USERLIB): $(LIB_OBJ)
 # ==========================
 # Build each project
 # ==========================
-bin/%: %/ $(USERLIB)
-	@printf "$(BLUE)==> Building $(GREEN)%s$(RESET)\n" "$*"
+bin/%: $(SRC_DIR)/%/ $(USERLIB)
+	@printf "$(BLUE)==> Building $(GREEN)%s$(BLUE) ($(FLAVOR))$(RESET)\n" "$*"
 	@mkdir -p bin
 
-	@C_SRC=$$(find $* -type f -name '*.c'); \
-	ASM_SRC=$$(find $* -type f -name '*.S' $(ASM_FIND_EXCLUDE)); \
+	@SRC=$(SRC_DIR)/$*; \
+	C_SRC=$$(find $$SRC -type f -name '*.c'); \
+	ASM_SRC=$$(find $$SRC -type f -name '*.S' $(ASM_FIND_EXCLUDE)); \
 	if [ -z "$$C_SRC" ] && [ -z "$$ASM_SRC" ]; then \
-		printf "$(RED)✗ No source files found in %s$(RESET)\n" "$*"; \
+		printf "$(RED)✗ No source files found in %s$(RESET)\n" "$$SRC"; \
 		exit 1; \
 	fi; \
 	OBJ_DIR=bin/obj/$*; \
 	mkdir -p $$OBJ_DIR; \
 	OBJ_LIST=""; \
 	for f in $$C_SRC; do \
-		o=$$(echo $$f | sed "s|^$*/|$$OBJ_DIR/|;s|\.c$$|.o|"); \
+		o=$$(echo $$f | sed "s|^$$SRC/|$$OBJ_DIR/|;s|\.c$$|.o|"); \
 		mkdir -p $$(dirname $$o); \
 		printf "$(GREEN)==> CC %s$(RESET)\n" "$$f"; \
 		$(CC) $(CFLAGS) -c $$f -o $$o; \
 		OBJ_LIST="$$OBJ_LIST $$o"; \
 	done; \
 	for f in $$ASM_SRC; do \
-		o=$$(echo $$f | sed "s|^$*/|$$OBJ_DIR/|;s|\.S$$|_s.o|"); \
+		o=$$(echo $$f | sed "s|^$$SRC/|$$OBJ_DIR/|;s|\.S$$|_s.o|"); \
 		mkdir -p $$(dirname $$o); \
 		printf "$(GREEN)==> AS %s$(RESET)\n" "$$f"; \
 		$(CC) $(CFLAGS) -c $$f -o $$o; \
