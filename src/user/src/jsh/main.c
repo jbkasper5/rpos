@@ -1,7 +1,5 @@
 #include "jsh.h"
 
-char path[1024] = "/bin/";
-
 static void commandline(){
     int fd = open("/dev/ttyS1", O_RDWR);
     if(fd < 0){
@@ -27,14 +25,24 @@ static void commandline(){
     }
 }
 
-int main(){
+int main(int argc, char** argv){
     printf("Made it to MUSL main()\n");
 
+    printf("Argc: %d\n", argc);
+
+    for(int i = 0; i < argc; i++){
+        printf("arg%d: %s\n", i, argv[i]);
+    }
+    
     syscall(SYS_SCRATCH);
 
     int* test = (int*) malloc(sizeof(int) * 32);
-    *test = 100;
-    printf("Used malloc yippee (test = 0x%ls, *test = %d)\n", test, *test);
+    if(test){
+        *test = 100;
+        printf("Used malloc yippee (test = 0x%ls, *test = %d)\n", test, *test);   
+    }else{
+        printf("Malloc failed :_(\n");
+    }
 
     commandline();
     syscall(SYS_EXIT_GROUP);

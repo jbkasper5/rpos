@@ -18,7 +18,7 @@
 
 
 // parsing/logic elements
-void parse_command(char* cmd);
+void parse_command(char* inc_cmd);
 
 
 // UI elements

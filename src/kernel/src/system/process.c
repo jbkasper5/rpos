@@ -3,7 +3,7 @@
 #include "filedescriptors/filedescriptors.h"
 #include "system/entry.h"
 #include "types/kernel_types.h"
-                       //0x00007fffffff0
+
 #define USER_STACK_TOP   0x0000800000000ULL
 #define KSTACK_SIZE      PAGE_SIZE
 
@@ -178,9 +178,9 @@ pcb_t* clone_active_proc(){
 }
 
 
-u64 ustack_alloc(pcb_t* proc, u64 vars){
-    // 8 KiB stack -> 2 pages -> order 1
-    u32 stack_size = PAGE_SIZE * 2;
+u64 ustack_alloc(pcb_t* proc, u64 argv){
+    // 2 MiB stack
+    u32 stack_size = PAGE_SIZE << 9;
 
     // create a new VMA for the process stack
     vma* stack_vma = kmalloc(sizeof(vma));
@@ -199,18 +199,67 @@ u64 ustack_alloc(pcb_t* proc, u64 vars){
     memset((void*) page, 0, PAGE_SIZE);
     map(USER_STACK_TOP - PAGE_SIZE, va_to_pa(page), 0, MAP_USER | stack_vma->permissions, proc->ttbr);
 
-    u64 nslots = 7;
-    u64 sp = ALIGN_DOWN(USER_STACK_TOP - nslots * 8, 16);     // = TOP - 64
+    // resolve the arguments and copy them into the stack
+    char** args = (char**) argv;
+    int argc = 0;
+    int total_arg_bytes = 0;
+    if(args){
+        while(*args){
+            INFO("ARG %d: %s\n", argc, *args);
+
+            // plus one per null
+            total_arg_bytes += strlen(*args) + 1;
+            args++;
+            argc++;
+        }
+    }
+
+    // argc = 1 slot, argv = 1 + num_args, envp = 1, at_pagesz = 1, page_size = 1, AT_NULL = 1, 
+    u64 nslots = 7 + (argc);
+
+    u64* s = page + PAGE_SIZE;
+    u64 sp = USER_STACK_TOP;
+
+    u64 kernel_to_user_adjustment = (u64)s - sp;
+
+    // align the number of bytes consumed to 16
+    u64 n_bytes_consumed = ALIGN_UP(total_arg_bytes, 16);
+    s = UNSCALED_POINTER_SUB(s, n_bytes_consumed);
+
+    u64* argvlink = (u64*) ALIGN_DOWN((u64) UNSCALED_POINTER_SUB(page + PAGE_SIZE, n_bytes_consumed) - (nslots * 8), 16);
+
+    // copy all the strings into the stack
+    args = argv;
+    u8 args_written = 0;
+    if(args){
+        while(*args){
+            u64 len = strlen(*args) + 1;
+            memcpy(s, *args, len);
+            argvlink[1 + args_written] = (u64) s - kernel_to_user_adjustment;
+            s = UNSCALED_POINTER_ADD(s, len);
+
+            args++;
+            args_written++;
+        }
+    }
+
+    // TODO: Need to make sure that the arguments can all live within the 4KiB of mapped stack memory
+    
+    // now come the slots
+    s = UNSCALED_POINTER_SUB(page + PAGE_SIZE, n_bytes_consumed);
+    sp = USER_STACK_TOP - n_bytes_consumed;
 
     // write through the kernel alias, so this doesn't depend on which TTBR0 is live
-    u64* s = (u64*) (page + (sp - (USER_STACK_TOP - PAGE_SIZE)));
-    s[0] = 0;          // argc
-    s[1] = 0;          // argv terminator
-    s[2] = 0;          // envp terminator
-    s[3] = 6;          // AT_PAGESZ
-    s[4] = PAGE_SIZE;
-    s[5] = 0;          // AT_NULL
-    s[6] = 0;
+    s = (u64*) ALIGN_DOWN((u64) s - (nslots * 8), 16);
+    sp = ALIGN_DOWN(sp - (nslots * 8), 16);
+
+    s[0] = argc;          // argc
+    s[nslots - 6] = 0;          // argv terminator
+    s[nslots - 5] = 0;          // envp terminator
+    s[nslots - 4] = 6;          // AT_PAGESZ
+    s[nslots - 3] = PAGE_SIZE;
+    s[nslots - 2] = 0;          // AT_NULL
+    s[nslots - 1] = 0;
 
     return sp;
 }

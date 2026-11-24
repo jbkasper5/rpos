@@ -16,7 +16,7 @@ u64 check_vfs(char* path){
     return trie_get(device_trie, path);
 }
 
-static ext4_inode* pathname_to_inode(const char* pathname, ext4_inode* startnode){
+ext4_inode* pathname_to_inode(const char* pathname, ext4_inode* startnode){
     // make a mutable copy of the path
     u32 len = strlen(pathname);
     char* str = (char*) kmalloc(len + 1);

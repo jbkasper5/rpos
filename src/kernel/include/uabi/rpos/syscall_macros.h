@@ -13,14 +13,24 @@
 #define SYS_LSETXATTR               6
 
 #define SYS_GETCWD                  17
+
 #define SYS_DUP                     23
+
 #define SYS_DUP3                    24
+
 #define SYS_IOCTL                   29
+
+#define SYS_CHDIR                   49
+
 #define SYS_OPENAT                  56
+
 #define SYS_PIPE2                   59
+
 #define SYS_GETDENTS64              61
+
 #define SYS_READ                    63
 #define SYS_WRITE                   64
+
 #define SYS_WRITEV                  66
 
 #define SYS_EXIT                    93
@@ -28,14 +38,20 @@
 #define SYS_WAITID                  95
 
 #define SYS_NANOSLEEP               101
+
 #define SYS_CLOCK_GETTIME           113
+
 #define SYS_KILL                    129
+
 #define SYS_REBOOT                  142
+
 #define SYS_GETPID                  172
+
 #define SYS_GETPPID                 173
 
 #define SYS_BRK                     214
 #define SYS_MUNMAP                  215
+
 #define SYS_CLONE3                  220
 #define SYS_EXECVE                  221
 #define SYS_MMAP                    222
@@ -44,7 +60,6 @@
 
 #define SYS_PULSE_LED               292
 #define SYS_GET_FRAMEBUFFER         293
-#define SYS_GETC                    294
 #define SYS_FORK                    295
 
 #define SYS_I2C                     296

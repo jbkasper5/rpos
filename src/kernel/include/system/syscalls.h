@@ -11,6 +11,7 @@
 
 
 u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64, u64, u64);
+u64 sys_chdir(u64 filename, u64, u64, u64, u64, u64);
 u64 sys_getcwd(u64 buffer, u64 size, u64, u64, u64, u64);
 u64 sys_io_setup(u64, u64, u64, u64, u64, u64);
 u64 sys_write(u64 fd, u64 buf, u64 count, u64, u64, u64);
@@ -31,7 +32,6 @@ u64 sys_exit(u64 status, u64, u64, u64, u64, u64);
 u64 sys_exit_group(u64 status, u64, u64, u64, u64, u64);
 u64 sys_get_framebuffer(u64, u64, u64, u64, u64, u64);
 u64 sys_openat(u64 dirfd, u64 path, u64 flags, u64 mode, u64, u64);
-u64 sys_getc(u64, u64, u64, u64, u64, u64);
 u64 sys_pipe2(u64 fd_rets, u64 flags, u64, u64, u64, u64);
 u64 sys_fork(u64, u64, u64, u64, u64, u64);
 
@@ -41,6 +41,7 @@ u64 sys_scratch(u64, u64, u64, u64, u64, u64);
 
 syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_IOCTL]             = sys_ioctl,
+    [SYS_CHDIR]             = sys_chdir,
     [SYS_IO_SETUP]          = sys_io_setup,
     [SYS_OPENAT]            = sys_openat,
     [SYS_WRITE]             = sys_write,
@@ -59,7 +60,6 @@ syscall_fn_t syscall_table[SYS_MAX] = {
     [SYS_GETPPID]           = sys_getppid,
     [SYS_CLOCK_GETTIME]     = sys_clock_gettime,
     [SYS_GET_FRAMEBUFFER]   = sys_get_framebuffer,
-    [SYS_GETC]              = sys_getc,
     [SYS_PIPE2]             = sys_pipe2,
     [SYS_FORK]              = sys_fork,
     [SYS_WAITID]            = sys_waitid,

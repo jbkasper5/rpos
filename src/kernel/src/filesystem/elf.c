@@ -6,7 +6,7 @@
 extern void do_user_things();
 extern void switch_user_tlb(u64);
 
-void readelf(file_t* file){
+void readelf(file_t* file, u64 argv, u64 envp){
     // TODO: user pages need to be mapped as single pages, not as large blocks
 
     ext4_block* block = (ext4_block*) kmalloc(sizeof(ext4_block));
@@ -20,6 +20,8 @@ void readelf(file_t* file){
         ERROR("File is not an ELF executable.\n");
         return;
     }
+
+    pcb_t* current = get_current();
 
     INFO("ELF Header:\n");
     INFO("  Type: %d\n", header->e_type);
@@ -45,6 +47,14 @@ void readelf(file_t* file){
 
     u64* new_proc_l0 = buddy_alloc_pt();
 
+    // switch over ttbr
+    u64* old_ttbr = current->ttbr;
+
+    current->ttbr = new_proc_l0;
+
+    // need to keep the current TTBR in the register so that argv is still reachable
+    u64 user_stack = ustack_alloc(current, argv);           // SP_EL0
+    
     // switch to new user virtual memory, also flushes TLB
     switch_user_tlb(va_to_pa(new_proc_l0));
 
@@ -53,8 +63,6 @@ void readelf(file_t* file){
     // TODO: Need to convert program headers into vmas
 
     u64 start_brk = 0;
-
-    // BUG: Need to add arguments to the stack
 
     for(int i = 0; i < header->e_phnum; i++){
         INFO("Program header %d:\n", i + 1);
@@ -110,23 +118,13 @@ void readelf(file_t* file){
         program_header++;
     }
 
-    pcb_t* current = get_current();
-
     // TODO: reap stale VMAs
-
-    // needs updating to the location of the ELF maybe
-    // current->cwd
-
-    // switch over ttbr
-    u64* old_ttbr = current->ttbr;
-
-    current->ttbr = new_proc_l0;
 
     // read trapframe to set the new process proper PC/SP/SPSR
     trap_frame_t* trapframe = BASE_TRAPFRAME(current->kernel_stack);
 
-    trapframe->sp_el0 = ustack_alloc(current, 0);           // SP_EL0
-    trapframe->elr_el1 = header->e_entry;                   // ELR_EL1
+    trapframe->sp_el0 = user_stack;          // SP_EL0
+    trapframe->elr_el1 = header->e_entry;                       // ELR_EL1
     trapframe->spsr_el1 = 0x0;                               // SPSR
 
     // reap the virtual memory for the abandoned process state

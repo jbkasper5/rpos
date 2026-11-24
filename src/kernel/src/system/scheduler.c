@@ -256,7 +256,7 @@ void add_shell_to_scheduler(){
     file_t* f = open("/bin/jsh", NULL);
 
     // read shell into memory
-    readelf(f);
+    readelf(f, NULL, NULL);
 
     // add it to the schedule
     add_to_schedule(pcb);

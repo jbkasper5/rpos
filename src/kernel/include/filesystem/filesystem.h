@@ -10,6 +10,8 @@ u64 open(const char* pathname, u32 flags);
 u64 read(file_t* file, void* buf, u64 count);
 int seek(file_t* file, u64 offset, int whence);
 
+ext4_inode* pathname_to_inode(const char* pathname, ext4_inode* startnode);
+
 u64 check_vfs(char* path);
 
 #endif

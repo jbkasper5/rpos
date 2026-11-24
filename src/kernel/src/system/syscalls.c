@@ -35,6 +35,28 @@ u64 handle_syscall(u64 x0, u64 x1, u64 x2, u64 x3, u64 x4, u64 x5, u64 syscall_n
     }
 }
 
+
+u64 sys_chdir(u64 filename, u64, u64, u64, u64, u64){
+    pcb_t* current = get_current();
+
+    size_t offset;
+
+    // get the disk sector corresponding to the root inode
+    u64 root_sector = inode_to_sector(2, &offset);
+
+    // read root sector into memory
+    emmc_seek_sector(root_sector);
+    emmc_read(rootfs.block_buf, sizeof(ext4_block));
+
+    file_t* f = open(filename, NULL);
+
+    if(f){
+        // memcpy(current->cwd, filename, MAX_LEN);
+    }else{
+        return -ENOENT;
+    }
+}
+
 u64 sys_write(u64 fd, u64 buf, u64 count, u64, u64, u64){
     // write a buffer to a file descriptor
     // get fd
@@ -283,7 +305,7 @@ u64 sys_execve(u64 path, u64 argv, u64 envp, u64, u64, u64){
     file_t* f = open(path, NULL);
     if(f){
         // begin ELF parsing
-        readelf(f);
+        readelf(f, argv, envp);
 
         profile(&(memprofiler_cfg){ .pid = get_current()->pid });
         
@@ -367,12 +389,6 @@ u64 sys_ioctl(u64 fd, u64 cmd, u64 arg, u64, u64, u64){
         return current->fds[fd]->file_ops->ioctl(current->fds[fd], cmd, arg);
     }
     return -ENOTTY;
-}
-
-u64 sys_getc(u64, u64, u64, u64, u64, u64){
-    char c = uart_getc();
-    uart_putc(c);
-    return c;
 }
 
 u64 sys_clone3(u64 cl_args, u64 size, u64, u64, u64, u64){

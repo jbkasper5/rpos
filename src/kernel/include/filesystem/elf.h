@@ -16,6 +16,6 @@
 
 
 
-void readelf(file_t* file);
+void readelf(file_t* file, u64 argv, u64 envp);
 
 #endif

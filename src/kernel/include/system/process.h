@@ -26,7 +26,7 @@ static inline void set_current(pcb_t* pcb) {
 
 pcb_t* procalloc(u64 entrypoint);
 pcb_t* clone_active_proc();
-u64 ustack_alloc(pcb_t* proc, u64 vars);
+u64 ustack_alloc(pcb_t* proc, u64 argv);
 
 int fd_alloc(pcb_t* proc, file_t* file);
 void check_and_reap(u64* old_kernel_stack);
