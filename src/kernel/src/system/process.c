@@ -34,11 +34,12 @@ int fd_alloc(pcb_t* proc, file_t* file) {
 }
 
 void procreap(pcb_t* proc){
-    // TODO: 
-        // free virtual memory
-        // free cwd
-        // free vmas
-        // free proc
+    // free cwd buffer
+
+    // release the pcb
+    kfree(proc);
+
+    return TRUE;
 }
 
 pcb_t* procalloc(u64 entrypoint){
@@ -118,6 +119,11 @@ pcb_t* clone_active_proc(){
 
     // copy parent process data into child process
     memcpy(process, current, sizeof(pcb_t));
+
+    // since we're copying pointers to the files, we need to increment their refs
+    for(int i = 0; i < MAX_OPEN_FILES; i++){
+        if(process->fds[i]) process->fds[i]->refcount++;
+    }
 
     INIT_LIST_HEAD(&process->children);
     INIT_LIST_HEAD(&process->siblings);
@@ -277,6 +283,9 @@ void check_and_reap(u64* old_kernel_stack){
 
         // invalidate the terminated kernel stack pointer
         old_pcb->kernel_stack = NULL;
+
+        // release the old pcb
+        kfree(old_pcb);
     }
 
 }

@@ -209,13 +209,41 @@ void reap(){
     // mark the process as terminated
     current->state = PROCESS_TERMINATED;
 
-    // TODO: eventually needs to add process to a reap queue for the next process to handle
     pcb_t* parent = current->parent;
 
     if(parent->waiting_on == current->pid || parent->waiting_on == WAITING_ALL){
         parent->state = PROCESS_READY;
         list_add(&parent->runqueue, &runqueue);
     }
+
+    // reap the process' cwd buffer
+    kfree(current->cwd);
+
+    // reap the process' vmas
+    vma* v = NULL;
+    list_head_t* p = current->vmas.next;
+
+    // free all the VMAs belonging to the process
+    while(p != &current->vmas){
+        v = list_entry(p, vma, list);
+        p = p->next;
+        kfree(v);
+    }
+
+    // reap the process' file descriptors
+    for(int i = 0; i < MAX_OPEN_FILES; i++){
+        if(!current->fds[i]) continue;
+        if(!--current->fds[i]->refcount){
+            if(current->fds[i]->file_ops->close){
+                current->fds[i]->file_ops->close(current->fds[i]);
+            }
+
+            kfree(current->fds[i]);
+        }
+    }
+
+    // TODO: re-parent all the children to this process' parent
+
 
     // before + after check of the memory
     profile(&(memprofiler_cfg){ .pid = current->pid });
