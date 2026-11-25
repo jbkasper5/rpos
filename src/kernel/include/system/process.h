@@ -24,8 +24,9 @@ static inline void set_current(pcb_t* pcb) {
 #define ROOT_PATH                   "/"
 
 
-pcb_t* procalloc(u64 entrypoint);
-pcb_t* clone_active_proc();
+pcb_t* pcb_allocate();
+void pcb_init(pcb_t* pcb, pcb_t* cloneproc);
+
 u64 ustack_alloc(pcb_t* proc, u64 argv);
 
 int fd_alloc(pcb_t* proc, file_t* file);

@@ -3,23 +3,41 @@
 #include "filedescriptors/filedescriptors.h"
 #include "system/entry.h"
 #include "types/kernel_types.h"
+#include "uabi/rpos/errno.h"
 
 #define USER_STACK_TOP   0x0000800000000ULL
 #define KSTACK_SIZE      PAGE_SIZE
 
-static u32 pidcounter = 1;
+static u32 pidcounter = 0;
 extern void ret_from_fork();
 
 static void* initialize_proc_kstack(){
     u64 range = buddy_alloc(KSTACK_SIZE + PAGE_SIZE);
-    // map(range + PAGE_SIZE, va_to_pa(range + PAGE_SIZE), 0, MAP_KERNEL | MAP_READ | MAP_WRITE, (u64) L0_TABLE);   
+    if(!range) return NULL;
 
-    return (void*) (range + (KSTACK_SIZE + PAGE_SIZE) - 0x10);
+    u64 kstack = (range + (KSTACK_SIZE + PAGE_SIZE) - 0x10);
+
+    // set the kernel stack to the trap frame defined by the kernel_entry of the parent process
+    trap_frame_t* tf = BASE_TRAPFRAME(kstack);
+    memset(tf, 0, sizeof(trap_frame_t));
+
+    // in order to be context switched in later, we need to do an "artificial push" of the x19-x30 registers
+    // in total, there are 12 registers to "push", each 8 bytes, so 96 bytes of context to invent
+    kstack = kstack - sizeof(trap_frame_t) - 96;
+    memset((void*) kstack, 0, 96);
+
+    // set x30 from the context switch to be the trampoline out of the kernel
+    *((u64*) (kstack + 8)) = (u64) &ret_from_fork;
+
+    return (void*) kstack;
+}
+
+static void set_state(pcb_t* pcb, enum PROC_STATE state){
+    pcb->state = state;
 }
 
 u32 generate_pid(){
-    // return atomic_increment(&pidcounter, 1);
-    return ++pidcounter;
+    return atomic_increment(&pidcounter, 1);
 }
 
 int fd_alloc(pcb_t* proc, file_t* file) {
@@ -29,8 +47,7 @@ int fd_alloc(pcb_t* proc, file_t* file) {
             return i;
         }
     }
-    return -1;
-    // return -EMFILE;  // too many open files
+    return -EMFILE;  // too many open files
 }
 
 void procreap(pcb_t* proc){
@@ -42,18 +59,23 @@ void procreap(pcb_t* proc){
     return TRUE;
 }
 
-pcb_t* procalloc(u64 entrypoint){
+pcb_t* pcb_allocate(){
     // allocate new process control block
     pcb_t* process = (pcb_t*) kmalloc(sizeof(pcb_t));
+    if(!process){
+        ERROR("No memory left to allocate pcb.\n");
+        return NULL;
+    }
     memset(process, 0, sizeof(pcb_t));
 
     process->cwd = (char*) kmalloc(MAX_PATH);
-    
+    if(!process->cwd){
+        ERROR("No memory left to allocate cwd buffer.\n");
+        kfree(process);
+        return NULL;
+    }
 
     process->pid = generate_pid();
-
-    process->parent = get_current();
-    memcpy(process->cwd, process->parent->cwd, MAX_PATH);
 
     // initialize process bookkeeping lists
     INIT_LIST_HEAD(&process->children);
@@ -67,36 +89,84 @@ pcb_t* procalloc(u64 entrypoint){
     // not waiting on anyone by default
     process->waiting_on = WAITING_NONE;
 
-    // allocate and map the L0 page table for the process
-    // the kernel should be able to dereference this table, but not the process
-    process->ttbr = buddy_alloc_pt();
+    // set up the kernel stack with the trampoline out of EL1
+    process->kernel_stack = (u64) initialize_proc_kstack();
+    if(!process->kernel_stack){
+        ERROR("No memory left to allocate kernel stack.\n");
+        kfree(process->cwd);
+        kfree(process);
+        return NULL;
+    }
 
-    void* kstack = initialize_proc_kstack();
-    process->kernel_stack = (u64) kstack;
+    // mark the process as uninitialized
+    set_state(process, PROCESS_UNINITIALIZED);
 
-    // set the kernel stack to the trap frame defined by the kernel_entry of the parent process
-    trap_frame_t* tf = BASE_TRAPFRAME(process->kernel_stack);
-    tf->sp_el0 = USER_STACK_TOP - 16;
-    tf->elr_el1 = entrypoint;
-    tf->spsr_el1 = 0x0;
+    return process;
+}
 
-    // in order to be context switched in later, we need to do an "artificial push" of the x19-x30 registers
-    // in total, there are 12 registers to "push", each 8 bytes, so 96 bytes of context to invent
-    process->kernel_stack = process->kernel_stack - sizeof(trap_frame_t) - 96;
-    memset((void*) process->kernel_stack, 0, 96);
+static int initialize_from_pcb(pcb_t* proc, pcb_t* cloneproc){
+    proc->ttbr = (u64) clone_virtual_memory((pte*) cloneproc->ttbr);
+    if(!proc->ttbr){
+        ERROR("Could not copy virtual memory.\n");
+        return -ENOMEM;
+    }
 
-    // set x30 from the context switch to be the trampoline out of the kernel
-    *((u64*) (process->kernel_stack + 8)) = (u64) &ret_from_fork;
+    proc->cwd = (char*) kmalloc(MAX_PATH);
+    if(!proc->cwd){
+        ERROR("Could not allocate cwd buffer.\n");
+        return -ENOMEM;
+    }
 
-    // u64* trap_frame = (u64*)(process->kernel_stack + 96);
-    // trap_frame[31] = USER_STACK_TOP - 16;               // SP_EL0
-    // trap_frame[32] = entrypoint;                        // ELR_EL1
-    // trap_frame[33] = 0x0;                               // SPSR
+    trap_frame_t* clone_tf = BASE_TRAPFRAME(cloneproc->kernel_stack);
+    trap_frame_t* proc_tf = BASE_TRAPFRAME(proc->kernel_stack);
+
+    // copy the trapframe, then set the $x0 value to 0 to denote the child PID
+    memcpy(proc_tf, clone_tf, sizeof(trap_frame_t));
+    proc_tf->regs[0] = 0;
 
 
+    // copy all the files over
+    memcpy(proc->fds, cloneproc->fds, sizeof(file_t*) * MAX_OPEN_FILES);
+
+    // since we're copying pointers to the files, we need to increment their refs
+    for(int i = 0; i < MAX_OPEN_FILES; i++){
+        if(proc->fds[i]) proc->fds[i]->refcount++;
+    }
+
+    // iterate over parent VMAs and copy then into the new process
+    for (list_head_t* p = cloneproc->vmas.prev; p != &cloneproc->vmas; p = p->prev){
+
+        // copy parent process VMA into new child VMA list
+        vma* v = list_entry(p, vma, list);
+        vma* new_vma = (vma*) kmalloc(sizeof(vma));
+        if(!new_vma) panic();
+        memcpy(new_vma, v, sizeof(vma));
+        list_add(&new_vma->list, &proc->vmas);
+    }
+
+    proc->start_brk = cloneproc->start_brk;
+    proc->brk = cloneproc->brk;
+
+    // set the parent
+    proc->parent = cloneproc;
+}
+
+static int initialize_fresh(pcb_t* proc){
     file_t* stdin_f  = kmalloc(sizeof(file_t));
+    if(!stdin_f){
+        ERROR("Could not allocate stdin file.\n");
+        return -ENOMEM;
+    }
     file_t* stdout_f = kmalloc(sizeof(file_t));
+    if(!stdout_f){
+        ERROR("Could not allocate stdout file.\n");
+        return -ENOMEM;
+    }
     file_t* stderr_f = kmalloc(sizeof(file_t));
+    if(!stderr_f){
+        ERROR("Could not allocate stderr file.\n");
+        return -ENOMEM;
+    }
 
     // struct copy
     *stdin_f  = stdio_file;
@@ -104,83 +174,27 @@ pcb_t* procalloc(u64 entrypoint){
     *stderr_f = stdio_file;
 
     // set the defaults for all processes
-    process->fds[STDIN] = stdin_f;
-    process->fds[STDOUT] = stdout_f;
-    process->fds[STDERR] = stderr_f;
+    proc->fds[STDIN] = stdin_f;
+    proc->fds[STDOUT] = stdout_f;
+    proc->fds[STDERR] = stderr_f;
 
-    process->state = PROCESS_READY;
+    proc->parent = get_current();
+    proc->ttbr = buddy_alloc_pt();
+    if(!proc->ttbr){
+        ERROR("Could not allocate fresh TTBR0\n");
+        return -ENOMEM;
+    }
 
-    return process;
+    return TRUE;
 }
 
-pcb_t* clone_active_proc(){
-    pcb_t* process = (pcb_t*) kmalloc(sizeof(pcb_t));
-    pcb_t* current = get_current();
+void pcb_init(pcb_t* pcb, pcb_t* cloneproc){
+    if(cloneproc) initialize_from_pcb(pcb, cloneproc);
+    else initialize_fresh(pcb);
 
-    // copy parent process data into child process
-    memcpy(process, current, sizeof(pcb_t));
-
-    // since we're copying pointers to the files, we need to increment their refs
-    for(int i = 0; i < MAX_OPEN_FILES; i++){
-        if(process->fds[i]) process->fds[i]->refcount++;
-    }
-
-    INIT_LIST_HEAD(&process->children);
-    INIT_LIST_HEAD(&process->siblings);
-    INIT_LIST_HEAD(&process->proclist);
-    INIT_LIST_HEAD(&process->runqueue);
-
-    // clear the VMAs of the cloned process
-    INIT_LIST_HEAD(&process->vmas);
-
-    // iterate over parent VMAs and copy then into the new process
-    for (list_head_t* p = current->vmas.prev; p != &current->vmas; p = p->prev){
-
-        // copy parent process VMA into new child VMA list
-        vma* v = list_entry(p, vma, list);
-        vma* new_vma = (vma*) kmalloc(sizeof(vma));
-        if(!new_vma) panic();
-        memcpy(new_vma, v, sizeof(vma));
-        list_add(&new_vma->list, &process->vmas);
-    }
-
-    process->parent = current;
-
-    process->kernel_stack = (u64) initialize_proc_kstack();
-
-    process->pid = generate_pid();
-
-    u64 current_sp;
-    asm volatile("mov %0, sp" : "=r"(current_sp));
-
-    u64 head = head_from_page((void*) ALIGN_DOWN(current_sp, PAGE_SIZE)); 
-
-    u64 current_stack_top = head + PAGE_SIZE;
-
-    // copy the kernel stack
-    memcpy((void*) ALIGN_DOWN(process->kernel_stack, KSTACK_SIZE),  (void*) current_stack_top, PAGE_SIZE);
-
-    // now we need to create a new virtual memory system (using the virt address of the page table)
-    process->ttbr = (u64) clone_virtual_memory((pte*) current->ttbr);
-
-    // set the kernel stack to the trap frame defined by the kernel_entry of the parent process
-    process->kernel_stack -= S_FRAME_SIZE;
-
-    // set process's return value to 0, for child PID
-    *((u64*) (process->kernel_stack)) = 0;
-
-    // in order to be context switched in later, we need to do an "artificial push" of the x19-x30 registers
-    // in total, there are 12 registers to "push", each 8 bytes, so 96 bytes of context to invent
-    process->kernel_stack -= 96;
-    memset((void*) process->kernel_stack, 0, 96);
-
-    u64* trap_frame = (u64*)(process->kernel_stack + 96);
-
-    // set the x30 return address to be the trampoline out of the kernel
-    *((u64*) (process->kernel_stack + 8)) = (u64) &ret_from_fork;
-
-    // return copied child process
-    return process;
+    // tf->sp_el0 = USER_STACK_TOP - 16;
+    // tf->elr_el1 = entrypoint;
+    // tf->spsr_el1 = 0x0;
 }
 
 

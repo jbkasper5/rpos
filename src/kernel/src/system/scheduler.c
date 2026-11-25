@@ -69,18 +69,23 @@ void scheduler_init(){
     INIT_LIST_HEAD(&proclist);
     INIT_LIST_HEAD(&runqueue);
 
-    // create the idle process
-    idle_proc = (pcb_t*) kmalloc(sizeof(pcb_t));
-    idle_proc->cwd = (char*) kmalloc(MAX_PATH);
+    // create pcb and assign it to PID 0
+    idle_proc = pcb_allocate();
+
+    if(!idle_proc) panic();
+
+    // create PCB and assign it to PID 1
+    progenitor_proc = pcb_allocate();
+
+    if(!progenitor_proc) panic();
+
+    set_current(progenitor_proc);
+
     memcpy(idle_proc->cwd, ROOT_PATH, MAX_PATH);
 
-    idle_proc->kernel_stack = initialize_proc_kstack();
     idle_proc->ttbr = NULL;
 
     idle_proc->state = PROCESS_READY;
-
-    INIT_LIST_HEAD(&idle_proc->proclist);
-    INIT_LIST_HEAD(&idle_proc->runqueue);
 
     trap_frame_t* tf = BASE_TRAPFRAME(idle_proc->kernel_stack);
 
@@ -92,21 +97,6 @@ void scheduler_init(){
 
     // set up the idle proc to run in EL1 with interrupts enabled
     tf->spsr_el1 = 0x345;
-
-    cs_stack_frame_t* context_switch_frame = (u64) tf - sizeof(cs_stack_frame_t);
-    context_switch_frame->x30 = &ret_from_fork;
-
-    idle_proc->kernel_stack = context_switch_frame;
-
-    // set the idle process as the current "user" process
-    set_current(idle_proc);
-
-    progenitor_proc = (pcb_t*) kmalloc(sizeof(pcb_t));
-
-    progenitor_proc->pid = 1;
-
-    INIT_LIST_HEAD(&progenitor_proc->proclist);
-    INIT_LIST_HEAD(&progenitor_proc->runqueue);
 }
 
 void scheduler(){
@@ -260,7 +250,7 @@ extern TEST_FN void user();
 void* user_ptr = (void*)user;
 
 void add_test_section_to_scheduler(){
-    pcb_t* proc = procalloc((u64) user_ptr);
+    pcb_t* proc = pcb_allocate((u64) user_ptr);
     u64 test_phys = get_phys_test_region();
     u64 test_virt = get_virt_test_region();
     u64 test_size = get_test_size();
@@ -277,7 +267,10 @@ void add_test_section_to_scheduler(){
 
 void add_shell_to_scheduler(){
     // allocate first process with NULL pointer, will be handled by the elf read
-    pcb_t* pcb = procalloc(NULL);
+    pcb_t* pcb = pcb_allocate();
+
+    // initialize the PCB as a fresh process
+    pcb_init(pcb, NULL);
     set_current(pcb);
 
     // open the main user binary, for now a simple shell, later a desktop or something

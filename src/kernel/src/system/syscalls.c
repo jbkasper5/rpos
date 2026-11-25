@@ -414,8 +414,9 @@ u64 sys_fork(u64, u64, u64, u64, u64, u64){
     // also now need to clone the kstack from the old to the new process
     pcb_t* current = get_current();
 
-    // procalloc
-    pcb_t* newproc = clone_active_proc();
+    // pcb_allocate
+    pcb_t* newproc = pcb_allocate();
+    pcb_init(newproc, current);
 
     // add cloned process to the scheduler
     add_to_schedule(newproc);

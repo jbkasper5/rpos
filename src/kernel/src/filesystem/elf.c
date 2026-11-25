@@ -43,7 +43,7 @@ void readelf(file_t* file, u64 argv, u64 envp){
 
     // allocate process metadata
     // should now have a valid L0 page table and stack
-    // pcb_t* process = procalloc((u64) header->e_entry);
+    // pcb_t* process = pcb_allocate((u64) header->e_entry);
 
     u64* new_proc_l0 = buddy_alloc_pt();
 
